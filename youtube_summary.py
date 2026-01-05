@@ -175,21 +175,21 @@ def get_youtube_object(url):
     log(f"Initializing YouTube object. PO_TOKEN present: {bool(po_token)}")
     
     try:
-        # Initialize with use_po_token=False because we are injecting manually.
-        # Setting it to True (or leaving default) might trigger the internal generator 
-        # which can cause EOFError on non-interactive environments (Render) if it tries to prompt.
+        # Initialize with use_po_token=True so the library KNOWS we want to use PO Token.
+        # But we must prevent it from auto-generating it by injecting it into _pot below.
         yt = YouTube(
             url, 
-            use_po_token=False, 
+            use_po_token=True, 
             use_oauth=use_oauth,
             allow_oauth_cache=True
         )
         
-        # Manually inject tokens if provided in env (overrides auto-generated one)
-        # We must set _po_token because po_token property might be read-only or not have a setter in some versions
+        # Manually inject tokens if provided in env
         if po_token:
             log(f"Injecting PO Token manually... (Length: {len(po_token)})")
-            # Create the attribute if it doesn't exist (monkey patch) or set it
+            # Inject into _pot to bypass the internal generator (YouTube.pot property checks _pot first)
+            yt._pot = po_token
+            # Also set the public attribute/property just in case
             try:
                 yt.po_token = po_token
             except:
@@ -201,16 +201,6 @@ def get_youtube_object(url):
                 yt.visitor_data = visitor_data
             except:
                 yt._visitor_data = visitor_data
-
-        # CRITICAL: Now that we have injected the token, we MUST enable the flag
-        # so pytubefix actually sends it in the requests.
-        # We do this AFTER init to avoid the auto-generation trigger.
-        try:
-            yt.use_po_token = True
-            log("Enabled use_po_token flag successfully.")
-        except:
-            yt._use_po_token = True
-            log("Enabled _use_po_token flag successfully (internal).")
             
         return yt
 
