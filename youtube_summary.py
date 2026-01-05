@@ -168,6 +168,7 @@ def get_yt_dlp_opts():
     po_token = os.getenv("PO_TOKEN")
     visitor_data = os.getenv("VISITOR_DATA")
     youtube_cookies = os.getenv("YOUTUBE_COOKIES")
+    proxy_url = os.getenv("PROXY_URL")  # Residential proxy: http://user:pass@host:port
     
     opts = {
         # Accept any audio format, fall back to best video if no audio
@@ -179,6 +180,11 @@ def get_yt_dlp_opts():
         'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     
+    # Add proxy if configured
+    if proxy_url:
+        log(f"使用代理伺服器: {proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url}")
+        opts['proxy'] = proxy_url
+    
     # METHOD 1: Use Cookie file if available
     if youtube_cookies:
         log("使用 Cookie 認證模式...")
@@ -189,7 +195,6 @@ def get_yt_dlp_opts():
         opts['format'] = 'best'  # Use simplest format selection
         log(f"Cookie 檔案已寫入: {cookie_file_path}")
         return opts
-
 
     
     # METHOD 2: Use PO Token ONLY if no cookies available
@@ -291,12 +296,21 @@ def download_audio_playwright(url):
     
     try:
         with sync_playwright() as p:
+            # Check for proxy
+            proxy_url = os.getenv("PROXY_URL")
+            launch_opts = {'headless': True}
+            
+            if proxy_url:
+                log(f"[Playwright] 使用代理: {proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url}")
+                launch_opts['proxy'] = {'server': proxy_url}
+            
             # Launch headless Chromium
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(**launch_opts)
             context = browser.new_context(
                 user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 locale='en-US'
             )
+
             page = context.new_page()
             
             # Intercept network requests
