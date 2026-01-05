@@ -186,12 +186,21 @@ def get_youtube_object(url):
         )
         
         # Manually inject tokens if provided in env (overrides auto-generated one)
+        # We must set _po_token because po_token property might be read-only or not have a setter in some versions
         if po_token:
             log(f"Injecting PO Token manually... (Length: {len(po_token)})")
-            yt.po_token = po_token
+            # Create the attribute if it doesn't exist (monkey patch) or set it
+            try:
+                yt.po_token = po_token
+            except:
+                yt._po_token = po_token
+
         if visitor_data:
             log("Injecting Visitor Data manually...")
-            yt.visitor_data = visitor_data
+            try:
+                yt.visitor_data = visitor_data
+            except:
+                yt._visitor_data = visitor_data
             
         return yt
 
