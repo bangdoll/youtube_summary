@@ -163,9 +163,11 @@ def save_note(content, video_id):
 
 def get_yt_dlp_opts():
     import yt_dlp
+    import tempfile
 
     po_token = os.getenv("PO_TOKEN")
     visitor_data = os.getenv("VISITOR_DATA")
+    youtube_cookies = os.getenv("YOUTUBE_COOKIES")
     
     opts = {
         'format': 'bestaudio/best',
@@ -176,12 +178,24 @@ def get_yt_dlp_opts():
         'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     
-    # Try using OAuth2 if configured (most robust way to bypass bot detection on servers)
+    # PRIORITY 1: Use Cookie file if available (most reliable for server environments)
+    if youtube_cookies:
+        log("使用 Cookie 認證模式 (最可靠)...")
+        # Write cookies to a temp file that yt-dlp can read
+        cookie_file_path = "/tmp/yt_cookies.txt"
+        with open(cookie_file_path, "w", encoding="utf-8") as f:
+            f.write(youtube_cookies)
+        opts['cookiefile'] = cookie_file_path
+        log(f"Cookie 檔案已寫入: {cookie_file_path}")
+        return opts # Cookies are the strongest auth, skip other methods
+    
+    # PRIORITY 2: Try using OAuth2 if configured
     if os.getenv("USE_OAUTH", "false").lower() == "true":
         log("啟用 OAuth2 模式 (yt-dlp)...")
         opts['username'] = 'oauth2'
         opts['password'] = '' # Not needed for oauth2
     
+    # PRIORITY 3: PO Token + Visitor Data (fallback)
     if po_token and visitor_data:
         log(f"Configuring yt-dlp with PO Token (len={len(po_token)}) and Visitor Data...")
         opts['extractor_args'] = {
@@ -191,6 +205,7 @@ def get_yt_dlp_opts():
             }
         }
     return opts
+
 
 def get_video_info(url):
     """Extracts video info using yt-dlp."""
