@@ -41,7 +41,17 @@
    ```bash
    # .env
    OPENAI_API_KEY=sk-your-api-key-here
+   
+   # [Optional] Vercel/Cloud Deployment Settings (Fix Bot Detection)
+   USE_PO_TOKEN=True
+   PO_TOKEN=your_po_token_here
+   VISITOR_DATA=your_visitor_data_here
    ```
+
+### ☁️ 關於 Vercel 部署 (Bot Detection 修復)
+若在 Vercel 遇到 `This request was detected as a bot` 錯誤，請依照 `pytubefix` 文件獲取 `po_token`：
+1. 參閱 [pytubefix 文件](https://pytubefix.readthedocs.io/en/latest/user/po_token.html) 獲取 Token。
+2. 在 Vercel Settings > Environment Variables 中新增 `PO_TOKEN` 與 `VISITOR_DATA`。
 
 4. **啟動伺服器**
    ```bash

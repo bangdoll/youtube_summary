@@ -156,6 +156,34 @@ def save_note(content, video_id):
     log(f"成功！筆記已儲存至: {filename}")
     return filename
 
+
+def get_youtube_object(url):
+    """
+    Helper to initialize YouTube object with potential PO Token / OAuth
+    to bypass bot detection (especially on Vercel/Cloud).
+    """
+    from pytubefix import YouTube
+    
+    use_po_token = os.getenv("USE_PO_TOKEN", "true").lower() == "true"
+    po_token = os.getenv("PO_TOKEN")
+    visitor_data = os.getenv("VISITOR_DATA")
+    use_oauth = os.getenv("USE_OAUTH", "false").lower() == "true"
+    
+    log(f"Initializing YouTube object. PO_TOKEN present: {bool(po_token)}")
+    
+    try:
+        return YouTube(
+            url, 
+            use_po_token=use_po_token, 
+            po_token=po_token, 
+            visitor_data=visitor_data,
+            use_oauth=use_oauth,
+            allow_oauth_cache=True
+        )
+    except Exception as e:
+        log(f"Error initializing YouTube object: {e}")
+        raise e
+
 def process_video_pipeline(url):
     """Orchestrates the video processing pipeline. Returns (filename, note_content)."""
     video_id = get_video_id(url)
@@ -164,14 +192,13 @@ def process_video_pipeline(url):
     # Get Title
     video_title = "未知的影片"
     try:
-        from pytubefix import YouTube
-        yt = YouTube(f"https://www.youtube.com/watch?v={video_id}")
+        yt = get_youtube_object(f"https://www.youtube.com/watch?v={video_id}")
         video_title = yt.title
         log(f"影片標題: {video_title}")
-    except:
+    except Exception as e:
         # Fallback title if pytube fails
         video_title = f"Video_{video_id}"
-        log("警告：無法取得影片標題。繼續執行。")
+        log(f"警告：無法取得影片標題 ({e})。繼續執行。")
     
     log("正在取得逐字稿...")
     transcript = get_transcript(video_id)
@@ -221,8 +248,7 @@ def get_audio_and_transcribe(url):
         
     log("使用 pytubefix 下載音訊中...")
     try:
-        from pytubefix import YouTube
-        yt = YouTube(url)
+        yt = get_youtube_object(url)
         audio_stream = yt.streams.get_audio_only()
         if not audio_stream:
             log("錯誤：找不到音訊串流。")
