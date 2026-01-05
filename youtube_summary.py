@@ -175,12 +175,12 @@ def get_youtube_object(url):
     log(f"Initializing YouTube object. PO_TOKEN present: {bool(po_token)}")
     
     try:
-        # Initialize WITHOUT po_token argument (it's not supported in __init__ in newer versions)
-        # use_po_token=True triggers the internal generator (requires nodejs), 
-        # but we can overwrite the token manually below if we have one.
+        # Initialize with use_po_token=False because we are injecting manually.
+        # Setting it to True (or leaving default) might trigger the internal generator 
+        # which can cause EOFError on non-interactive environments (Render) if it tries to prompt.
         yt = YouTube(
             url, 
-            use_po_token=use_po_token, 
+            use_po_token=False, 
             use_oauth=use_oauth,
             allow_oauth_cache=True
         )
