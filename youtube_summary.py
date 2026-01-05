@@ -268,6 +268,85 @@ def main():
 if __name__ == "__main__":
     main()
 
+def download_audio_playwright(url):
+    """
+    Uses Playwright to bypass YouTube bot detection and capture audio stream URL.
+    Falls back from yt-dlp when traditional methods fail.
+    """
+    import requests
+    from playwright.sync_api import sync_playwright
+    
+    log("[Playwright] 啟動無頭瀏覽器...")
+    
+    audio_urls = []
+    output_file = "temp_audio_playwright.webm"
+    
+    def intercept_request(request):
+        """Capture audio stream URLs from network requests."""
+        url = request.url
+        # YouTube audio streams typically contain these patterns
+        if 'googlevideo.com' in url and ('audio' in url or 'mime=audio' in url):
+            audio_urls.append(url)
+            log(f"[Playwright] 捕獲到音訊 URL (長度: {len(url)})")
+    
+    try:
+        with sync_playwright() as p:
+            # Launch headless Chromium
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            )
+            page = context.new_page()
+            
+            # Intercept network requests
+            page.on("request", intercept_request)
+            
+            log(f"[Playwright] 正在前往影片頁面...")
+            page.goto(url, timeout=60000)
+            
+            # Wait for video player to load
+            log("[Playwright] 等待影片播放器載入...")
+            page.wait_for_timeout(5000)
+            
+            # Try to click play button if video is paused
+            try:
+                play_button = page.locator('button.ytp-play-button')
+                if play_button.is_visible():
+                    play_button.click()
+                    log("[Playwright] 點擊了播放按鈕")
+                    page.wait_for_timeout(3000)
+            except:
+                pass
+            
+            browser.close()
+        
+        if not audio_urls:
+            log("[Playwright] 未捕獲到任何音訊 URL")
+            return None
+        
+        # Download the first captured audio URL
+        audio_url = audio_urls[0]
+        log(f"[Playwright] 正在下載音訊...")
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.youtube.com/'
+        }
+        
+        response = requests.get(audio_url, headers=headers, stream=True, timeout=120)
+        response.raise_for_status()
+        
+        with open(output_file, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        log(f"[Playwright] 音訊下載完成: {output_file}")
+        return output_file
+        
+    except Exception as e:
+        log(f"[Playwright] 錯誤: {e}")
+        return None
+
 def get_audio_and_transcribe(url):
     """Downloads audio via yt-dlp and transcribes via Whisper."""
     import subprocess
@@ -352,7 +431,16 @@ def get_audio_and_transcribe(url):
         
     except Exception as e:
         log(f"使用 yt-dlp 下載音訊時發生錯誤: {e}")
-        return None
+        log("[yt-dlp 失敗] 嘗試使用 Playwright 瀏覽器下載...")
+        
+        # FALLBACK: Use Playwright browser to capture audio
+        playwright_file = download_audio_playwright(url)
+        if playwright_file and os.path.exists(playwright_file):
+            output_filename = playwright_file
+            log(f"[Playwright] 成功，使用檔案: {output_filename}")
+        else:
+            log("[Playwright] 也失敗了，無法取得音訊檔案。")
+            return None
         
     if not os.path.exists(output_filename):
         log("錯誤：下載後找不到音訊檔案。")

@@ -5,4 +5,5 @@ python-dotenv
 youtube-transcript-api
 openai
 yt-dlp
+playwright
 pytest
