@@ -160,6 +160,7 @@ def save_note(content, video_id):
     return filename
 
 
+def get_yt_dlp_opts():
     import yt_dlp
 
     po_token = os.getenv("PO_TOKEN")
@@ -326,7 +327,7 @@ def get_audio_and_transcribe(url):
                 return None
         
     except Exception as e:
-        log(f"使用 pytubefix 下載音訊時發生錯誤: {e}")
+        log(f"使用 yt-dlp 下載音訊時發生錯誤: {e}")
         return None
         
     if not os.path.exists(output_filename):
