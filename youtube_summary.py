@@ -283,40 +283,84 @@ def download_audio_playwright(url):
     
     def intercept_request(request):
         """Capture audio stream URLs from network requests."""
-        url = request.url
-        # YouTube audio streams typically contain these patterns
-        if 'googlevideo.com' in url and ('audio' in url or 'mime=audio' in url):
-            audio_urls.append(url)
-            log(f"[Playwright] 捕獲到音訊 URL (長度: {len(url)})")
+        req_url = request.url
+        # YouTube audio streams contain these patterns
+        if 'googlevideo.com' in req_url and ('audio' in req_url or 'mime=audio' in req_url):
+            audio_urls.append(req_url)
+            log(f"[Playwright] 捕獲到音訊 URL")
     
     try:
         with sync_playwright() as p:
             # Launch headless Chromium
             browser = p.chromium.launch(headless=True)
             context = browser.new_context(
-                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                locale='en-US'
             )
             page = context.new_page()
             
             # Intercept network requests
             page.on("request", intercept_request)
             
+            # Add autoplay parameter to URL
+            if '?' in url:
+                autoplay_url = url + '&autoplay=1'
+            else:
+                autoplay_url = url + '?autoplay=1'
+            
             log(f"[Playwright] 正在前往影片頁面...")
-            page.goto(url, timeout=60000)
+            page.goto(autoplay_url, timeout=60000)
             
-            # Wait for video player to load
-            log("[Playwright] 等待影片播放器載入...")
-            page.wait_for_timeout(5000)
-            
-            # Try to click play button if video is paused
+            # Dismiss cookie consent if present
+            log("[Playwright] 處理 Cookie 同意彈窗...")
             try:
-                play_button = page.locator('button.ytp-play-button')
-                if play_button.is_visible():
-                    play_button.click()
-                    log("[Playwright] 點擊了播放按鈕")
-                    page.wait_for_timeout(3000)
+                # Try various consent button selectors
+                consent_selectors = [
+                    'button[aria-label*="Accept"]',
+                    'button:has-text("Accept all")',
+                    'button:has-text("I agree")',
+                    'button:has-text("Agree")',
+                    '[aria-label="Accept the use of cookies"]',
+                    'tp-yt-paper-button:has-text("Accept")',
+                ]
+                for selector in consent_selectors:
+                    try:
+                        btn = page.locator(selector).first
+                        if btn.is_visible(timeout=1000):
+                            btn.click()
+                            log(f"[Playwright] 點擊了同意按鈕")
+                            break
+                    except:
+                        continue
             except:
                 pass
+            
+            # Wait for page to stabilize
+            page.wait_for_timeout(3000)
+            
+            # Click on video to start playback
+            log("[Playwright] 嘗試啟動影片播放...")
+            try:
+                # Try clicking the video element directly
+                video = page.locator('video').first
+                if video.is_visible(timeout=5000):
+                    video.click()
+                    log("[Playwright] 點擊了影片元素")
+            except:
+                pass
+            
+            # Try play button
+            try:
+                play_btn = page.locator('button.ytp-play-button').first
+                if play_btn.is_visible(timeout=2000):
+                    play_btn.click()
+                    log("[Playwright] 點擊了播放按鈕")
+            except:
+                pass
+            
+            # Wait for audio to buffer
+            log("[Playwright] 等待音訊緩衝...")
+            page.wait_for_timeout(10000)
             
             browser.close()
         
