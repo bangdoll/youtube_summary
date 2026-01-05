@@ -132,6 +132,55 @@ def analyze_transcript(transcript, video_title="Unknown Video"):
         log(f"呼叫 OpenAI API 時發生錯誤: {e}")
         raise Exception(f"呼叫 OpenAI API 時發生錯誤: {e}")
 
+
+def analyze_with_gemini(youtube_url, video_title="Unknown"):
+    """
+    Analyzes a YouTube video directly using Gemini 2.5.
+    No need to download or transcribe - Gemini can watch the video!
+    """
+    import google.generativeai as genai
+    
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        error_msg = "錯誤：找不到 GOOGLE_API_KEY 環境變數。"
+        log(error_msg)
+        raise Exception(error_msg)
+    
+    genai.configure(api_key=api_key)
+    
+    # Read prompt template
+    prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "video_summary.md")
+    try:
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            prompt_template = f.read()
+    except FileNotFoundError:
+        prompt_template = "請分析這個影片並提供詳細的摘要。"
+    
+    # Fill dynamic variables
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    prompt = prompt_template.replace("{{current_date}}", current_date)
+    prompt = prompt.replace("{{video_title}}", video_title)
+    prompt += "\n\n請直接觀看這個影片並按照上述格式生成筆記。"
+    
+    log("正在使用 Gemini 直接分析 YouTube 影片...")
+    log(f"影片 URL: {youtube_url}")
+    
+    try:
+        # Use Gemini 3 Flash for video understanding
+        model = genai.GenerativeModel('gemini-3-flash')
+        
+        response = model.generate_content([
+            prompt,
+            {"type": "youtube_video", "url": youtube_url}
+        ])
+        
+        log("Gemini 分析完成！")
+        return response.text
+        
+    except Exception as e:
+        log(f"Gemini 分析失敗: {e}")
+        raise Exception(f"Gemini 分析失敗: {e}")
+
 def save_note(content, video_id):
     """Saves the content to a markdown file."""
     # Extract title from content if possible (first line usually)
@@ -230,29 +279,43 @@ def process_video_pipeline(url):
     video_id = get_video_id(url)
     log(f"處理影片 ID: {video_id}")
     
-    # Get Title
+    # Construct canonical URL
+    canonical_url = f"https://www.youtube.com/watch?v={video_id}"
+    
+    # Get Title (optional, Gemini can get it too)
     video_title = "未知的影片"
     try:
-        info = get_video_info(f"https://www.youtube.com/watch?v={video_id}")
+        info = get_video_info(canonical_url)
         video_title = info.get('title', f"Video_{video_id}")
         log(f"影片標題: {video_title}")
     except Exception as e:
-        # Fallback title
         video_title = f"Video_{video_id}"
         log(f"警告：無法取得影片標題 ({e})。繼續執行。")
     
+    # === METHOD 1: Try Gemini Direct Analysis (Best - no download needed!) ===
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    if google_api_key:
+        try:
+            log("嘗試使用 Gemini 直接分析影片...")
+            analysis = analyze_with_gemini(canonical_url, video_title)
+            filename = save_note(analysis, video_id)
+            return filename, analysis
+        except Exception as e:
+            log(f"Gemini 分析失敗: {e}")
+            log("改用傳統逐字稿方法...")
+    else:
+        log("未設定 GOOGLE_API_KEY，跳過 Gemini 分析...")
+    
+    # === METHOD 2: Fallback to Transcript-based Analysis ===
     log("正在取得逐字稿...")
     transcript = get_transcript(video_id)
     
-    # === Fallback Logic ===
     if not transcript:
         transcript = get_audio_and_transcribe(url)
         
     if not transcript:
         log("嚴重錯誤：無法透過任何方式取得逐字稿。")
-        # Raise exception instead of sys.exit so app can catch it
         raise Exception("嚴重錯誤：無法透過任何方式取得逐字稿。")
-    # ======================
     
     log("正在分析內容...")
     analysis = analyze_transcript(transcript, video_title)
