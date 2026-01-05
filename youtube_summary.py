@@ -185,17 +185,6 @@ def get_yt_dlp_opts():
         log(f"使用代理伺服器: {proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url}")
         opts['proxy'] = proxy_url
     
-    # METHOD 0: OAuth2 Authentication (most stable for servers)
-    use_oauth = os.getenv("USE_OAUTH", "false").lower() == "true"
-    if use_oauth:
-        log("使用 OAuth2 認證模式...")
-        opts['username'] = 'oauth2'
-        opts['password'] = ''
-        # Cache OAuth token for persistence
-        opts['cachedir'] = '/tmp/yt-dlp-cache'
-        log("OAuth 配置完成。首次運行需要手動授權。")
-        return opts
-    
     # METHOD 1: Use Cookie file if available
     if youtube_cookies:
         log("使用 Cookie 認證模式...")
@@ -203,12 +192,11 @@ def get_yt_dlp_opts():
         with open(cookie_file_path, "w", encoding="utf-8") as f:
             f.write(youtube_cookies)
         opts['cookiefile'] = cookie_file_path
-        opts['format'] = 'best'  # Use simplest format selection
+        opts['format'] = 'best'
         log(f"Cookie 檔案已寫入: {cookie_file_path}")
         return opts
-
     
-    # METHOD 2: Use PO Token ONLY if no cookies available
+    # METHOD 2: Use PO Token if available
     if po_token and visitor_data:
         log(f"使用 PO Token 認證模式 (len={len(po_token)})...")
         opts['extractor_args'] = {
@@ -218,6 +206,8 @@ def get_yt_dlp_opts():
             }
         }
     
+    # No auth configured, try anyway
+    log("無額外認證，直接嘗試...")
     return opts
 
 
