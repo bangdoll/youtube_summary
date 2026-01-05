@@ -160,54 +160,40 @@ def save_note(content, video_id):
     return filename
 
 
-def get_youtube_object(url):
-    """
-    Helper to initialize YouTube object with potential PO Token / OAuth
-    to bypass bot detection (especially on Vercel/Cloud).
-    """
-    from pytubefix import YouTube
-    
-    use_po_token = os.getenv("USE_PO_TOKEN", "true").lower() == "true"
+    import yt_dlp
+
     po_token = os.getenv("PO_TOKEN")
     visitor_data = os.getenv("VISITOR_DATA")
-    use_oauth = os.getenv("USE_OAUTH", "false").lower() == "true"
     
-    log(f"Initializing YouTube object. PO_TOKEN present: {bool(po_token)}")
+    opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'no_warnings': True,
+        'noplaylist': True,
+    }
     
+    if po_token and visitor_data:
+        log(f"Configuring yt-dlp with PO Token (len={len(po_token)}) and Visitor Data...")
+        opts['extractor_args'] = {
+            'youtube': {
+                'po_token': [f'web+{po_token}'],
+                'visitor_data': [visitor_data]
+            }
+        }
+    return opts
+
+def get_video_info(url):
+    """Extracts video info using yt-dlp."""
     try:
-        # Initialize with use_po_token=True so the library KNOWS we want to use PO Token.
-        # But we must prevent it from auto-generating it by injecting it into _pot below.
-        yt = YouTube(
-            url, 
-            use_po_token=True, 
-            use_oauth=use_oauth,
-            allow_oauth_cache=True
-        )
-        
-        # Manually inject tokens if provided in env
-        if po_token:
-            log(f"Injecting PO Token manually... (Length: {len(po_token)})")
-            # Inject into _pot to bypass the internal generator (YouTube.pot property checks _pot first)
-            yt._pot = po_token
-            # Also set the public attribute/property just in case
-            try:
-                yt.po_token = po_token
-            except:
-                yt._po_token = po_token
-
-        if visitor_data:
-            log("Injecting Visitor Data manually...")
-            try:
-                yt.visitor_data = visitor_data
-            except:
-                yt._visitor_data = visitor_data
-            
-        return yt
-
+        opts = get_yt_dlp_opts()
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return info
     except Exception as e:
-        log(f"Error initializing YouTube object: {e}")
+        log(f"Error extracting video info: {e}")
         raise e
 
+    
 def process_video_pipeline(url):
     """Orchestrates the video processing pipeline. Returns (filename, note_content)."""
     video_id = get_video_id(url)
@@ -216,11 +202,11 @@ def process_video_pipeline(url):
     # Get Title
     video_title = "未知的影片"
     try:
-        yt = get_youtube_object(f"https://www.youtube.com/watch?v={video_id}")
-        video_title = yt.title
+        info = get_video_info(f"https://www.youtube.com/watch?v={video_id}")
+        video_title = info.get('title', f"Video_{video_id}")
         log(f"影片標題: {video_title}")
     except Exception as e:
-        # Fallback title if pytube fails
+        # Fallback title
         video_title = f"Video_{video_id}"
         log(f"警告：無法取得影片標題 ({e})。繼續執行。")
     
@@ -263,27 +249,38 @@ def get_audio_and_transcribe(url):
     
     log("\n[Fallback] 找不到逐字稿。嘗試進行語音轉錄 (Whisper)...")
     
-    # 1. Download audio using pytubefix (more robust than yt-dlp for now)
-    output_filename = "temp_audio.m4a"
+    # 1. Download audio using yt-dlp
+    output_filename = "temp_audio" # yt-dlp adds extension
     
-    # Clean up previous temp file if exists
-    if os.path.exists(output_filename):
-        os.remove(output_filename)
+    # Clean up previous temp files
+    if os.path.exists(output_filename + ".m4a"):
+        os.remove(output_filename + ".m4a")
+    if os.path.exists(output_filename + ".webm"):
+        os.remove(output_filename + ".webm")
         
-    log("使用 pytubefix 下載音訊中...")
+    log("使用 yt-dlp 下載音訊中...")
     try:
-        yt = get_youtube_object(url)
-        audio_stream = yt.streams.get_audio_only()
-        if not audio_stream:
-            log("錯誤：找不到音訊串流。")
-            return None
+        opts = get_yt_dlp_opts()
+        opts['outtmpl'] = output_filename + ".%(ext)s"
+        
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download([url])
             
-        log(f"找到音訊串流: {audio_stream.subtype}")
-        # Explicitly append extension
-        output_filename = f"temp_audio.{audio_stream.subtype}"
-        downloaded_path = audio_stream.download(filename=output_filename)
-        log(f"下載完成: {downloaded_path}")
-        output_filename = downloaded_path
+        # Find which file was downloaded
+        if os.path.exists(output_filename + ".m4a"):
+            output_filename += ".m4a"
+        elif os.path.exists(output_filename + ".webm"):
+            output_filename += ".webm"
+        else:
+            # Fallback check
+            files = [f for f in os.listdir('.') if f.startswith("temp_audio.")]
+            if files:
+                output_filename = files[0]
+            else:
+                 log("錯誤：下載後找不到音訊檔案。")
+                 return None
+
+        log(f"下載完成: {output_filename}")
         
         # Check file size (OpenAI limit: 25MB)
         file_size_mb = os.path.getsize(output_filename) / (1024 * 1024)

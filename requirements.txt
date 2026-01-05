@@ -4,5 +4,5 @@ python-multipart
 python-dotenv
 youtube-transcript-api
 openai
-pytubefix>=10.0.0
+yt-dlp
 pytest
