@@ -189,16 +189,22 @@ def get_yt_dlp_opts():
         # DON'T return early - also add PO Token for stream downloads
     
     # Also add PO Token + Visitor Data for stream access (works WITH cookies)
+    # Use 'android' client which has fewer format restrictions
+    extractor_args = {
+        'youtube': {
+            'player_client': ['android'],  # Android client has less strict format requirements
+        }
+    }
+    
     if po_token and visitor_data:
         log(f"同時注入 PO Token (len={len(po_token)}) 用於串流下載...")
-        opts['extractor_args'] = {
-            'youtube': {
-                'po_token': [f'web+{po_token}'],
-                'visitor_data': [visitor_data]
-            }
-        }
+        extractor_args['youtube']['po_token'] = [f'web+{po_token}']
+        extractor_args['youtube']['visitor_data'] = [visitor_data]
+    
+    opts['extractor_args'] = extractor_args
     
     return opts
+
 
 
 
