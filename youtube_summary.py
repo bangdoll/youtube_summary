@@ -172,6 +172,7 @@ def get_youtube_object(url):
     log(f"Initializing YouTube object. PO_TOKEN present: {bool(po_token)}")
     
     try:
+        # Try initializing with PO Token first (for newer pytubefix)
         return YouTube(
             url, 
             use_po_token=use_po_token, 
@@ -180,6 +181,17 @@ def get_youtube_object(url):
             use_oauth=use_oauth,
             allow_oauth_cache=True
         )
+    except TypeError as e:
+        if "unexpected keyword argument" in str(e):
+            log("偵測到舊版 pytubefix，不支援 po_token。嘗試使用基本模式初始化...")
+            # Fallback for older versions or if arguments are wrong
+            return YouTube(
+                url,
+                use_oauth=use_oauth,
+                allow_oauth_cache=True
+            )
+        else:
+            raise e
     except Exception as e:
         log(f"Error initializing YouTube object: {e}")
         raise e
