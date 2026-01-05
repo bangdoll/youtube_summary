@@ -172,7 +172,15 @@ def get_yt_dlp_opts():
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
+        # Mimic a real browser to reduce bot score
+        'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
+    
+    # Try using OAuth2 if configured (most robust way to bypass bot detection on servers)
+    if os.getenv("USE_OAUTH", "false").lower() == "true":
+        log("啟用 OAuth2 模式 (yt-dlp)...")
+        opts['username'] = 'oauth2'
+        opts['password'] = '' # Not needed for oauth2
     
     if po_token and visitor_data:
         log(f"Configuring yt-dlp with PO Token (len={len(po_token)}) and Visitor Data...")
