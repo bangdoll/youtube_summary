@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import TextFormatter
 import openai
+import yt_dlp
 
 # Load environment variables
 load_dotenv()
