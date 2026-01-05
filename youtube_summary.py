@@ -175,26 +175,26 @@ def get_youtube_object(url):
     log(f"Initializing YouTube object. PO_TOKEN present: {bool(po_token)}")
     
     try:
-        # Try initializing with PO Token first (for newer pytubefix)
-        return YouTube(
+        # Initialize WITHOUT po_token argument (it's not supported in __init__ in newer versions)
+        # use_po_token=True triggers the internal generator (requires nodejs), 
+        # but we can overwrite the token manually below if we have one.
+        yt = YouTube(
             url, 
             use_po_token=use_po_token, 
-            po_token=po_token, 
-            visitor_data=visitor_data,
             use_oauth=use_oauth,
             allow_oauth_cache=True
         )
-    except TypeError as e:
-        if "unexpected keyword argument" in str(e):
-            log("偵測到舊版 pytubefix，不支援 po_token。嘗試使用基本模式初始化...")
-            # Fallback for older versions or if arguments are wrong
-            return YouTube(
-                url,
-                use_oauth=use_oauth,
-                allow_oauth_cache=True
-            )
-        else:
-            raise e
+        
+        # Manually inject tokens if provided in env (overrides auto-generated one)
+        if po_token:
+            log(f"Injecting PO Token manually... (Length: {len(po_token)})")
+            yt.po_token = po_token
+        if visitor_data:
+            log("Injecting Visitor Data manually...")
+            yt.visitor_data = visitor_data
+            
+        return yt
+
     except Exception as e:
         log(f"Error initializing YouTube object: {e}")
         raise e
