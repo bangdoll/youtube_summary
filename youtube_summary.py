@@ -52,8 +52,11 @@ def get_transcript(video_id):
     import subprocess
     import json
     
-    # Path to the executable we found earlier
-    cli_path = "/Users/bangdoll/Library/Python/3.9/bin/youtube_transcript_api"
+    # Path to the executable
+    # Check if we are checking local mac path or linux
+    cli_path = "youtube_transcript_api"
+    # On Render/Docker, it should be in PATH. 
+    # If not, we can try invoking module directly via python -m but the subprocess call below expects an executable.
     
     cmd = [
         cli_path,
