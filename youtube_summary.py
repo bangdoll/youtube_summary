@@ -179,7 +179,7 @@ def get_yt_dlp_opts():
         'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     
-    # METHOD 1: Use Cookie file if available (EXCLUSIVE - don't mix with PO Token)
+    # METHOD 1: Use Cookie file if available
     if youtube_cookies:
         log("使用 Cookie 認證模式 (獨占)...")
         cookie_file_path = "/tmp/yt_cookies.txt"
@@ -187,7 +187,17 @@ def get_yt_dlp_opts():
             f.write(youtube_cookies)
         opts['cookiefile'] = cookie_file_path
         log(f"Cookie 檔案已寫入: {cookie_file_path}")
-        return opts  # IMPORTANT: Return early, don't add PO Token
+        
+        # Use iOS client which often has less DRM/restrictions for audio
+        opts['extractor_args'] = {
+            'youtube': {
+                'player_client': ['ios'],  
+            }
+        }
+        opts['format'] = 'worstaudio/worst'  # Try lowest quality audio (less protected)
+        opts['http_chunk_size'] = 10485760  # 10MB chunks
+        return opts
+
     
     # METHOD 2: Use PO Token ONLY if no cookies available
     if po_token and visitor_data:
