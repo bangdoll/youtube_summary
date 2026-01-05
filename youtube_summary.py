@@ -302,14 +302,18 @@ def download_audio_playwright(url):
             # Intercept network requests
             page.on("request", intercept_request)
             
-            # Add autoplay parameter to URL
-            if '?' in url:
-                autoplay_url = url + '&autoplay=1'
+            # Extract video ID and use embed URL (fewer restrictions)
+            import re
+            video_id_match = re.search(r'(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})', url)
+            if video_id_match:
+                video_id = video_id_match.group(1)
+                embed_url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&enablejsapi=1"
+                log(f"[Playwright] 使用嵌入式 URL: {embed_url}")
             else:
-                autoplay_url = url + '?autoplay=1'
+                embed_url = url + ('&' if '?' in url else '?') + 'autoplay=1'
             
             log(f"[Playwright] 正在前往影片頁面...")
-            page.goto(autoplay_url, timeout=60000)
+            page.goto(embed_url, timeout=60000)
             
             # Dismiss cookie consent if present
             log("[Playwright] 處理 Cookie 同意彈窗...")
