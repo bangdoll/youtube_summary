@@ -179,18 +179,19 @@ def get_yt_dlp_opts():
         'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     
-    # Use Cookie file if available (for account auth)
+    # METHOD 1: Use Cookie file if available (EXCLUSIVE - don't mix with PO Token)
     if youtube_cookies:
-        log("使用 Cookie 認證模式...")
+        log("使用 Cookie 認證模式 (獨占)...")
         cookie_file_path = "/tmp/yt_cookies.txt"
         with open(cookie_file_path, "w", encoding="utf-8") as f:
             f.write(youtube_cookies)
         opts['cookiefile'] = cookie_file_path
         log(f"Cookie 檔案已寫入: {cookie_file_path}")
+        return opts  # IMPORTANT: Return early, don't add PO Token
     
-    # Add PO Token if available (helps with stream downloads)
+    # METHOD 2: Use PO Token ONLY if no cookies available
     if po_token and visitor_data:
-        log(f"同時注入 PO Token (len={len(po_token)})...")
+        log(f"使用 PO Token 認證模式 (len={len(po_token)})...")
         opts['extractor_args'] = {
             'youtube': {
                 'po_token': [f'web+{po_token}'],
