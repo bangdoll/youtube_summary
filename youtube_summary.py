@@ -170,11 +170,12 @@ def get_yt_dlp_opts():
     youtube_cookies = os.getenv("YOUTUBE_COOKIES")
     
     opts = {
-        'format': 'bestaudio/best',
+        # Accept any audio format, fall back to best video if no audio
+        'format': 'ba*/b',  
         'quiet': True,
         'no_warnings': True,
         'noplaylist': True,
-        # Mimic a real browser to reduce bot score
+        # Mimic a real browser
         'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     
@@ -186,22 +187,16 @@ def get_yt_dlp_opts():
             f.write(youtube_cookies)
         opts['cookiefile'] = cookie_file_path
         log(f"Cookie 檔案已寫入: {cookie_file_path}")
-        # DON'T return early - also add PO Token for stream downloads
     
-    # Also add PO Token + Visitor Data for stream access (works WITH cookies)
-    # Use 'android' client which has fewer format restrictions
-    extractor_args = {
-        'youtube': {
-            'player_client': ['android'],  # Android client has less strict format requirements
-        }
-    }
-    
+    # Add PO Token if available (helps with stream downloads)
     if po_token and visitor_data:
-        log(f"同時注入 PO Token (len={len(po_token)}) 用於串流下載...")
-        extractor_args['youtube']['po_token'] = [f'web+{po_token}']
-        extractor_args['youtube']['visitor_data'] = [visitor_data]
-    
-    opts['extractor_args'] = extractor_args
+        log(f"同時注入 PO Token (len={len(po_token)})...")
+        opts['extractor_args'] = {
+            'youtube': {
+                'po_token': [f'web+{po_token}'],
+                'visitor_data': [visitor_data]
+            }
+        }
     
     return opts
 
