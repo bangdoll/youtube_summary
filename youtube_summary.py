@@ -185,6 +185,17 @@ def get_yt_dlp_opts():
         log(f"使用代理伺服器: {proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url}")
         opts['proxy'] = proxy_url
     
+    # METHOD 0: OAuth2 Authentication (most stable for servers)
+    use_oauth = os.getenv("USE_OAUTH", "false").lower() == "true"
+    if use_oauth:
+        log("使用 OAuth2 認證模式...")
+        opts['username'] = 'oauth2'
+        opts['password'] = ''
+        # Cache OAuth token for persistence
+        opts['cachedir'] = '/tmp/yt-dlp-cache'
+        log("OAuth 配置完成。首次運行需要手動授權。")
+        return opts
+    
     # METHOD 1: Use Cookie file if available
     if youtube_cookies:
         log("使用 Cookie 認證模式...")
