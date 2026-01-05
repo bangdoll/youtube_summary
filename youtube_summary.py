@@ -178,33 +178,28 @@ def get_yt_dlp_opts():
         'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     
-    # PRIORITY 1: Use Cookie file if available (most reliable for server environments)
+    # Use Cookie file if available (for account auth)
     if youtube_cookies:
-        log("使用 Cookie 認證模式 (最可靠)...")
-        # Write cookies to a temp file that yt-dlp can read
+        log("使用 Cookie 認證模式...")
         cookie_file_path = "/tmp/yt_cookies.txt"
         with open(cookie_file_path, "w", encoding="utf-8") as f:
             f.write(youtube_cookies)
         opts['cookiefile'] = cookie_file_path
         log(f"Cookie 檔案已寫入: {cookie_file_path}")
-        return opts # Cookies are the strongest auth, skip other methods
+        # DON'T return early - also add PO Token for stream downloads
     
-    # PRIORITY 2: Try using OAuth2 if configured
-    if os.getenv("USE_OAUTH", "false").lower() == "true":
-        log("啟用 OAuth2 模式 (yt-dlp)...")
-        opts['username'] = 'oauth2'
-        opts['password'] = '' # Not needed for oauth2
-    
-    # PRIORITY 3: PO Token + Visitor Data (fallback)
+    # Also add PO Token + Visitor Data for stream access (works WITH cookies)
     if po_token and visitor_data:
-        log(f"Configuring yt-dlp with PO Token (len={len(po_token)}) and Visitor Data...")
+        log(f"同時注入 PO Token (len={len(po_token)}) 用於串流下載...")
         opts['extractor_args'] = {
             'youtube': {
                 'po_token': [f'web+{po_token}'],
                 'visitor_data': [visitor_data]
             }
         }
+    
     return opts
+
 
 
 def get_video_info(url):
