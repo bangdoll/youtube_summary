@@ -201,6 +201,16 @@ def get_youtube_object(url):
                 yt.visitor_data = visitor_data
             except:
                 yt._visitor_data = visitor_data
+
+        # CRITICAL: Now that we have injected the token, we MUST enable the flag
+        # so pytubefix actually sends it in the requests.
+        # We do this AFTER init to avoid the auto-generation trigger.
+        try:
+            yt.use_po_token = True
+            log("Enabled use_po_token flag successfully.")
+        except:
+            yt._use_po_token = True
+            log("Enabled _use_po_token flag successfully (internal).")
             
         return yt
 
