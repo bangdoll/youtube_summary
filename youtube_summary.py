@@ -413,19 +413,29 @@ def download_audio_playwright(url):
             # Intercept network requests
             page.on("request", intercept_request)
             
-            # [Cloud Run Optimization] Use MAIN Video URL (Watch Page)
-            # On capable hardware (Cloud Run), the main page triggers media playback faster/more reliably than Embeds.
-            target_url = url
-            if 'embed' in url:
-                import re
-                video_id_match = re.search(r'embed/([a-zA-Z0-9_-]{11})', url)
-                if video_id_match:
-                     target_url = f"https://www.youtube.com/watch?v={video_id_match.group(1)}"
+            # [Stability Optimization] Use EMBED URL
+            # Even on Cloud Run, the Watch Page is too heavy and prone to hanging (ads, chat, comments).
+            # Embed URL is lightweight and sufficient for audio capture.
+            import re
+            video_id = None
+            if 'youtu.be/' in url:
+                video_id = url.split('youtu.be/')[1].split('?')[0]
+            elif 'embed/' in url:
+                video_id = url.split('embed/')[1].split('?')[0]
+            elif 'v=' in url:
+                video_id = url.split('v=')[1].split('&')[0]
+                
+            if video_id:
+                target_url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&enablejsapi=1"
+                log(f"[Playwright] 使用輕量化嵌入 URL: {target_url}")
+            else:
+                target_url = url
+                log(f"[Playwright] 無法解析 ID，使用原始 URL: {target_url}")
 
-            log(f"[Playwright] 正在前往影片頁面 (Cloud Run Mode): {target_url}")
+            log(f"[Playwright] 正在前往影片頁面 (Embed Mode)...")
             try:
-                # Cloud Run is fast, but we give it 60s for complex assets
-                page.goto(target_url, timeout=60000, wait_until="domcontentloaded")
+                # Embed loads fast, 30s is enough
+                page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
             except Exception as e:
                 log(f"[Playwright] 頁面載入警告 (嘗試繼續): {e}")
             
