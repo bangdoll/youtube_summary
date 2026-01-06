@@ -153,6 +153,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentFilename = payload.filename || "summary.md";
                 renderResult(payload.data);
                 break;
+            case 'ping':
+                // Keeping connection alive, no action needed
+                break;
             case 'done':
                 appendLog("分析流程成功完成。", "latest");
                 stopProcessing();

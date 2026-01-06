@@ -223,8 +223,8 @@ async def event_generator(url: str):
                     msg = await asyncio.wait_for(queue.get(), timeout=5.0) # Increased timeout to 5s to reduce loop frequency
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                 except asyncio.TimeoutError:
-                    # Send a comment to keep the connection alive (ignored by client)
-                    yield ": keep-alive\n\n"
+                    # Send a structured ping to keep the connection alive
+                    yield f"data: {json.dumps({'type': 'ping'})}\n\n"
                     continue
                     
             except Exception as e:
