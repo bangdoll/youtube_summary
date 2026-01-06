@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentEventSource = null;
     let currentResult = "";
     let currentFilename = "summary.md";
+    let retryCount = 0;
 
     // Check authentication on page load
     checkAuth();
@@ -82,7 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(url);
     });
 
-    function startAnalysis() {
+    function startAnalysis(isRetry = false) {
+        if (!isRetry) retryCount = 0;
         const url = urlInput.value.trim();
 
         if (!url) {
@@ -123,12 +125,25 @@ document.addEventListener('DOMContentLoaded', () => {
         currentEventSource.onerror = function (err) {
             console.error("EventSource failed:", err);
             let state = currentEventSource ? currentEventSource.readyState : "Unknown";
-            appendLog(`連線中斷或發生錯誤 (State: ${state})，請檢查伺服器狀態。`, "error");
-            stopProcessing();
+
+            // Auto-retry logic for Cold Starts (State 0 usually means connection refused/timeout)
+            if (state === 0 && retryCount < 3) {
+                appendLog(`伺服器喚醒中 (嘗試 ${retryCount + 1}/3)...`, "warn");
+                retryCount++;
+                currentEventSource.close();
+                setTimeout(() => {
+                    startAnalysis(true); // Retry flag
+                }, 3000);
+            } else {
+                appendLog(`連線中斷或發生錯誤 (State: ${state})。若為 Render 免費版，請稍候重試。`, "error");
+                stopProcessing();
+            }
         };
     }
 
     function handleEvent(payload) {
+        // Reset retry count on successful message
+        retryCount = 0;
         switch (payload.type) {
             case 'log':
                 appendLog(payload.data);

@@ -173,12 +173,15 @@ async def summarize(request: Request, url: str):
 
 
 async def event_generator(url: str):
+    yield f"data: {json.dumps({'type': 'log', 'data': '🔌 連線建立中...'})}\n\n"
+    
     if processing_lock.locked():
-        yield f"data: {json.dumps({'type': 'error', 'message': '⚠️ 系統正忙於處理另一個影片，請稍候。'})}\\n\\n"
+        yield f"data: {json.dumps({'type': 'error', 'message': '⚠️ 系統正忙於處理另一個影片，請稍候。'})}\n\n"
         return
 
     async with processing_lock:
         queue = asyncio.Queue()
+        yield f"data: {json.dumps({'type': 'log', 'data': '🚀 系統核心已啟動'})}\n\n"
         loop = asyncio.get_running_loop()
         
         # Check cost limit warning
