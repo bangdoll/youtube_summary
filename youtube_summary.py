@@ -298,6 +298,9 @@ def get_video_info(url):
     
 def process_video_pipeline(url):
     """Orchestrates the video processing pipeline. Returns (filename, note_content)."""
+    # Ensure cookies are set up (env var -> file)
+    setup_cookies()
+    
     video_id = get_video_id(url)
     log(f"處理影片 ID: {video_id}")
     

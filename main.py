@@ -218,13 +218,15 @@ async def event_generator(url: str):
         executor = ThreadPoolExecutor(max_workers=1)
         future = loop.run_in_executor(executor, run_processing_safe, url)
         
+        start_time = asyncio.get_running_loop().time()
+        
         while True:
             try:
                 while not queue.empty():
                     msg = queue.get_nowait()
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                 
-                # Check for completion (with 10 min timeout)
+                # Check for completion
                 if future.done():
                     try:
                         filename, content = future.result()
@@ -234,15 +236,17 @@ async def event_generator(url: str):
                         yield f"data: {json.dumps({'type': 'error', 'message': f'❌ 發生錯誤: {str(e)}'})}\n\n"
                     break
                 
-                # Enforce global timeout (e.g. 10 mins) to prevent lock holding forever
-                # Note: true cancellation is hard with threads, but we can release the lock.
-                pass 
+                # Enforce global timeout (10 mins = 600s)
+                if asyncio.get_running_loop().time() - start_time > 600:
+                     yield f"data: {json.dumps({'type': 'error', 'message': '❌ 處理逾時 (10分鐘)，系統強制終止。'})}\n\n"
+                     # We cannot kill the thread easily, but we break the loop to release the lock (via async with processing_lock exit)
+                     break
                 
                 try:
-                    msg = await asyncio.wait_for(queue.get(), timeout=5.0) # Increased timeout to 5s to reduce loop frequency
+                    msg = await asyncio.wait_for(queue.get(), timeout=2.0)
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                 except asyncio.TimeoutError:
-                    # Send a structured ping to keep the connection alive
+                    # Send a ping
                     yield f"data: {json.dumps({'type': 'ping'})}\n\n"
                     continue
                     
