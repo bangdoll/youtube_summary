@@ -460,7 +460,8 @@ def download_audio_playwright(url):
                     log(f"[Playwright] Cookie 載入失敗: {e}")
 
             page = context.new_page()
-            page.route("**/*", intercept_request)
+            # Use on('request') instead of route() to avoid blocking and AttributeError (Route vs Request)
+            page.on("request", intercept_request)
             
             # Use Mobile Watch URL (m.youtube.com)
             # Extracts video ID if full URL provided
