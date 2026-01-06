@@ -182,11 +182,15 @@ async def event_generator(url: str):
         loop = asyncio.get_running_loop()
         
         # Check cost limit warning
-        current_cost = cost_tracker.get_total_cost()
-        if cost_tracker.is_limit_exceeded(limit=20.0):
-            yield f"data: {json.dumps({'type': 'log', 'data': f'⚠️ 注意：本月 API 使用量預估已達 ${current_cost:.2f} USD (超過 $20 限額)'})}\\n\\n"
-        else:
-             yield f"data: {json.dumps({'type': 'log', 'data': f'📊 本月 API 累計使用量: ${current_cost:.4f} USD'})}\\n\\n"
+        try:
+            current_cost = cost_tracker.get_total_cost()
+            if cost_tracker.is_limit_exceeded(limit=20.0):
+                yield f"data: {json.dumps({'type': 'log', 'data': f'⚠️ 注意：本月 API 使用量預估已達 ${current_cost:.2f} USD (超過 $20 限額)'})}\\n\\n"
+            else:
+                 yield f"data: {json.dumps({'type': 'log', 'data': f'📊 本月 API 累計使用量: ${current_cost:.4f} USD'})}\\n\\n"
+        except Exception as e:
+            logging.error(f"Cost tracker check failed: {e}")
+            yield f"data: {json.dumps({'type': 'log', 'data': f'⚠️ 無法取得成本資訊: {str(e)}'})}\\n\\n"
 
         def log_callback(msg, *args, **kwargs):
             formatted_msg = str(msg)

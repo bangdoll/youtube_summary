@@ -122,7 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentEventSource.onerror = function (err) {
             console.error("EventSource failed:", err);
-            appendLog("連線中斷或發生錯誤，請檢查伺服器狀態。", "error");
+            let state = currentEventSource ? currentEventSource.readyState : "Unknown";
+            appendLog(`連線中斷或發生錯誤 (State: ${state})，請檢查伺服器狀態。`, "error");
             stopProcessing();
         };
     }
