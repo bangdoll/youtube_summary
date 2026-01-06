@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFilename = "summary.md";
     let retryCount = 0;
 
+    // Sections
+    const landingSection = document.getElementById('landingSection');
+    const inputSection = document.getElementById('inputSection');
+
     // Check authentication on page load
     checkAuth();
 
@@ -29,15 +33,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
 
             if (data.auth_required && !data.logged_in) {
-                // Need to login
-                loginModal.classList.remove('hidden');
-            } else if (data.logged_in) {
-                // Show user info
+                // Not logged in -> Show Landing Page
+                landingSection.classList.remove('hidden');
+                inputSection.classList.add('hidden');
+                loginModal.classList.add('hidden'); // Ensure modal is closed
+            } else {
+                // Logged in (or Local mode) -> Show Feature
+                landingSection.classList.add('hidden');
+                inputSection.classList.remove('hidden');
                 loginModal.classList.add('hidden');
                 loadUserInfo();
             }
         } catch (e) {
             console.log('Auth check failed, continuing');
+            // Fallback: Show input in case of error (e.g. local dev offline)
+            landingSection.classList.add('hidden');
+            inputSection.classList.remove('hidden');
         }
     }
 

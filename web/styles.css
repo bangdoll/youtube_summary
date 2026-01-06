@@ -699,6 +699,132 @@ button#submitBtn:disabled {
     text-decoration: none;
 }
 
+
 .logout-btn:hover {
     color: #ff5555;
+}
+
+/* Landing Page Extensions */
+.landing-section {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    animation: fadeInUp 0.8s ease-out;
+    margin-bottom: 3rem;
+}
+
+.demo-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.demo-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--accent-primary);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 99px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    z-index: 10;
+}
+
+.demo-placeholder {
+    aspect-ratio: 16/9;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 2px dashed var(--border-color);
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.demo-placeholder:hover {
+    border-color: var(--accent-primary);
+    background: rgba(139, 92, 246, 0.05);
+}
+
+.demo-placeholder i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+    color: var(--accent-primary);
+}
+
+.profile-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: left;
+}
+
+@media (max-width: 600px) {
+    .profile-card {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid var(--accent-primary);
+    object-fit: cover;
+}
+
+.profile-content h3 {
+    margin: 0 0 0.5rem 0;
+    color: white;
+    font-family: var(--font-heading);
+}
+
+.profile-content p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.auth-section {
+    text-align: center;
+    background: linear-gradient(135deg, rgba(66, 133, 244, 0.1), rgba(219, 68, 55, 0.1));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 2.5rem;
+    backdrop-filter: blur(5px);
+}
+
+.auth-section h3 {
+    font-family: var(--font-heading);
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+.auth-section p {
+    margin-bottom: 2rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.auth-btn-wrapper {
+    max-width: 300px;
+    margin: 0 auto;
 }
