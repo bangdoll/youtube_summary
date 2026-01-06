@@ -135,10 +135,11 @@ def analyze_transcript(transcript, video_title="Unknown Video"):
 
 def analyze_with_gemini(youtube_url, video_title="Unknown"):
     """
-    Analyzes a YouTube video directly using Gemini 2.5.
+    Analyzes a YouTube video directly using Gemini.
     No need to download or transcribe - Gemini can watch the video!
     """
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
     
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -146,7 +147,8 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
         log(error_msg)
         raise Exception(error_msg)
     
-    genai.configure(api_key=api_key)
+    # Initialize client
+    client = genai.Client(api_key=api_key)
     
     # Read prompt template
     prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "video_summary.md")
@@ -166,13 +168,14 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
     log(f"影片 URL: {youtube_url}")
     
     try:
-        # Use Gemini 3 Flash for video understanding
-        model = genai.GenerativeModel('gemini-3-flash')
-        
-        response = model.generate_content([
-            prompt,
-            {"type": "youtube_video", "url": youtube_url}
-        ])
+        # Use Gemini 3 Flash with YouTube URL support
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",  # gemini-3-flash if available, else 2.5
+            contents=[
+                types.Part.from_uri(file_uri=youtube_url, mime_type="video/*"),
+                prompt
+            ]
+        )
         
         log("Gemini 分析完成！")
         return response.text

@@ -6,5 +6,5 @@ youtube-transcript-api
 openai
 yt-dlp
 playwright
-google-generativeai
+google-genai
 pytest
