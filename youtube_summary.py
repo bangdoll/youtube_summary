@@ -458,27 +458,52 @@ def download_audio_playwright(url):
             # Click on video to start playback
             log("[Playwright] 嘗試啟動影片播放...")
             try:
-                # 1. Try generic video tag
-                page.evaluate("document.querySelector('video').play()")
-                
+                # 1. Force Play via JavaScript (Best method for headless)
+                log("[Playwright] 嘗試方法 1: JS .play()")
+                page.evaluate("""
+                    const v = document.querySelector('video');
+                    if (v) { v.muted = false; v.play(); }
+                """)
+                page.wait_for_timeout(2000)
+
                 # 2. Click center of screen (start overlay)
+                log("[Playwright] 嘗試方法 2: 點擊畫面中心")
                 viewport_size = page.viewport_size
                 if viewport_size:
                     page.mouse.click(viewport_size['width'] / 2, viewport_size['height'] / 2)
+                    page.wait_for_timeout(1000)
                     
                 # 3. YTP Play button
                 if page.is_visible('.ytp-play-button'):
+                    log("[Playwright] 嘗試方法 3: 點擊播放按鈕")
                     page.click('.ytp-play-button')
-                    
+                    page.wait_for_timeout(1000)
+                
+                # 4. Keyboard shortcuts (k = pause/play, Space = pause/play)
+                log("[Playwright] 嘗試方法 4: 鍵盤 'k' 鍵")
+                page.keyboard.press('k') 
+                page.wait_for_timeout(1000)
+
             except Exception as e:
                 log(f"[Playwright] 播放嘗試警告: {e}")
             
-            # Wait longer for audio to buffer
-            log("[Playwright] 等待音訊緩衝 (15s)...")
+            # Wait longer for audio to buffer (Increased to 30s for slow streams)
+            log("[Playwright] 等待音訊緩衝 (30s)...")
             # Loop check for urls
-            for _ in range(15):
+            for i in range(30):
                 if audio_urls:
+                    log(f"[Playwright] 成功抓取音訊 URL ({len(audio_urls)} 個)")
                     break
+                
+                # If still no audio after 10s, try verify playback state
+                if i == 10:
+                    log("[Playwright] 尚未偵測到音訊，嘗試確認影片狀態...")
+                    # Check if video is paused
+                    is_paused = page.evaluate("document.querySelector('video') ? document.querySelector('video').paused : true")
+                    if is_paused:
+                         log("[Playwright] 偵測到影片暫停中，再次強制播放...")
+                         page.evaluate("document.querySelector('video').play()")
+                
                 page.wait_for_timeout(1000)
             
             browser.close()
