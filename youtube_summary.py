@@ -261,7 +261,7 @@ def get_yt_dlp_opts():
         # Mimic a real browser
         'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'nocheckcertificate': True,
-        'ignoreerrors': True,
+        # 'ignoreerrors': True,  # REMOVED: We want to catch errors to trigger Playwright fallback
     }
 
     # Add cookies if available
@@ -270,18 +270,16 @@ def get_yt_dlp_opts():
          opts['cookiefile'] = COOKIE_FILE
     
     # Add proxy if configured
-    # Add proxy if configured and not placeholder
-    if proxy_url and "example.com" not in proxy_url:
-        log(f"使用代理伺服器: {proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url}")
-        opts['proxy'] = proxy_url
-    elif proxy_url:
-        log("⚠️ 偵測到範例代理設定 (example.com)，已自動忽略。")
-    
+    if proxy_url:
+        if "example.com" not in proxy_url:
+            log(f"使用代理伺服器: {proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url}")
+            opts['proxy'] = proxy_url
+        else:
+            log("⚠️ 偵測到範例代理設定 (example.com)，已自動忽略。")
+            
     return opts
-    
-    # No auth configured, try anyway
-    log("無額外認證，直接嘗試...")
-    return opts
+
+
 
 
 
@@ -632,8 +630,8 @@ def get_audio_and_transcribe(url):
             if files:
                 output_filename = files[0]
             else:
-                 log("錯誤：下載後找不到音訊檔案。")
-                 return None
+                 # CRITICAL FIX: Raise exception instead of returning None to trigger Playwright fallback
+                 raise Exception("下載後找不到音訊檔案 (File Not Found)")
 
         log(f"下載完成: {output_filename}")
         
