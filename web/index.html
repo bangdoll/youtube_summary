@@ -24,6 +24,17 @@
 </head>
 
 <body>
+    <!-- Password Modal -->
+    <div id="passwordModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2><i class="ri-lock-line"></i> 需要密碼</h2>
+            <p>請輸入存取密碼以使用此服務</p>
+            <input type="password" id="passwordInput" placeholder="輸入密碼...">
+            <button id="passwordSubmitBtn">驗證</button>
+            <p id="passwordError" class="error-text hidden">密碼錯誤，請再試一次</p>
+        </div>
+    </div>
+
     <div class="bg-glow"></div>
     <div class="bg-grid"></div>
 

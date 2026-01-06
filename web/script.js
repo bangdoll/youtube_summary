@@ -8,9 +8,69 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyBtn = document.getElementById('copyBtn');
     const downloadBtn = document.getElementById('downloadBtn');
 
+    // Password modal elements
+    const passwordModal = document.getElementById('passwordModal');
+    const passwordInput = document.getElementById('passwordInput');
+    const passwordSubmitBtn = document.getElementById('passwordSubmitBtn');
+    const passwordError = document.getElementById('passwordError');
+
     let currentEventSource = null;
     let currentResult = "";
     let currentFilename = "summary.md";
+    let accessPassword = localStorage.getItem('accessPassword') || "";
+
+    // Check if password is required on page load
+    checkAuth();
+
+    async function checkAuth() {
+        try {
+            const res = await fetch('/api/check-auth');
+            const data = await res.json();
+
+            if (data.password_required && !accessPassword) {
+                passwordModal.classList.remove('hidden');
+            } else if (data.password_required && accessPassword) {
+                // Verify stored password still works
+                const verifyRes = await fetch(`/api/verify-password?password=${encodeURIComponent(accessPassword)}`, { method: 'POST' });
+                const verifyData = await verifyRes.json();
+                if (!verifyData.success) {
+                    localStorage.removeItem('accessPassword');
+                    accessPassword = "";
+                    passwordModal.classList.remove('hidden');
+                }
+            }
+        } catch (e) {
+            console.log('Auth check failed, continuing without auth');
+        }
+    }
+
+    // Password submit
+    passwordSubmitBtn.addEventListener('click', verifyPassword);
+    passwordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') verifyPassword();
+    });
+
+    async function verifyPassword() {
+        const password = passwordInput.value.trim();
+        if (!password) return;
+
+        try {
+            const res = await fetch(`/api/verify-password?password=${encodeURIComponent(password)}`, { method: 'POST' });
+            const data = await res.json();
+
+            if (data.success) {
+                accessPassword = password;
+                localStorage.setItem('accessPassword', password);
+                passwordModal.classList.add('hidden');
+                passwordError.classList.add('hidden');
+            } else {
+                passwordError.classList.remove('hidden');
+            }
+        } catch (e) {
+            passwordError.textContent = '驗證時發生錯誤';
+            passwordError.classList.remove('hidden');
+        }
+    }
 
     submitBtn.addEventListener('click', startAnalysis);
 
@@ -65,8 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentEventSource.close();
         }
 
-        // Connect to SSE
-        const sseUrl = `/api/summarize?url=${encodeURIComponent(url)}`;
+        // Connect to SSE with password
+        const sseUrl = `/api/summarize?url=${encodeURIComponent(url)}&password=${encodeURIComponent(accessPassword)}`;
         currentEventSource = new EventSource(sseUrl);
 
         currentEventSource.onmessage = function (event) {

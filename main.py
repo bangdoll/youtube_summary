@@ -32,11 +32,34 @@ async def read_root():
             return HTMLResponse(content=f.read())
     return HTMLResponse(content="<h1>Web Interface Loading...</h1><p>Please ensure web/index.html exists.</p>")
 
+@app.get("/api/check-auth")
+async def check_auth():
+    """Check if password protection is enabled."""
+    access_password = os.getenv("ACCESS_PASSWORD", "")
+    return {"password_required": bool(access_password)}
+
+@app.post("/api/verify-password")
+async def verify_password(password: str):
+    """Verify the access password."""
+    access_password = os.getenv("ACCESS_PASSWORD", "")
+    if not access_password:
+        return {"success": True}  # No password set
+    if password == access_password:
+        return {"success": True}
+    return {"success": False, "message": "密碼錯誤"}
+
 @app.get("/api/summarize")
-async def summarize(url: str):
+async def summarize(url: str, password: str = ""):
     """
     SSE Endpoint that streams processing logs and final result.
     """
+    # Check password if required
+    access_password = os.getenv("ACCESS_PASSWORD", "")
+    if access_password and password != access_password:
+        async def error_gen():
+            yield f"data: {json.dumps({'type': 'error', 'message': '❌ 密碼驗證失敗'})}\\n\\n"
+        return StreamingResponse(error_gen(), media_type="text/event-stream")
+    
     return StreamingResponse(event_generator(url), media_type="text/event-stream")
 
 async def event_generator(url: str):
