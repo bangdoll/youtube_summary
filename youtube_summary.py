@@ -377,6 +377,10 @@ def download_audio_playwright(url):
     def intercept_request(request):
         """Capture audio stream URLs from network requests."""
         req_url = request.url
+        # Debug: Log all googlevideo requests to analyze patterns
+        if 'googlevideo.com' in req_url:
+            log(f"[Network] Request: {req_url[:60]}...")
+            
         # YouTube audio streams contain these patterns
         if 'googlevideo.com' in req_url and ('audio' in req_url or 'mime=audio' in req_url):
             audio_urls.append(req_url)
@@ -386,7 +390,10 @@ def download_audio_playwright(url):
         with sync_playwright() as p:
             # Check for proxy
             proxy_url = os.getenv("PROXY_URL")
-            launch_opts = {'headless': True}
+            launch_opts = {
+                'headless': True,
+                'ignore_default_args': ["--mute-audio"] # CRITICAL: Ensure audio is not muted in headless
+            }
             
             if proxy_url and "example.com" not in proxy_url:
                 log(f"[Playwright] 使用代理: {proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url}")
@@ -406,69 +413,69 @@ def download_audio_playwright(url):
             # Intercept network requests
             page.on("request", intercept_request)
             
-            # Extract video ID and use embed URL (fewer restrictions)
-            import re
-            video_id_match = re.search(r'(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})', url)
-            if video_id_match:
-                video_id = video_id_match.group(1)
-                embed_url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&enablejsapi=1"
-                log(f"[Playwright] 使用嵌入式 URL: {embed_url}")
-            else:
-                embed_url = url + ('&' if '?' in url else '?') + 'autoplay=1'
-            
-            log(f"[Playwright] 正在前往影片頁面...")
-            page.goto(embed_url, timeout=60000)
+            # Use MAIN Video URL (Watch Page) instead of Embed
+            # Embeds sometimes lazy load audio or behave differently in headless
+            target_url = url
+            if 'embed' in url:
+                import re
+                video_id_match = re.search(r'embed/([a-zA-Z0-9_-]{11})', url)
+                if video_id_match:
+                     target_url = f"https://www.youtube.com/watch?v={video_id_match.group(1)}"
+
+            log(f"[Playwright] 正在前往影片頁面: {target_url}")
+            page.goto(target_url, timeout=90000, wait_until="domcontentloaded")
             
             # Dismiss cookie consent if present
             log("[Playwright] 處理 Cookie 同意彈窗...")
             try:
-                # Try various consent button selectors
+                # Click "Reject all" or "Accept all" - prioritising Reject for speed if available
                 consent_selectors = [
-                    'button[aria-label*="Accept"]',
+                    'button[aria-label="Reject all"]',
+                    'button:has-text("Reject all")', 
+                    'button[aria-label="Accept all"]',
                     'button:has-text("Accept all")',
                     'button:has-text("I agree")',
                     'button:has-text("Agree")',
-                    '[aria-label="Accept the use of cookies"]',
                     'tp-yt-paper-button:has-text("Accept")',
+                    '.eom-button-row button:first-child' # Often the 'I agree' button in Google consent
                 ]
                 for selector in consent_selectors:
-                    try:
-                        btn = page.locator(selector).first
-                        if btn.is_visible(timeout=1000):
-                            btn.click()
-                            log(f"[Playwright] 點擊了同意按鈕")
-                            break
-                    except:
-                        continue
-            except:
-                pass
+                    if page.is_visible(selector):
+                        page.click(selector)
+                        log(f"[Playwright] 點擊了同意/拒絕按鈕 ({selector})")
+                        page.wait_for_timeout(1000)
+                        break
+            except Exception as e:
+                log(f"[Playwright] Cookie 處理警告: {e}")
             
             # Wait for page to stabilize
-            page.wait_for_timeout(3000)
+            page.wait_for_timeout(2000)
             
             # Click on video to start playback
             log("[Playwright] 嘗試啟動影片播放...")
             try:
-                # Try clicking the video element directly
-                video = page.locator('video').first
-                if video.is_visible(timeout=5000):
-                    video.click()
-                    log("[Playwright] 點擊了影片元素")
-            except:
-                pass
+                # 1. Try generic video tag
+                page.evaluate("document.querySelector('video').play()")
+                
+                # 2. Click center of screen (start overlay)
+                viewport_size = page.viewport_size
+                if viewport_size:
+                    page.mouse.click(viewport_size['width'] / 2, viewport_size['height'] / 2)
+                    
+                # 3. YTP Play button
+                if page.is_visible('.ytp-play-button'):
+                    page.click('.ytp-play-button')
+                    
+            except Exception as e:
+                log(f"[Playwright] 播放嘗試警告: {e}")
             
-            # Try play button
-            try:
-                play_btn = page.locator('button.ytp-play-button').first
-                if play_btn.is_visible(timeout=2000):
-                    play_btn.click()
-                    log("[Playwright] 點擊了播放按鈕")
-            except:
-                pass
-            
-            # Wait for audio to buffer
-            log("[Playwright] 等待音訊緩衝...")
-            page.wait_for_timeout(10000)
+            # Wait longer for audio to buffer
+            log("[Playwright] 等待音訊緩衝 (15s)...")
+            # Loop check for urls
+            for _ in range(15):
+                if audio_urls:
+                    break
+                page.wait_for_timeout(1000)
             
             browser.close()
         
