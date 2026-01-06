@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## [2.1.0] - 2026-01-06
+
+### 🌟 介面與功能大改版 (Vibe Coding Update)
+
+#### 新增功能
+- **智慧成本監控 (Cost Monitoring)**：
+    - 追蹤 GPT-4o Token 與 Whisper 分鐘數。
+    - 實作每月 $20 USD 預算警示系統。
+    - 整合 **Firebase Realtime Database** 實現雲端數據持久化 (Persistence)。
+- **全新 Landing Page**:
+    - 採用 "Vibe Coding" 設計語彙 (深色玻璃擬態、動態網格)。
+    - 新增 **Features Grid** (Gemini 3.0, Security, Cost, Structured Output)。
+    - 新增 **NotebookLM 對比專區** (強調客製化、數據主權、自動化)。
+- **生態系整合**: 優化 Markdown 輸出格式，支援 **Heptabase / Obsidian / Notion**。
+
+#### 優化調整
+- 升級核心說明為 **Gemini 3.0**。
+- 將所有使用者介面與文案統一為**繁體中文**。
+- 優化 SSE 連線穩定性與錯誤處理。
+
+---
+
 ## [2.0.0] - 2026-01-06
 
 ### 🚀 重大更新：Gemini 直接分析 YouTube 影片

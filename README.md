@@ -1,78 +1,86 @@
-# Youtube Intelligence Web App
+# Youtube Intelligence Web App (Youtube 智慧大腦)
 
-將 Youtube 影片內容轉化為可執行的結構化智慧筆記。
+> **Unlock the Wisdom of Video.**
+> 不僅僅是摘要。這是您的第二大腦，將數小時的影音內容轉化為可執行的結構化洞察。
 
-## ✨ 功能亮點
+## ✨ 核心特色 (Unique Selling Points)
 
-- **🤖 Gemini 直接分析**：使用 Google Gemini 2.5 Flash 直接「觀看」YouTube 影片，無需下載！
-- **Premium UI**: 採用深色玻璃擬態 (Glassmorphism) 設計，視覺體驗升級。
-- **Real-time Console**: 內建即時終端機，即時顯示分析進度。
-- **Streaming Intelligence**: 透過 Server-Sent Events (SSE) 技術，無需重新整理頁面。
-- **Markdown Render**: 分析結果直接渲染為精美排版的文件，支援一鍵複製與下載。
-- **完全繁體中文**: 全介面在地化。
+### 1. 🧠 Gemini 3.0 核心引擎
+使用最新的 Google Gemini 3.0 模型直接「觀看」與「理解」影片內容。超越傳統逐字稿限制，能夠捕捉語氣、畫面脈絡與深層含義。
+
+### 2. 💰 智慧成本監控 (Smart Cost Control)
+- **Token 級追蹤**：精準計算 GPT-4o Input/Output Token 與 Whisper 分鐘數。
+- **預算警示**：內建每月 $20 USD 預算監控，超過額度自動在 UI 發出紅色警報。
+- **Firebase Persistence**：整合 Firebase Realtime Database，成本數據永久保存，不受伺服器休眠影響。
+
+### 3. 🔒 企業級安全架構
+- **Google OAuth 2.0**：強制登入驗證，支援網域白名單 (Allowed Emails)。
+- **Session 加密**：完整的登入狀態管理，保障資料隱私。
+
+### 4. 🎨 Vibe Coding 現代化介面
+- **Premium UI**：深色玻璃擬態 (Glassmorphism)、流暢動畫與響應式設計。
+- **Real-time Console**：SSE (Server-Sent Events) 技術驅動的即時終端機日誌。
+- **NotebookLM 對比**：強調「深度客製化」、「數據主權」與「自動化潛力」三大優勢。
+
+### 5. 📝 結構化輸出生態系
+- **Markdown Native**：產出的筆記可直接貼入 **Heptabase**、**Obsidian** 或 **Notion**。
+- **一鍵匯出**：支援複製到剪貼簿與下載 .md 檔案。
+
+---
 
 ## 🛠 安裝與啟動
 
-### 前置需求
-- Python 3.9+
-- Google API Key (Gemini)
-- OpenAI API Key (備用)
-
-### 安裝步驟
-
-1. **複製專案**
-   ```bash
-   git clone https://github.com/bangdoll/youtube_summary.git
-   cd youtube_summary
-   ```
-
-2. **安裝套件**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **環境設定**
-   建立 `.env` 檔案並填入您的 API Key：
-   ```bash
-   # .env
-   GOOGLE_API_KEY=AIza...          # 主要 (Gemini 分析)
-   OPENAI_API_KEY=sk-...           # 備用 (逐字稿分析)
-   ```
-
-4. **啟動伺服器**
-   ```bash
-   python3 -m uvicorn main:app --reload
-   ```
-
-5. **使用**
-   打開瀏覽器訪問 [http://localhost:8000](http://localhost:8000)。
-
-## 🔧 分析流程
-
-```
-YouTube URL 
-    ↓
-[優先] Gemini 2.5 Flash 直接觀看影片
-    ↓ (若失敗)
-[備用] 逐字稿 API → OpenAI GPT-4o
-    ↓
-生成結構化 Markdown 筆記
+### 1. 複製專案
+```bash
+git clone https://github.com/bangdoll/youtube_summary.git
+cd youtube_summary
 ```
 
-## 📂 專案結構
+### 2. 安裝依賴
+```bash
+pip install -r requirements.txt
+```
 
-- `main.py`: FastAPI 後端伺服器
-- `youtube_summary.py`: 核心邏輯 (Gemini 分析、逐字稿處理)
-- `web/`: 前端資源 (HTML/CSS/JS)
-- `prompts/`: AI 提示詞模板
+### 3. 設定環境變數 (.env)
+請參考 `.env.example` 或直接建立 `.env`：
 
-## 📝 環境變數
+```bash
+# Core AI Services
+GOOGLE_API_KEY=AIza...          # Gemini 3.0 (主要)
+OPENAI_API_KEY=sk-...           # GPT-4o (備用)
 
-| 變數 | 必要 | 說明 |
-|------|------|------|
-| `GOOGLE_API_KEY` | ✅ | Google AI Studio API Key |
-| `OPENAI_API_KEY` | ⚠️ | 備用逐字稿分析 |
+# Authentication (Google OAuth)
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+ALLOWED_EMAILS=user@example.com,admin@example.com
+SECRET_KEY=...                  # Session 加密亂數
+
+# Cost Persistence (Firebase)
+FIREBASE_DB_URL=https://your-project.firebaseio.com/
+FIREBASE_CREDENTIALS={...json content...}
+```
+
+### 4. 啟動伺服器
+```bash
+python3 -m uvicorn main:app --reload
+```
+訪問 http://localhost:8000 即可使用。
+
+---
+
+## 🔧 架構圖 (Architecture)
+
+```mermaid
+graph TD
+    User[使用者] -->|Google OAuth| Web[FastAPI Server]
+    Web -->|SSE Stream| UI[Vibe Coding UI]
+    Web -->|Analysis| Engine[Intelligence Engine]
+    
+    Engine -->|Primary| Gemini[Gemini 3.0]
+    Engine -->|Fallback| Whisper[Whisper + GPT-4o]
+    
+    Engine -->|Cost Log| Firebase[Firebase DB]
+```
 
 ## 📄 License
-
 MIT
