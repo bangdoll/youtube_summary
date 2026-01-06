@@ -8,3 +8,6 @@ yt-dlp
 playwright
 google-genai
 pytest
+authlib
+httpx
+itsdangerous

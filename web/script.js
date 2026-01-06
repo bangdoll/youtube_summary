@@ -1,4 +1,4 @@
-// v2.0.1 - Password fix 2026-01-06
+// v2.1.0 - Google OAuth 2026-01-06
 document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('urlInput');
     const submitBtn = document.getElementById('submitBtn');
@@ -9,18 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyBtn = document.getElementById('copyBtn');
     const downloadBtn = document.getElementById('downloadBtn');
 
-    // Password modal elements
-    const passwordModal = document.getElementById('passwordModal');
-    const passwordInput = document.getElementById('passwordInput');
-    const passwordSubmitBtn = document.getElementById('passwordSubmitBtn');
-    const passwordError = document.getElementById('passwordError');
+    // OAuth elements
+    const loginModal = document.getElementById('loginModal');
+    const userBar = document.getElementById('userBar');
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
 
     let currentEventSource = null;
     let currentResult = "";
     let currentFilename = "summary.md";
-    let accessPassword = localStorage.getItem('accessPassword') || "";
 
-    // Check if password is required on page load
+    // Check authentication on page load
     checkAuth();
 
     async function checkAuth() {
@@ -28,54 +27,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/check-auth');
             const data = await res.json();
 
-            if (data.password_required && !accessPassword) {
-                passwordModal.classList.remove('hidden');
-            } else if (data.password_required && accessPassword) {
-                // Verify stored password still works
-                const verifyRes = await fetch(`/api/verify-password?password=${encodeURIComponent(accessPassword)}`);
-                const verifyData = await verifyRes.json();
-                if (!verifyData.success) {
-                    localStorage.removeItem('accessPassword');
-                    accessPassword = "";
-                    passwordModal.classList.remove('hidden');
-                }
+            if (data.auth_required && !data.logged_in) {
+                // Need to login
+                loginModal.classList.remove('hidden');
+            } else if (data.logged_in) {
+                // Show user info
+                loginModal.classList.add('hidden');
+                loadUserInfo();
             }
         } catch (e) {
-            console.log('Auth check failed, continuing without auth');
+            console.log('Auth check failed, continuing');
         }
     }
 
-    // Password submit
-    passwordSubmitBtn.addEventListener('click', verifyPassword);
-    passwordInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') verifyPassword();
-    });
-
-    async function verifyPassword() {
-        const password = passwordInput.value.trim();
-        if (!password) return;
-
+    async function loadUserInfo() {
         try {
-            const res = await fetch(`/api/verify-password?password=${encodeURIComponent(password)}`);
-            const data = await res.json();
+            const res = await fetch('/api/user');
+            const user = await res.json();
 
-            if (data.success) {
-                accessPassword = password;
-                localStorage.setItem('accessPassword', password);
-                passwordModal.classList.add('hidden');
-                passwordError.classList.add('hidden');
-            } else {
-                passwordError.classList.remove('hidden');
+            if (user.email && user.email !== 'local') {
+                userAvatar.src = user.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name);
+                userName.textContent = user.name || user.email;
+                userBar.classList.remove('hidden');
             }
         } catch (e) {
-            passwordError.textContent = '驗證時發生錯誤';
-            passwordError.classList.remove('hidden');
+            console.log('Failed to load user info');
         }
     }
 
     submitBtn.addEventListener('click', startAnalysis);
-
-    // Allow Enter key to trigger
     urlInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') startAnalysis();
     });
@@ -126,8 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentEventSource.close();
         }
 
-        // Connect to SSE with password
-        const sseUrl = `/api/summarize?url=${encodeURIComponent(url)}&password=${encodeURIComponent(accessPassword)}`;
+        // Connect to SSE (session-based auth, no password needed)
+        const sseUrl = `/api/summarize?url=${encodeURIComponent(url)}`;
         currentEventSource = new EventSource(sseUrl);
 
         currentEventSource.onmessage = function (event) {
@@ -173,24 +153,18 @@ document.addEventListener('DOMContentLoaded', () => {
         div.className = `log-entry ${type}`;
         div.textContent = `> ${message}`;
 
-        // Remove 'latest' class from previous logs
         const previousLatest = terminalOutput.querySelector('.latest');
         if (previousLatest) previousLatest.classList.remove('latest');
 
         if (!type) div.classList.add('latest');
 
         terminalOutput.appendChild(div);
-
-        // Auto scroll
         terminalOutput.scrollTop = terminalOutput.scrollHeight;
     }
 
     function renderResult(markdown) {
         resultSection.classList.remove('hidden');
-        // Use marked.js to render
         markdownOutput.innerHTML = marked.parse(markdown);
-
-        // Scroll to result
         resultSection.scrollIntoView({ behavior: 'smooth' });
     }
 
