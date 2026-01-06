@@ -188,12 +188,12 @@ async def event_generator(url: str):
         try:
             current_cost = cost_tracker.get_total_cost()
             if cost_tracker.is_limit_exceeded(limit=20.0):
-                yield f"data: {json.dumps({'type': 'log', 'data': f'⚠️ 注意：本月 API 使用量預估已達 ${current_cost:.2f} USD (超過 $20 限額)'})}\\n\\n"
+                yield f"data: {json.dumps({'type': 'log', 'data': f'⚠️ 注意：本月 API 使用量預估已達 ${current_cost:.2f} USD (超過 $20 限額)'})}\n\n"
             else:
-                 yield f"data: {json.dumps({'type': 'log', 'data': f'📊 本月 API 累計使用量: ${current_cost:.4f} USD'})}\\n\\n"
+                 yield f"data: {json.dumps({'type': 'log', 'data': f'📊 本月 API 累計使用量: ${current_cost:.4f} USD'})}\n\n"
         except Exception as e:
             logging.error(f"Cost tracker check failed: {e}")
-            yield f"data: {json.dumps({'type': 'log', 'data': f'⚠️ 無法取得成本資訊: {str(e)}'})}\\n\\n"
+            yield f"data: {json.dumps({'type': 'log', 'data': f'⚠️ 無法取得成本資訊: {str(e)}'})}\n\n"
 
         def log_callback(msg, *args, **kwargs):
             formatted_msg = str(msg)
@@ -208,15 +208,15 @@ async def event_generator(url: str):
             try:
                 while not queue.empty():
                     msg = queue.get_nowait()
-                    yield f"data: {json.dumps({'type': 'log', 'data': msg})}\\n\\n"
+                    yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                 
                 if future.done():
                     try:
                         filename, content = future.result()
-                        yield f"data: {json.dumps({'type': 'result', 'data': content, 'filename': filename})}\\n\\n"
-                        yield f"data: {json.dumps({'type': 'done'})}\\n\\n"
+                        yield f"data: {json.dumps({'type': 'result', 'data': content, 'filename': filename})}\n\n"
+                        yield f"data: {json.dumps({'type': 'done'})}\n\n"
                     except Exception as e:
-                        yield f"data: {json.dumps({'type': 'error', 'message': f'❌ 發生錯誤: {str(e)}'})}\\n\\n"
+                        yield f"data: {json.dumps({'type': 'error', 'message': f'❌ 發生錯誤: {str(e)}'})}\n\n"
                     break
                 
                 try:
@@ -228,7 +228,7 @@ async def event_generator(url: str):
                     continue
                     
             except Exception as e:
-                yield f"data: {json.dumps({'type': 'error', 'message': f'系統錯誤: {str(e)}'})}\\n\\n"
+                yield f"data: {json.dumps({'type': 'error', 'message': f'系統錯誤: {str(e)}'})}\n\n"
                 break
         
         youtube_summary.set_log_callback(print)
