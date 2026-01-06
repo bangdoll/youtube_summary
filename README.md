@@ -22,6 +22,11 @@
 - **Real-time Console**：SSE (Server-Sent Events) 技術驅動的即時終端機日誌。
 - **NotebookLM 對比**：強調「深度客製化」、「數據主權」與「自動化潛力」三大優勢。
 
+### 5. ☁️ Cloud Run 極速架構
+- **無冷啟動 (No Cold Start)**：遷移至 Google Cloud Run，解決 Render 喚醒延遲。
+- **Auto-Scaling**：自動與 0 機制，兼顧效能與成本。
+- **Playwright 優化**：專為 Cloud Run 優化的 Headless Chrome 配置 (Watch Page Mode)。
+
 ### 5. 📝 結構化輸出生態系
 - **Markdown Native**：產出的筆記可直接貼入 **Heptabase**、**Obsidian** 或 **Notion**。
 - **一鍵匯出**：支援複製到剪貼簿與下載 .md 檔案。
@@ -60,11 +65,20 @@ FIREBASE_DB_URL=https://your-project.firebaseio.com/
 FIREBASE_CREDENTIALS={...json content...}
 ```
 
-### 4. 啟動伺服器
+### 4. 啟動伺服器 (Local)
 ```bash
 python3 -m uvicorn main:app --reload
 ```
 訪問 http://localhost:8000 即可使用。
+
+### ☁️ 部署 (Google Cloud Run)
+本專案專為 **Google Cloud Run** 優化，解決 Render 免費版冷啟動延遲問題。
+
+1. **推送至 GitHub**
+2. **在 Cloud Run 建立服務**：選擇 `Continuously deploy from a repository`
+3. **設定環境變數**：填入上述 Key 與 `FIREBASE_CREDENTIALS` (JSON)
+4. **設定資源**：**建議記憶體 2 GiB** (以支援 Playwright 無頭瀏覽器)
+5. **部署！** 🚀
 
 ---
 

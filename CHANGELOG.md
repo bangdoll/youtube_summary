@@ -23,7 +23,23 @@
 
 ---
 
-## [2.0.0] - 2026-01-06
+## [2.2.0] - 2026-01-06
+
+### ☁️ Cloud Run 遷移與效能大躍進
+
+#### 架構升級
+- **遷移至 Google Cloud Run**：徹底解決 Render 冷啟動 (90s+) 問題，實現秒級啟動。
+- **Playwright 效能優化**：針對 Cloud Run 強大效能 (2GB RAM) 啟用「完整頁面模式 (Watch Page)」，大幅提升長影片音訊捕獲成功率。
+- **安全性回歸**：恢復 `ALLOWED_EMAILS` 白名單機制與 Google OAuth 驗證，保障私人使用權限。
+
+#### 修復與調整
+- ✅ 修復 Playwright 在無頭模式下可能被靜音導致無法抓取音訊的問題。
+- ✅ Dockerfile 更新支援動態 PORT 注入 (Cloud Run Requirement)。
+- ✅ 文件全面更新 (README, Walkthrough) 以反映新架構。
+
+---
+
+## [2.1.0] - 2026-01-06
 
 ### 🚀 重大更新：Gemini 直接分析 YouTube 影片
 
