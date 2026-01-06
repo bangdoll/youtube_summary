@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 passwordModal.classList.remove('hidden');
             } else if (data.password_required && accessPassword) {
                 // Verify stored password still works
-                const verifyRes = await fetch(`/api/verify-password?password=${encodeURIComponent(accessPassword)}`, { method: 'POST' });
+                const verifyRes = await fetch(`/api/verify-password?password=${encodeURIComponent(accessPassword)}`);
                 const verifyData = await verifyRes.json();
                 if (!verifyData.success) {
                     localStorage.removeItem('accessPassword');
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!password) return;
 
         try {
-            const res = await fetch(`/api/verify-password?password=${encodeURIComponent(password)}`, { method: 'POST' });
+            const res = await fetch(`/api/verify-password?password=${encodeURIComponent(password)}`);
             const data = await res.json();
 
             if (data.success) {

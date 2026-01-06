@@ -38,8 +38,8 @@ async def check_auth():
     access_password = os.getenv("ACCESS_PASSWORD", "")
     return {"password_required": bool(access_password)}
 
-@app.post("/api/verify-password")
-async def verify_password(password: str):
+@app.get("/api/verify-password")
+async def verify_password(password: str = ""):
     """Verify the access password."""
     access_password = os.getenv("ACCESS_PASSWORD", "")
     if not access_password:
