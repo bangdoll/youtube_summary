@@ -388,9 +388,11 @@ def download_audio_playwright(url):
             proxy_url = os.getenv("PROXY_URL")
             launch_opts = {'headless': True}
             
-            if proxy_url:
+            if proxy_url and "example.com" not in proxy_url:
                 log(f"[Playwright] 使用代理: {proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url}")
                 launch_opts['proxy'] = {'server': proxy_url}
+            elif proxy_url:
+                log("[Playwright] ⚠️ 偵測到範例代理設定 (example.com)，已自動忽略。")
             
             # Launch headless Chromium
             browser = p.chromium.launch(**launch_opts)
