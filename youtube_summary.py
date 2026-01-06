@@ -465,54 +465,74 @@ def download_audio_playwright(url):
             # Wait for page to stabilize
             page.wait_for_timeout(2000)
             
-            # Click on video to start playback
-            log("[Playwright] 嘗試啟動影片播放...")
+            # Check for "Sign in" or Blocked state
             try:
-                # 1. Force Play via JavaScript (Best method for headless)
-                log("[Playwright] 嘗試方法 1: JS .play()")
-                page.evaluate("""
-                    const v = document.querySelector('video');
-                    if (v) { v.muted = false; v.play(); }
-                """)
-                page.wait_for_timeout(2000)
+                if page.get_by_text("Sign in to confirm you’re not a bot").is_visible(timeout=2000):
+                    log("[Playwright] ⚠️ 偵測到機器人驗證 (Bot Detection)，嘗試繼續但可能失敗...")
+                if page.get_by_text("Video unavailable").is_visible(timeout=1000):
+                    log("[Playwright] ❌ 影片無法播放 (Video unavailable)")
+            except:
+                pass
 
-                # 2. Click center of screen (start overlay)
-                log("[Playwright] 嘗試方法 2: 點擊畫面中心")
+            # Click on video to start playback
+            log("[Playwright] 準備啟動播放...")
+            try:
+                # 0. Wait for video element (Crucial check)
+                try:
+                    page.wait_for_selector('video', timeout=5000)
+                    log("[Playwright] 🎥 找到 <video> 元素")
+                except:
+                    log("[Playwright] ⚠️ 找不到 <video> 元素，可能被阻擋或尚未載入")
+
+                # 1. Force Play via JavaScript
+                log("[Playwright] 嘗試方法 1: JS .play()")
+                # Use evaluate_handle to be safer
+                page.evaluate("""() => {
+                    const v = document.querySelector('video');
+                    if (v) { v.muted = false; v.play().catch(e => console.error(e)); }
+                }""")
+                page.wait_for_timeout(1000)
+
+                # 2. Click Large Play Button (Specific to Embeds)
+                if page.is_visible('.ytp-large-play-button'):
+                    log("[Playwright] 嘗試方法 2: 點擊中央大播放鈕 (.ytp-large-play-button)")
+                    page.click('.ytp-large-play-button', force=True)
+                    page.wait_for_timeout(1000)
+
+                # 3. Click center of screen
+                log("[Playwright] 嘗試方法 3: 點擊畫面中心")
                 viewport_size = page.viewport_size
                 if viewport_size:
                     page.mouse.click(viewport_size['width'] / 2, viewport_size['height'] / 2)
                     page.wait_for_timeout(1000)
                     
-                # 3. YTP Play button
+                # 4. YTP Play button (Bottom bar)
                 if page.is_visible('.ytp-play-button'):
-                    log("[Playwright] 嘗試方法 3: 點擊播放按鈕")
+                    log("[Playwright] 嘗試方法 4: 點擊底部播放按鈕")
                     page.click('.ytp-play-button')
                     page.wait_for_timeout(1000)
                 
-                # 4. Keyboard shortcuts (k = pause/play, Space = pause/play)
-                log("[Playwright] 嘗試方法 4: 鍵盤 'k' 鍵")
-                page.keyboard.press('k') 
+                # 5. Keyboard shortcuts
+                log("[Playwright] 嘗試方法 5: 鍵盤 'Space/k'")
+                page.keyboard.press('k')
+                page.wait_for_timeout(500)
+                page.keyboard.press('Space')
                 page.wait_for_timeout(1000)
 
             except Exception as e:
                 log(f"[Playwright] 播放嘗試警告: {e}")
             
-            # Wait longer for audio to buffer (Increased to 30s for slow streams)
+            # Wait longer for audio to buffer (30s)
             log("[Playwright] 等待音訊緩衝 (30s)...")
             # Loop check for urls
             for i in range(30):
                 if audio_urls:
-                    log(f"[Playwright] 成功抓取音訊 URL ({len(audio_urls)} 個)")
+                    log(f"[Playwright] ✅ 成功抓取音訊 URL ({len(audio_urls)} 個)")
                     break
                 
-                # If still no audio after 10s, try verify playback state
-                if i == 10:
-                    log("[Playwright] 尚未偵測到音訊，嘗試確認影片狀態...")
-                    # Check if video is paused
-                    is_paused = page.evaluate("document.querySelector('video') ? document.querySelector('video').paused : true")
-                    if is_paused:
-                         log("[Playwright] 偵測到影片暫停中，再次強制播放...")
-                         page.evaluate("document.querySelector('video').play()")
+                # Periodic status check
+                if i % 5 == 0 and i > 0:
+                    log(f"[Playwright] ...等待中 ({i}s)")
                 
                 page.wait_for_timeout(1000)
             
