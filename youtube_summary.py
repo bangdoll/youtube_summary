@@ -277,26 +277,7 @@ def get_yt_dlp_opts():
     elif proxy_url:
         log("⚠️ 偵測到範例代理設定 (example.com)，已自動忽略。")
     
-    # METHOD 1: Use Cookie file if available
-    if youtube_cookies:
-        log("使用 Cookie 認證模式...")
-        cookie_file_path = "/tmp/yt_cookies.txt"
-        with open(cookie_file_path, "w", encoding="utf-8") as f:
-            f.write(youtube_cookies)
-        opts['cookiefile'] = cookie_file_path
-        opts['format'] = 'best'
-        log(f"Cookie 檔案已寫入: {cookie_file_path}")
-        return opts
-    
-    # METHOD 2: Use PO Token if available
-    if po_token and visitor_data:
-        log(f"使用 PO Token 認證模式 (len={len(po_token)})...")
-        opts['extractor_args'] = {
-            'youtube': {
-                'po_token': [f'web+{po_token}'],
-                'visitor_data': [visitor_data]
-            }
-        }
+    return opts
     
     # No auth configured, try anyway
     log("無額外認證，直接嘗試...")
