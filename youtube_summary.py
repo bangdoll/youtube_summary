@@ -231,14 +231,26 @@ def save_note(content, video_id):
     return filename
 
 
+
+# Global cookie file path
+COOKIE_FILE = "cookies.txt"
+
+def setup_cookies():
+    """Writes cookies from env var to file for yt-dlp/playwright."""
+    cookie_content = os.getenv("YOUTUBE_COOKIES")
+    if cookie_content:
+        # Check if content needs formatting (e.g. if passed as JSON or raw string)
+        # For now assume Netscape format string
+        with open(COOKIE_FILE, "w") as f:
+            f.write(cookie_content)
+        return True
+    return os.path.exists(COOKIE_FILE)
+
 def get_yt_dlp_opts():
     import yt_dlp
     import tempfile
 
-    po_token = os.getenv("PO_TOKEN")
-    visitor_data = os.getenv("VISITOR_DATA")
-    youtube_cookies = os.getenv("YOUTUBE_COOKIES")
-    proxy_url = os.getenv("PROXY_URL")  # Residential proxy: http://user:pass@host:port
+    proxy_url = os.getenv("PROXY_URL")
     
     opts = {
         # Accept any audio format, fall back to best video if no audio
@@ -248,7 +260,14 @@ def get_yt_dlp_opts():
         'noplaylist': True,
         # Mimic a real browser
         'user_agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'nocheckcertificate': True,
+        'ignoreerrors': True,
     }
+
+    # Add cookies if available
+    if setup_cookies():
+         log("🍪 使用 Cookies 進行驗證")
+         opts['cookiefile'] = COOKIE_FILE
     
     # Add proxy if configured
     # Add proxy if configured and not placeholder
@@ -403,11 +422,44 @@ def download_audio_playwright(url):
             
             # Launch headless Chromium
             browser = p.chromium.launch(**launch_opts)
+            # Helper to parse Netscape cookies for Playwright
+            def parse_netscape_cookies(path):
+                cookies = []
+                try:
+                    with open(path, 'r') as f:
+                        for line in f:
+                            if line.startswith('#') or not line.strip(): continue
+                            parts = line.split('\t')
+                            if len(parts) >= 7:
+                                cookies.append({
+                                    'name': parts[5],
+                                    'value': parts[6].strip(),
+                                    'domain': parts[0],
+                                    'path': parts[2],
+                                    'expires': int(parts[4]) if parts[4] else -1,
+                                    'httpOnly': parts[3] == 'TRUE',
+                                    'secure': parts[3] == 'TRUE' # Approximation
+                                })
+                except Exception as e:
+                     log(f"[Playwright] Cookie parsing failed: {e}")
+                return cookies
+
+            # Init context
             context = browser.new_context(
                 user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 locale='en-US'
             )
-
+            
+            # Load cookies if available
+            if os.path.exists(COOKIE_FILE):
+                try:
+                    cookies = parse_netscape_cookies(COOKIE_FILE)
+                    if cookies:
+                        context.add_cookies(cookies)
+                        log(f"[Playwright] 🍪 已載入 {len(cookies)} 個 Cookies")
+                except Exception as e:
+                    log(f"[Playwright] ⚠️ Cookies 載入失敗: {e}")
+                    
             page = context.new_page()
             
             # Intercept network requests
