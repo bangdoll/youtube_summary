@@ -182,6 +182,13 @@ async def event_generator(url: str):
     async with processing_lock:
         queue = asyncio.Queue()
         yield f"data: {json.dumps({'type': 'log', 'data': '🚀 系統核心已啟動'})}\n\n"
+        
+        # Log Auth Status for debugging
+        auth_status = "✅ 已啟用 (Google OAuth)" if is_auth_enabled() else "⚠️ 未啟用 (使用 Local 模式)"
+        yield f"data: {json.dumps({'type': 'log', 'data': f'🔒 安全模組: {auth_status}'})}\n\n"
+        if is_auth_enabled():
+             yield f"data: {json.dumps({'type': 'log', 'data': f'👤 允許清單: {len(ALLOWED_EMAILS)} 位使用者'})}\n\n"
+
         loop = asyncio.get_running_loop()
         
         # Check cost limit warning
