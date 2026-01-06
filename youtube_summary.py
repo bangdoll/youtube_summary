@@ -251,9 +251,12 @@ def get_yt_dlp_opts():
     }
     
     # Add proxy if configured
-    if proxy_url:
+    # Add proxy if configured and not placeholder
+    if proxy_url and "example.com" not in proxy_url:
         log(f"使用代理伺服器: {proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url}")
         opts['proxy'] = proxy_url
+    elif proxy_url:
+        log("⚠️ 偵測到範例代理設定 (example.com)，已自動忽略。")
     
     # METHOD 1: Use Cookie file if available
     if youtube_cookies:
