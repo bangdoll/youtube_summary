@@ -14,6 +14,7 @@
     - 新增 **Features Grid** (Gemini 3.0, Security, Cost, Structured Output)。
     - 新增 **NotebookLM 對比專區** (強調客製化、數據主權、自動化)。
 - **生態系整合**: 優化 Markdown 輸出格式，支援 **Heptabase / Obsidian / Notion**。
+- **UX 優化**: 將「執行日誌」移至輸入框正下方，提供更直覺的操作回饋。
 
 #### 優化調整
 - 升級核心說明為 **Gemini 3.0**。
