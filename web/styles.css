@@ -242,6 +242,116 @@ button#submitBtn:disabled {
     line-height: 1.5;
 }
 
+/* Comparison Section */
+.comparison-section {
+    max-width: 1000px;
+    margin: 4rem auto;
+    padding: 0 1rem;
+    animation: fadeIn 0.8s ease-out 0.4s backwards;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-family: var(--font-heading);
+}
+
+.section-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 3rem;
+}
+
+.comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.comparison-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+.comparison-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent-primary);
+}
+
+.card-header {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.card-header i {
+    font-size: 1.5rem;
+    color: var(--accent-primary);
+}
+
+.card-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.card-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.vs-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.vs-item .bad {
+    color: #ff5f56;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.vs-item .bad::before {
+    content: "✕";
+}
+
+.vs-item .good {
+    color: #27c93f;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.vs-item .good::before {
+    content: "✓";
+}
+
+.vs-item .desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
 /* Status Terminal */
 .status-section {
     margin-bottom: 2rem;
