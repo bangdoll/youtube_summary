@@ -103,7 +103,8 @@ async def login(request: Request):
     # Determine redirect URI
     redirect_uri = request.url_for("auth_callback")
     # Force HTTPS in production
-    if "onrender.com" in str(redirect_uri):
+    # Force HTTPS in production (Render or Cloud Run)
+    if "onrender.com" in str(redirect_uri) or "run.app" in str(redirect_uri):
         redirect_uri = str(redirect_uri).replace("http://", "https://")
     
     return await oauth.google.authorize_redirect(request, redirect_uri)
