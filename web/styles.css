@@ -389,7 +389,7 @@ button#submitBtn:disabled {
 
 /* Utilities */
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 @keyframes fadeInDown {
