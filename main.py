@@ -57,7 +57,7 @@ async def summarize(url: str, password: str = ""):
     access_password = os.getenv("ACCESS_PASSWORD", "")
     if access_password and password != access_password:
         async def error_gen():
-            yield f"data: {json.dumps({'type': 'error', 'message': '❌ 密碼驗證失敗'})}\\n\\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': '❌ 密碼驗證失敗'})}\n\n"
         return StreamingResponse(error_gen(), media_type="text/event-stream")
     
     return StreamingResponse(event_generator(url), media_type="text/event-stream")
