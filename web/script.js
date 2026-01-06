@@ -1,3 +1,4 @@
+// v2.0.1 - Password fix 2026-01-06
 document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('urlInput');
     const submitBtn = document.getElementById('submitBtn');
