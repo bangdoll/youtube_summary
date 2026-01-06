@@ -426,66 +426,57 @@ def download_audio_playwright(url):
                      log(f"[Playwright] Cookie parsing failed: {e}")
                 return cookies
 
-    # iOS User Agent for Mobile Youtube
-    user_agent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
-    
-    # Use the browser instance launched above (line 406)
-    
-    # Emulate iPhone
-    context = browser.new_context(
-        user_agent=user_agent,
-        viewport={'width': 390, 'height': 844},
-        device_scale_factor=3,
-        is_mobile=True,
-        has_touch=True
-    )
-    
-    # Parse Netscape cookies and inject
-    if os.path.exists(COOKIE_FILE):
-        try:
-             cookies = parse_netscape_cookies(COOKIE_FILE)
-             # Filter cookies for domain (playwright strictness)
-             # Fix: Ensure domain starts with .youtube.com or youtube.com
-             valid_cookies = []
-             for c in cookies:
-                 c['sameSite'] = 'None'
-                 c['secure'] = True
-                 if 'youtube' in c['domain']:
-                     valid_cookies.append(c)
-                     
-             if valid_cookies:
-                context.add_cookies(valid_cookies)
-                log(f"[Playwright] 🍪 已載入 {len(valid_cookies)} 個 Cookies (Mobile Context)")
-        except Exception as e:
-            log(f"[Playwright] Cookie 載入失敗: {e}")
+            # iOS User Agent for Mobile Youtube
+            user_agent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
+            
+            # Use the browser instance launched above (line 406)
+            
+            # Emulate iPhone
+            context = browser.new_context(
+                user_agent=user_agent,
+                viewport={'width': 390, 'height': 844},
+                device_scale_factor=3,
+                is_mobile=True,
+                has_touch=True
+            )
+            
+            # Parse Netscape cookies and inject
+            if os.path.exists(COOKIE_FILE):
+                try:
+                     cookies = parse_netscape_cookies(COOKIE_FILE)
+                     # Filter cookies for domain (playwright strictness)
+                     # Fix: Ensure domain starts with .youtube.com or youtube.com
+                     valid_cookies = []
+                     for c in cookies:
+                         c['sameSite'] = 'None'
+                         c['secure'] = True
+                         if 'youtube' in c['domain']:
+                             valid_cookies.append(c)
+                             
+                     if valid_cookies:
+                        context.add_cookies(valid_cookies)
+                        log(f"[Playwright] 🍪 已載入 {len(valid_cookies)} 個 Cookies (Mobile Context)")
+                except Exception as e:
+                    log(f"[Playwright] Cookie 載入失敗: {e}")
 
-    page = context.new_page()
-    page.route("**/*", intercept_request)
-    
-    # Use Mobile Watch URL (m.youtube.com)
-    # Extracts video ID if full URL provided
-    if "v=" in url:
-        video_id = url.split("v=")[1].split("&")[0]
-    elif "youtu.be" in url:
-        video_id = url.split("/")[-1]
-    else:
-        video_id = url
-        
-    target_url = f"https://m.youtube.com/watch?v={video_id}"
-    log(f"[Playwright] 正在前往行動版頁面: {target_url}")
-            elif 'v=' in url:
-                video_id = url.split('v=')[1].split('&')[0]
+            page = context.new_page()
+            page.route("**/*", intercept_request)
+            
+            # Use Mobile Watch URL (m.youtube.com)
+            # Extracts video ID if full URL provided
+            video_id = url
+            if "v=" in url:
+                video_id = url.split("v=")[1].split("&")[0]
+            elif "youtu.be" in url:
+                video_id = url.split("/")[-1]
+            elif "embed" in url:
+                video_id = url.split("/")[-1].split("?")[0]
                 
-            if video_id:
-                target_url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&enablejsapi=1"
-                log(f"[Playwright] 使用輕量化嵌入 URL: {target_url}")
-            else:
-                target_url = url
-                log(f"[Playwright] 無法解析 ID，使用原始 URL: {target_url}")
-
-            log(f"[Playwright] 正在前往影片頁面 (Embed Mode)...")
+            target_url = f"https://m.youtube.com/watch?v={video_id}"
+            log(f"[Playwright] 正在前往行動版頁面: {target_url}")
+            
             try:
-                # Embed loads fast, 30s is enough
+                # Page load (Mobile site is lighter than Desktop Watch, heavier than Embed)
                 page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
             except Exception as e:
                 log(f"[Playwright] 頁面載入警告 (嘗試繼續): {e}")
@@ -493,7 +484,7 @@ def download_audio_playwright(url):
             # Dismiss cookie consent if present
             log("[Playwright] 處理 Cookie 同意彈窗...")
             try:
-                # Click "Reject all" or "Accept all" - prioritising Reject for speed if available
+                # Click "Reject all" or "Accept all"
                 consent_selectors = [
                     'button[aria-label="Reject all"]',
                     'button:has-text("Reject all")', 
@@ -587,6 +578,13 @@ def download_audio_playwright(url):
                 
                 page.wait_for_timeout(1000)
             
+            if not audio_urls:
+                log("[Playwright] ❌ 未捕獲到音訊，正在截圖留存 (snapshot_failed.png)...")
+                try:
+                    page.screenshot(path="snapshot_failed.png")
+                except Exception as e:
+                    log(f"[Playwright] 截圖失敗: {e}")
+
             browser.close()
         
         if not audio_urls:
