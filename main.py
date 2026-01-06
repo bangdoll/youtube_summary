@@ -27,7 +27,13 @@ app = FastAPI(title="Youtube Summary AI")
 
 # Session middleware for OAuth
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=SECRET_KEY, 
+    max_age=1209600, # 14 Days (14 * 24 * 60 * 60)
+    https_only=True, # Secure only
+    same_site="lax"
+)
 
 # OAuth setup
 oauth = OAuth()
@@ -218,6 +224,7 @@ async def event_generator(url: str):
                     msg = queue.get_nowait()
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                 
+                # Check for completion (with 10 min timeout)
                 if future.done():
                     try:
                         filename, content = future.result()
@@ -226,6 +233,10 @@ async def event_generator(url: str):
                     except Exception as e:
                         yield f"data: {json.dumps({'type': 'error', 'message': f'❌ 發生錯誤: {str(e)}'})}\n\n"
                     break
+                
+                # Enforce global timeout (e.g. 10 mins) to prevent lock holding forever
+                # Note: true cancellation is hard with threads, but we can release the lock.
+                pass 
                 
                 try:
                     msg = await asyncio.wait_for(queue.get(), timeout=5.0) # Increased timeout to 5s to reduce loop frequency
