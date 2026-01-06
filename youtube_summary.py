@@ -413,27 +413,21 @@ def download_audio_playwright(url):
             # Intercept network requests
             page.on("request", intercept_request)
             
-            # Use Embed URL for performance (Watch page is too heavy for Render Free Tier)
-            import re
-            video_id = None
-            video_id_match = re.search(r'(?:v=|youtu\.be/|embed/)([a-zA-Z0-9_-]{11})', url)
-            if video_id_match:
-                video_id = video_id_match.group(1)
-                
-            if video_id:
-                target_url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&enablejsapi=1"
-                log(f"[Playwright] 使用輕量化嵌入 URL: {target_url}")
-            else:
-                target_url = url
-                log(f"[Playwright] 警告: 無法解析 Video ID，使用原始 URL: {target_url}")
+            # [Cloud Run Optimization] Use MAIN Video URL (Watch Page)
+            # On capable hardware (Cloud Run), the main page triggers media playback faster/more reliably than Embeds.
+            target_url = url
+            if 'embed' in url:
+                import re
+                video_id_match = re.search(r'embed/([a-zA-Z0-9_-]{11})', url)
+                if video_id_match:
+                     target_url = f"https://www.youtube.com/watch?v={video_id_match.group(1)}"
 
-            log(f"[Playwright] 正在前往影片頁面...")
+            log(f"[Playwright] 正在前往影片頁面 (Cloud Run Mode): {target_url}")
             try:
-                # Reduced timeout to 30s, but ignore if it times out
-                page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
+                # Cloud Run is fast, but we give it 60s for complex assets
+                page.goto(target_url, timeout=60000, wait_until="domcontentloaded")
             except Exception as e:
-                log(f"[Playwright] 頁面載入超時 (非致命錯誤): {e}")
-                log("[Playwright] 嘗試繼續執行播放邏輯...")
+                log(f"[Playwright] 頁面載入警告 (嘗試繼續): {e}")
             
             # Dismiss cookie consent if present
             log("[Playwright] 處理 Cookie 同意彈窗...")
