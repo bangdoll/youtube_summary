@@ -15,6 +15,14 @@ from authlib.integrations.starlette_client import OAuth
 # Import our core engine
 import youtube_summary
 
+# Import Cost Tracker
+try:
+    from cost_tracker import tracker as cost_tracker
+except ImportError:
+    # Handle case where it might be run from a different context
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from cost_tracker import tracker as cost_tracker
+
 app = FastAPI(title="Youtube Summary AI")
 
 # Session middleware for OAuth
@@ -173,6 +181,13 @@ async def event_generator(url: str):
         queue = asyncio.Queue()
         loop = asyncio.get_running_loop()
         
+        # Check cost limit warning
+        current_cost = cost_tracker.get_total_cost()
+        if cost_tracker.is_limit_exceeded(limit=20.0):
+            yield f"data: {json.dumps({'type': 'log', 'data': f'⚠️ 注意：本月 API 使用量預估已達 ${current_cost:.2f} USD (超過 $20 限額)'})}\\n\\n"
+        else:
+             yield f"data: {json.dumps({'type': 'log', 'data': f'📊 本月 API 累計使用量: ${current_cost:.4f} USD'})}\\n\\n"
+
         def log_callback(msg, *args, **kwargs):
             formatted_msg = str(msg)
             loop.call_soon_threadsafe(queue.put_nowait, formatted_msg)

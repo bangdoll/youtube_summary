@@ -13,6 +13,14 @@ import yt_dlp
 # Load environment variables
 load_dotenv()
 
+# Import Cost Tracker
+try:
+    from cost_tracker import tracker as cost_tracker
+except ImportError:
+    # Handle case where it might be run from a different context
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from cost_tracker import tracker as cost_tracker
+
 # Global logger callback (default to print)
 LOG_FUNC = print
 
@@ -127,6 +135,16 @@ def analyze_transcript(transcript, video_title="Unknown Video"):
             ],
             temperature=0.7
         )
+        
+        # Track cost
+        if response.usage:
+            cost = cost_tracker.track_chat(
+                response.model, 
+                response.usage.prompt_tokens, 
+                response.usage.completion_tokens
+            )
+            log(f"本次分析預估成本: ${cost:.4f}")
+
         return response.choices[0].message.content
     except Exception as e:
         log(f"呼叫 OpenAI API 時發生錯誤: {e}")
@@ -613,9 +631,41 @@ def get_audio_and_transcribe(url):
         files_to_process = [output_filename]
 
     try:
+        # Calculate audio duration for cost tracking
+        try:
+            duration_cmd = [
+                "ffprobe", 
+                "-v", "error", 
+                "-show_entries", "format=duration", 
+                "-of", "default=noprint_wrappers=1:nokey=1", 
+                output_filename # Use file before splitting for total duration check? No, we process chunks.
+            ]
+            
+            # If we split, we should track cost per chunk or total original file?
+            # It's better to track based on what we send to Whisper.
+            # But here we loop through files_to_process.
+            pass
+        except:
+            pass
+
         full_transcript = ""
+        total_duration = 0.0
+
         for audio_file_path in files_to_process:
             log(f"正在轉錄 {audio_file_path}...")
+            
+            # Get duration of this chunk
+            chunk_duration = 0.0
+            try:
+                out = subprocess.check_output([
+                    "ffprobe", "-v", "error", "-show_entries", "format=duration", 
+                    "-of", "default=noprint_wrappers=1:nokey=1", audio_file_path
+                ]).strip()
+                chunk_duration = float(out)
+                total_duration += chunk_duration
+            except Exception as e:
+                log(f"Warning: Could not determine audio duration for cost tracking: {e}")
+            
             with open(audio_file_path, "rb") as audio_file:
                 chunk_transcript = client.audio.transcriptions.create(
                     model="whisper-1", 
@@ -627,6 +677,12 @@ def get_audio_and_transcribe(url):
             # Clean up chunk
             if audio_file_path != output_filename:
                 os.remove(audio_file_path)
+            
+            # Track cost for this chunk
+            if chunk_duration > 0:
+               cost_tracker.track_audio(chunk_duration)
+
+        log(f"Whisper 轉錄完成。總時長: {total_duration:.2f} 秒。預估成本: ${cost_tracker.get_total_cost():.4f} (本月累積)")
 
         # Clean up original
         if os.path.exists(output_filename):
