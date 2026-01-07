@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 # Import our core engine
 import youtube_summary
@@ -25,8 +26,15 @@ except ImportError:
 
 app = FastAPI(title="Youtube Summary AI")
 
+# Trust Proxy Headers (CRITICAL for Cloud Run/Render behind Load Balancer)
+# This ensures request.url is seen as HTTPS, preventing redirect_uri mismatches and session cookie issues
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
+
 # Session middleware for OAuth
-SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
+# Use a stable key if env var not set, to prevent session invalidation on restart
+# In production, users SHOULD set SECRET_KEY env var
+DEFAULT_SECRET_KEY = "stable_secret_key_for_youtube_summary_app_fix_restart_auth_issue"
+SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY) 
 app.add_middleware(
     SessionMiddleware, 
     secret_key=SECRET_KEY, 
