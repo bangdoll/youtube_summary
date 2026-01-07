@@ -10,6 +10,12 @@ from youtube_transcript_api.formatters import TextFormatter
 import openai
 import yt_dlp
 
+try:
+    from pytubefix.proof_of_origin import generate_po_token_nodes
+    from pytubefix import YouTube as PytubefixYouTube
+except ImportError:
+    generate_po_token_nodes = None
+
 # Load environment variables
 load_dotenv()
 
