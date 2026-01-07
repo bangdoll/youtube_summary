@@ -739,7 +739,7 @@ button#submitBtn:disabled {
 
 .demo-placeholder {
     aspect-ratio: 16/9;
-    background: rgba(0,0,0,0.2);
+    background: rgba(0, 0, 0, 0.2);
     border-radius: 12px;
     display: flex;
     flex-direction: column;
@@ -798,9 +798,126 @@ button#submitBtn:disabled {
 
 .profile-content p {
     color: var(--text-secondary);
-    font-size: 0.95rem;
+}
+
+/* Demo Terminal Animation */
+.demo-terminal-window {
+    background: #0f0f12;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    text-align: left;
+    height: 360px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.demo-body {
+    padding: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.cursor-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #a0a0a0;
+}
+
+.prompt {
+    color: var(--accent-secondary);
+    font-weight: bold;
+}
+
+.command-text {
+    color: white;
+}
+
+.log-line {
+    animation: slideInLeft 0.3s ease-out;
     line-height: 1.5;
-    margin: 0;
+    word-break: break-word;
+}
+
+.log-line.info {
+    color: #a0a0a0;
+}
+
+.log-line.success {
+    color: #27c93f;
+}
+
+.log-line.warn {
+    color: #ffbd2e;
+}
+
+.log-line.error {
+    color: #ff5f56;
+}
+
+.log-line.highlight {
+    color: #d8b4fe;
+    font-weight: bold;
+}
+
+.log-line.system {
+    color: #3b82f6;
+}
+
+.cursor {
+    display: inline-block;
+    width: 8px;
+    height: 1.2em;
+    background: var(--text-secondary);
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
+.demo-overlay {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 10;
+}
+
+#replayDemoBtn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    backdrop-filter: blur(4px);
+    transition: all 0.2s;
+}
+
+#replayDemoBtn:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .auth-section {

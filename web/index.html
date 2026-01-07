@@ -68,9 +68,24 @@
             <!-- Demo Block -->
             <section class="demo-card">
                 <span class="demo-badge">LIVE DEMO</span>
-                <div class="demo-placeholder">
-                    <i class="ri-play-circle-line"></i>
-                    <p>觀看 1 分鐘系統展示</p>
+                <div class="demo-terminal-window">
+                    <div class="terminal-header">
+                        <div class="dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <div class="terminal-title">demo@youtube-brain:~</div>
+                    </div>
+                    <div class="terminal-body demo-body" id="demoTerminalBody">
+                        <!-- Typewriter content will appear here -->
+                        <div class="cursor-line">
+                            <span class="prompt">$</span> <span id="typewriter"></span><span class="cursor">_</span>
+                        </div>
+                    </div>
+                    <div class="demo-overlay">
+                        <button id="replayDemoBtn" class="hidden">
+                            <i class="ri-refresh-line"></i> Replay
+                        </button>
+                    </div>
                 </div>
             </section>
 
