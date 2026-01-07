@@ -179,7 +179,7 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
     
     # Fill dynamic variables
     current_date = datetime.now().strftime("%Y-%m-%d")
-    prompt = prompt.replace("{{current_date}}", current_date)
+    prompt = prompt_template.replace("{{current_date}}", current_date)
     prompt = prompt.replace("{{video_title}}", video_title)
     prompt = prompt.replace("{{video_url}}", youtube_url)
     prompt += "\n\n請直接觀看這個影片並按照上述格式生成筆記。"
