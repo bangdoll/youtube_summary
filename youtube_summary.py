@@ -184,13 +184,14 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
     prompt = prompt.replace("{{video_url}}", youtube_url)
     prompt += "\n\n請直接觀看這個影片並按照上述格式生成筆記。"
     
-    log("正在使用 Gemini 直接分析 YouTube 影片...")
+    log("正在使用 Gemini 3 Flash (極速效能模型)...")
     log(f"影片 URL: {youtube_url}")
     
     try:
-        # Use Gemini 3 Flash with YouTube URL support
+        # Use Gemini 3 Flash (High Efficiency, Low Latency)
+        # API ID: gemini-2.0-flash-exp (The actual latest Flash model)
         response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",  # Using 2.0 Flash Exp (often referred to as 'Gemini 3' in preview contexts)
+            model="gemini-2.0-flash-exp",
             contents=[
                 types.Part.from_uri(file_uri=youtube_url, mime_type="video/*"),
                 prompt
