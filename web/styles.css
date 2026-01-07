@@ -945,3 +945,19 @@ button#submitBtn:disabled {
     max-width: 300px;
     margin: 0 auto;
 }
+
+/* Animations */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ri-spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
