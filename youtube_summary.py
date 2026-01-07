@@ -184,14 +184,13 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
     prompt = prompt.replace("{{video_url}}", youtube_url)
     prompt += "\n\n請直接觀看這個影片並按照上述格式生成筆記。"
     
-    log("正在使用 Gemini 1.5 Flash (穩定高速版)...")
+    log("正在使用 Gemini 1.5 Flash (穩定版)...")
     log(f"影片 URL: {youtube_url}")
     
     try:
-        # Use Gemini 1.5 Flash (Stable, High Quota)
-        # 1.5 Flash has significantly higher rate limits than Experimental versions
+        # Use Gemini 1.5 Flash 001 (Specific version to avoid alias resolution 404s)
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-1.5-flash-001",
             contents=[
                 types.Part.from_uri(file_uri=youtube_url, mime_type="video/*"),
                 prompt
