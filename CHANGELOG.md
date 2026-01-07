@@ -1,6 +1,28 @@
 # CHANGELOG
 
-## [2.3.0] - 2026-01-07
+## [2.4.0] - 2026-01-07
+
+### 🚀 重大功能發布 (Major Features)
+
+#### 🎥 長影片解析支援 (Long Video Support)
+- **Audio Fallback 機制**：針對超過 3 小時或 10800 幀的超長影片，系統現在會自動從「視覺模式」切換為「聽覺模式」。自動下載音訊並上傳至 Gemini 進行全量分析，突破 API 限制。
+- **PO Token 整合 (Bot Defense Penetration)**：整合 `pytubefix` 生成 Proof of Origin Token，成功繞過 YouTube 的 "Sign in to confirm you're not a bot" 驗證，大幅提升音訊下載成功率。
+
+#### 📱 PWA 行動裝置體驗 (Mobile Experience)
+- **App Icon 與主畫面支援**：新增 PWA Meta Tags 與高質感霓虹風格圖示 (Icon)。現在您可以將網頁「加入主畫面」，獲得如同原生 App 的全螢幕沈浸體驗。
+- **UI 優化**：針對行動裝置介面微調，並更新了開發者大頭照。
+
+#### ⚡ 首頁互動體驗 (Live Demo)
+- **30秒 Live Terminal Demo**：在未登入的首頁新增純 CSS/JS 驅動的模擬終端機動畫，動態展示 AI 分析流程，取代靜態的 "LIVE DEMO" 圖片，提升科技感 (Vibe Coding)。
+
+### 🐛 錯誤修復與優化 (Fixes & Improvements)
+- **UI 高對比優化**：強化「分析中」按鈕樣式，加入旋轉動畫 (Spinner) 與光暈效果，並提升字體對比度，讓狀態回饋更清晰。
+- **修復 NameError**：修正 `youtube_summary.py` 中因執行順序導致的 `get_audio_and_transcribe` 未定義錯誤。
+- **修復 403 Forbidden**：確保 `yt-dlp` 正確讀取 Cookie 以解決部分影片的 403 下載錯誤。
+
+---
+
+## [2.3.0] - 2026-01-06
 
 ### ⚡ 核心與穩定性重大升級 (Stability & Core Upgrade)
 

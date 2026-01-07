@@ -8,7 +8,10 @@
 ### 1. 🧠 Gemini 3 Flash Preview 核心引擎
 使用 Google 最新的 **Gemini 3 Flash Preview** 模型直接「觀看」與「理解」影片內容。具備極速回應能力與長文本上下文視窗，超越傳統逐字稿限制，能夠捕捉語氣、畫面脈絡與深層含義。
 
-### 1.1 ✨ 來源回溯 (Source Attribution)
+### 1.1 🎥 長影片無縫解析 (Long Video Support)
+針對超過 3 小時的超長影片 (如法說會、長時間直播)，系統具備自動切換的 **Audio Fallback** 機制。當影片超過 Gemini 視覺分析限制時，會自動下載音訊並上傳分析，確保內容不漏接。內建 **PO Token** 技術有效繞過 Bot 偵測。
+
+### 1.2 ✨ 來源回溯 (Source Attribution)
 自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
 ### 2. 💰 智慧成本監控 (Smart Cost Control)
@@ -23,6 +26,8 @@
 ### 4. 🎨 Vibe Coding 現代化介面
 - **Premium UI**：深色玻璃擬態 (Glassmorphism)、流暢動畫與響應式設計。
 - **Real-time Console**：SSE (Server-Sent Events) 技術驅動的即時終端機日誌。
+- **PWA Ready**：支援「加入主畫面」，提供如同原生 App 的全螢幕體驗與專屬 Icon。
+- **Live Demo**：首頁動態終端機模擬，展現科技感。
 - **NotebookLM 對比**：強調「深度客製化」、「數據主權」與「自動化潛力」三大優勢。
 
 ### 5. ☁️ Cloud Run 極速架構
@@ -47,6 +52,7 @@ cd youtube_summary
 ### 2. 安裝依賴
 ```bash
 pip install -r requirements.txt
+# 需確保已安裝 ffmpeg (用於音訊處理)
 ```
 
 ### 3. 設定環境變數 (.env)
