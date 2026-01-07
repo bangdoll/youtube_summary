@@ -166,7 +166,7 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
         log(error_msg)
         raise Exception(error_msg)
     
-    # Initialize client
+    # Initialize client (New google-genai SDK)
     client = genai.Client(api_key=api_key)
     
     # Read prompt template
@@ -184,13 +184,15 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
     prompt = prompt.replace("{{video_url}}", youtube_url)
     prompt += "\n\n請直接觀看這個影片並按照上述格式生成筆記。"
     
-    log("正在使用 Gemini 1.5 Flash (穩定版)...")
+    log("正在使用 Gemini 3 Flash (極速效能模型 / 2.5 Flash)...")
     log(f"影片 URL: {youtube_url}")
     
     try:
-        # Use Gemini 1.5 Flash 001 (Specific version to avoid alias resolution 404s)
+        # Use Gemini 2.5 Flash
+        # We verified 'models/gemini-2.5-flash' exists in the user's available models list.
+        # This resolves the 404 (missing 1.5) and 429 (exp quota 0) issues.
         response = client.models.generate_content(
-            model="gemini-1.5-flash-001",
+            model="gemini-2.5-flash",
             contents=[
                 types.Part.from_uri(file_uri=youtube_url, mime_type="video/*"),
                 prompt
@@ -199,6 +201,7 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
         
         log("Gemini 分析完成！")
         return response.text
+
         
     except Exception as e:
         log(f"Gemini 分析失敗: {e}")
