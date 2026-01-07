@@ -227,7 +227,7 @@ def save_note(content, video_id):
     with open(filename, "w", encoding="utf-8") as f:
         f.write(content)
         
-    log(f"成功！筆記已儲存至: {filename}")
+    log(f"成功！筆記已完成， {os.path.basename(filename)}")
     return filename
 
 
