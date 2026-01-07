@@ -233,7 +233,8 @@ async def event_generator(url: str):
                 if future.done():
                     try:
                         filename, content = future.result()
-                        yield f"data: {json.dumps({'type': 'result', 'data': content, 'filename': filename})}\n\n"
+                        clean_filename = os.path.basename(filename)
+                        yield f"data: {json.dumps({'type': 'result', 'data': content, 'filename': clean_filename})}\n\n"
                         yield f"data: {json.dumps({'type': 'done'})}\n\n"
                     except Exception as e:
                         yield f"data: {json.dumps({'type': 'error', 'message': f'❌ 發生錯誤: {str(e)}'})}\n\n"
