@@ -426,18 +426,24 @@ def download_audio_playwright(url):
                      log(f"[Playwright] Cookie parsing failed: {e}")
                 return cookies
 
-            # iOS User Agent for Mobile Youtube
-            user_agent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
+            # Desktop User Agent (stealth mode)
+            user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
             
-            # Use the browser instance launched above (line 406)
+            # Use the browser instance launched above
             
-            # Emulate iPhone
+            # Emulate Desktop with Stealth Headers
             context = browser.new_context(
                 user_agent=user_agent,
-                viewport={'width': 390, 'height': 844},
-                device_scale_factor=3,
-                is_mobile=True,
-                has_touch=True
+                viewport={'width': 1920, 'height': 1080},
+                device_scale_factor=1,
+                is_mobile=False,
+                has_touch=False,
+                locale='en-US',
+                extra_http_headers={
+                    'Referer': 'https://www.youtube.com/',
+                    'Origin': 'https://www.youtube.com',
+                    'Accept-Language': 'en-US,en;q=0.9'
+                }
             )
             
             # Parse Netscape cookies and inject
@@ -455,7 +461,7 @@ def download_audio_playwright(url):
                              
                      if valid_cookies:
                         context.add_cookies(valid_cookies)
-                        log(f"[Playwright] 🍪 已載入 {len(valid_cookies)} 個 Cookies (Mobile Context)")
+                        log(f"[Playwright] 🍪 已載入 {len(valid_cookies)} 個 Cookies (Desktop Context)")
                 except Exception as e:
                     log(f"[Playwright] Cookie 載入失敗: {e}")
 
@@ -463,8 +469,8 @@ def download_audio_playwright(url):
             # Use on('request') instead of route() to avoid blocking and AttributeError (Route vs Request)
             page.on("request", intercept_request)
             
-            # Use Embed URL with Mobile User Agent
-            # This combination offers the best balance: simple DOM (Embed) + Bot avoidance (Mobile UA)
+            # Use Embed URL with Desktop User Agent
+            # Keeping cookies and headers strict
             video_id = url
             if "v=" in url:
                 video_id = url.split("v=")[1].split("&")[0]
@@ -474,7 +480,7 @@ def download_audio_playwright(url):
                 video_id = url.split("/")[-1].split("?")[0]
                 
             target_url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&enablejsapi=1"
-            log(f"[Playwright] 正在前往影片頁面 (Mobile UA + Embed ): {target_url}")
+            log(f"[Playwright] 正在前往影片頁面 (Desktop Mode + Cookies): {target_url}")
             
             try:
                 # Embed loads fast
