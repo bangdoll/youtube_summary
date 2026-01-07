@@ -501,8 +501,7 @@ def main():
         log(f"Error: {e}")
         sys.exit(1)
 
-if __name__ == "__main__":
-    main()
+
 
 def download_audio_playwright(url):
     """
@@ -965,3 +964,6 @@ def get_audio_and_transcribe(url):
     except Exception as e:
         log(f"Whisper 轉錄過程中發生錯誤: {e}")
         return None
+
+if __name__ == "__main__":
+    main()
