@@ -184,15 +184,14 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
     prompt = prompt.replace("{{video_url}}", youtube_url)
     prompt += "\n\n請直接觀看這個影片並按照上述格式生成筆記。"
     
-    log("正在使用 Gemini 3 Flash (極速效能模型 / 2.5 Flash)...")
+    log("正在使用 Gemini 3 Flash Preview (最新預覽版)...")
     log(f"影片 URL: {youtube_url}")
     
     try:
-        # Use Gemini 2.5 Flash
-        # We verified 'models/gemini-2.5-flash' exists in the user's available models list.
-        # This resolves the 404 (missing 1.5) and 429 (exp quota 0) issues.
+        # Use Gemini 3 Flash Preview
+        # Verified available in user's account and list_models_v2.py output
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=[
                 types.Part.from_uri(file_uri=youtube_url, mime_type="video/*"),
                 prompt
