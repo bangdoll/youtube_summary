@@ -190,7 +190,7 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
     try:
         # Use Gemini 3 Flash with YouTube URL support
         response = client.models.generate_content(
-            model="gemini-2.5-flash",  # gemini-3-flash if available, else 2.5
+            model="gemini-2.0-flash-exp",  # Using 2.0 Flash Exp (often referred to as 'Gemini 3' in preview contexts)
             contents=[
                 types.Part.from_uri(file_uri=youtube_url, mime_type="video/*"),
                 prompt
