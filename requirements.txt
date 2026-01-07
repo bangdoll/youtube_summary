@@ -12,3 +12,4 @@ authlib
 httpx
 itsdangerous
 firebase-admin
+pytubefix

@@ -203,8 +203,117 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
 
         
     except Exception as e:
+        error_str = str(e)
+        # Check for "Too many images" or "Invalid Argument" which implies video is too long for direct processing
+        if "400" in error_str and ("images" in error_str or "INVALID_ARGUMENT" in error_str):
+            log("⚠️ 影片過長 (超過 3 小時或幀數限制)，切換至 Audio Upload 模式...")
+            return analyze_long_video_fallback(client, youtube_url, prompt_template, video_title)
+            
         log(f"Gemini 分析失敗: {e}")
-        raise Exception(f"Gemini 分析失敗: {e}")
+        # If it's another error, we let it fall back to Transcript method
+        raise e
+
+def analyze_long_video_fallback(client, youtube_url, prompt_template, video_title):
+    """
+    Fallback for long videos: Download audio -> Upload to Gemini -> Analyze Audio File.
+    This bypasses the video frame limit.
+    """
+    from google import genai
+    from google.genai import types
+    import time
+    
+    # 1. Download Audio
+    log("正在下載音訊檔案 (Long Video Fallback)...")
+    # Reuse existing audio download logic, but we need the filename
+    # We can use get_audio_and_transcribe's logic but just get the file
+    audio_file = download_audio_file(youtube_url)
+    if not audio_file:
+         raise Exception("無法下載音訊檔案進行備援分析")
+         
+    # 2. Upload to Gemini
+    log(f"正在上傳音訊至 Gemini ({os.path.basename(audio_file)})...")
+    try:
+        # Upload using the new SDK (Files API)
+        # Note: The new SDK might handle uploads via client.files.upload
+        # But 'client' here is the genai.Client
+        
+        # Let's verify the exact upload syntax for google-genai v2
+        # Usually: client.files.upload(path=...) returns a File object
+        file_obj = client.files.upload(path=audio_file)
+        log(f"上傳成功. File URI: {file_obj.uri}")
+        
+        # 3. Wait for processing
+        log("等待 Gemini 處理音訊檔案...")
+        while file_obj.state.name == "PROCESSING":
+            time.sleep(2)
+            file_obj = client.files.get(name=file_obj.name)
+            
+        if file_obj.state.name != "ACTIVE":
+             raise Exception(f"File processing failed. State: {file_obj.state.name}")
+             
+        # 4. Generate Content
+        # Fill prompt similar to before, but modify instruction for Audio
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        prompt = prompt_template.replace("{{current_date}}", current_date)
+        prompt = prompt.replace("{{video_title}}", video_title)
+        prompt = prompt.replace("{{video_url}}", youtube_url)
+        prompt += "\n\n(注意：這是影片的純音訊軌。請根據音訊內容進行分析)"
+        
+        log("開始分析長音訊...")
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=[
+                types.Part.from_uri(file_uri=file_obj.uri, mime_type=file_obj.mime_type),
+                prompt
+            ]
+        )
+        log("長影片分析完成！")
+        
+        # Cleanup local file
+        try:
+            os.remove(audio_file)
+        except:
+            pass
+            
+        return response.text
+        
+    except Exception as e:
+        log(f"Audio Fallback 失敗: {e}")
+        raise e
+
+def download_audio_file(url):
+    """Helper to just download audio and return path."""
+    import yt_dlp
+    import time
+    
+    # Use same PO Token opts
+    opts = get_yt_dlp_opts()
+    # Force filename to be temp path
+    output_filename = f"temp_long_audio_{int(time.time())}" # yt-dlp will add extension
+    opts['outtmpl'] = output_filename
+    opts['format'] = 'bestaudio/best'
+    opts['postprocessors'] = [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '128', # Lower quality is fine for speech, saves bandwidth
+    }]
+    
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download([url])
+        # yt-dlp might append .mp3
+        if os.path.exists(output_filename + ".mp3"):
+            return output_filename + ".mp3"
+        # Check for other possible extensions if mp3 failed
+        for ext in ['m4a', 'webm', 'ogg', 'flac', 'aac']:
+            if os.path.exists(output_filename + "." + ext):
+                return output_filename + "." + ext
+        return None
+    except Exception as e:
+        log(f"yt-dlp download failed: {e}")
+        # Try Playwright fallback? 
+        # For now, return None and let caller handle
+        return None
 
 def save_note(content, video_id):
     """Saves the content to a markdown file."""
@@ -280,7 +389,30 @@ def get_yt_dlp_opts():
             opts['proxy'] = proxy_url
         else:
             log("⚠️ 偵測到範例代理設定 (example.com)，已自動忽略。")
+
+    # === [PO Token Integration] ===
+    # Attempt to generate PO Token to bypass "Sign in to confirm you're not a bot"
+    if generate_po_token_nodes:
+        try:
+            log("正在生成 PO Token 以繞過 Bot 偵測...")
+            # This generates the parameters needed for extractor_args
+            token_data = generate_po_token_nodes()
+            po_token = token_data.get('po_token')
+            visitor_data = token_data.get('visitor_data')
             
+            if po_token and visitor_data:
+                log(f"PO Token 生成成功.")
+                # Inject into yt-dlp extractor_args
+                # Syntax: 'youtube':{'po_token':['...'], 'visitor_data':['...']}
+                opts['extractor_args'] = {
+                    'youtube': {
+                        'po_token': [po_token],
+                        'visitor_data': [visitor_data]
+                    }
+                }
+        except Exception as e:
+            log(f"PO Token 生成失敗 (非致命錯誤): {e}")
+
     return opts
 
 
