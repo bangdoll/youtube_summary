@@ -463,8 +463,8 @@ def download_audio_playwright(url):
             # Use on('request') instead of route() to avoid blocking and AttributeError (Route vs Request)
             page.on("request", intercept_request)
             
-            # Use Mobile Watch URL (m.youtube.com)
-            # Extracts video ID if full URL provided
+            # Use Embed URL with Mobile User Agent
+            # This combination offers the best balance: simple DOM (Embed) + Bot avoidance (Mobile UA)
             video_id = url
             if "v=" in url:
                 video_id = url.split("v=")[1].split("&")[0]
@@ -473,11 +473,11 @@ def download_audio_playwright(url):
             elif "embed" in url:
                 video_id = url.split("/")[-1].split("?")[0]
                 
-            target_url = f"https://m.youtube.com/watch?v={video_id}"
-            log(f"[Playwright] 正在前往行動版頁面: {target_url}")
+            target_url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&enablejsapi=1"
+            log(f"[Playwright] 正在前往影片頁面 (Mobile UA + Embed ): {target_url}")
             
             try:
-                # Page load (Mobile site is lighter than Desktop Watch, heavier than Embed)
+                # Embed loads fast
                 page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
             except Exception as e:
                 log(f"[Playwright] 頁面載入警告 (嘗試繼續): {e}")
