@@ -471,8 +471,8 @@ def download_audio_playwright(url):
             # Use on('request') instead of route() to avoid blocking and AttributeError (Route vs Request)
             page.on("request", intercept_request)
             
-            # Use Embed URL with Desktop User Agent
-            # Keeping cookies and headers strict
+            # Use Standard Watch URL with Desktop User Agent
+            # This allows cookies to work correctly (First-Party context)
             video_id = url
             if "v=" in url:
                 video_id = url.split("v=")[1].split("&")[0]
@@ -481,12 +481,15 @@ def download_audio_playwright(url):
             elif "embed" in url:
                 video_id = url.split("/")[-1].split("?")[0]
                 
-            target_url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&enablejsapi=1"
-            log(f"[Playwright] 正在前往影片頁面 (Desktop Mode + Cookies): {target_url}")
+            target_url = f"https://www.youtube.com/watch?v={video_id}"
+            log(f"[Playwright] 正在前往影片頁面 (Desktop Watch Mode): {target_url}")
             
             try:
-                # Embed loads fast
-                page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
+                # Add stealth script to hide webdriver property
+                page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                
+                # Watch page is heavier, give it more time
+                page.goto(target_url, timeout=45000, wait_until="domcontentloaded")
             except Exception as e:
                 log(f"[Playwright] 頁面載入警告 (嘗試繼續): {e}")
             
