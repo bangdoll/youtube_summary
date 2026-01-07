@@ -11,7 +11,7 @@ Context: {{video_title}} (if available)
 ---
 # [影片標題]
 
-> **來源**: [YouTube Link]
+> **來源**: {{video_url}}
 > **日期**: {{current_date}}
 > **類別**: [觀念 / 工具 / 新聞 / 策略]
 

@@ -99,7 +99,7 @@ def get_transcript(video_id):
             log(f"Transcript CLI Warning: {e}")
             return None
 
-def analyze_transcript(transcript, video_title="Unknown Video"):
+def analyze_transcript(transcript, video_title="Unknown Video", video_url=""):
     """Sends transcript to LLM for analysis."""
     
     api_key = os.getenv("OPENAI_API_KEY")
@@ -124,6 +124,7 @@ def analyze_transcript(transcript, video_title="Unknown Video"):
     current_date = datetime.now().strftime("%Y-%m-%d")
     system_prompt = system_prompt_template.replace("{{current_date}}", current_date)
     system_prompt = system_prompt.replace("{{video_title}}", video_title)
+    system_prompt = system_prompt.replace("{{video_url}}", video_url)
 
     log("正在傳送請求至 OpenAI...")
     try:
@@ -178,8 +179,9 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
     
     # Fill dynamic variables
     current_date = datetime.now().strftime("%Y-%m-%d")
-    prompt = prompt_template.replace("{{current_date}}", current_date)
+    prompt = prompt.replace("{{current_date}}", current_date)
     prompt = prompt.replace("{{video_title}}", video_title)
+    prompt = prompt.replace("{{video_url}}", youtube_url)
     prompt += "\n\n請直接觀看這個影片並按照上述格式生成筆記。"
     
     log("正在使用 Gemini 直接分析 YouTube 影片...")
@@ -343,7 +345,7 @@ def process_video_pipeline(url):
         raise Exception("嚴重錯誤：無法透過任何方式取得逐字稿。")
     
     log("正在分析內容...")
-    analysis = analyze_transcript(transcript, video_title)
+    analysis = analyze_transcript(transcript, video_title, url)
     
     filename = save_note(analysis, video_id)
     return filename, analysis
