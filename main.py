@@ -107,11 +107,14 @@ async def login(request: Request):
         return RedirectResponse(url="/")
     
     # Determine redirect URI
-    redirect_uri = request.url_for("auth_callback")
-    # Force HTTPS in production
-    # Force HTTPS in production (Render or Cloud Run)
-    if "onrender.com" in str(redirect_uri) or "run.app" in str(redirect_uri):
-        redirect_uri = str(redirect_uri).replace("http://", "https://")
+    redirect_uri = str(request.url_for("auth_callback"))
+    
+    # Force HTTPS in production (non-localhost)
+    # This fixes the 'redirect_uri_mismatch' 400 error on Cloud Run/Render
+    if "localhost" not in redirect_uri and "127.0.0.1" not in redirect_uri:
+        redirect_uri = redirect_uri.replace("http://", "https://")
+    
+    print(f"[Auth] Redirect URI sent to Google: {redirect_uri}") # Debug log
     
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
