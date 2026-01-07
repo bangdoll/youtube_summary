@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## [2.3.0] - 2026-01-07
+
+### ⚡ 核心與穩定性重大升級 (Stability & Core Upgrade)
+
+#### 🚀 核心升級
+- **全面採用 Gemini 3 Flash Preview**：將 AI 核心引擎升級至 `gemini-3-flash-preview`，大幅提升理解能力與回應速度，支援最新的 Google Model 生態。
+- **恢復使用 Google GenAI SDK (v2)**：因應模型升級，切換回 `google-genai` 現代化 SDK，以支援最新的 API 特性。
+
+#### 🐛 錯誤修復
+- **修復 404/429 API 錯誤**：解決了因模型版本 alias (`1.5-flash`) 導致的 404 錯誤，以及實驗模型 (`exp`) 配額為 0 導致的 429 錯誤。現在使用明確指定的 `models/gemini-3-flash-preview` ID。
+- **修復 OAuth 登入迴圈 (Login Failed)**：
+    - 新增 `ProxyHeadersMiddleware` 以在 Cloud Run Load Balancer 後方正確識別 HTTPS 請求。
+    - 鎖定 `SECRET_KEY`，防止 Container 重啟或 Auto-scaling 導致的使用者 Session 失效。
+- **修復下載檔名亂碼**：後端強制淨化檔名 (Sanitization)，移除路徑資訊，解決下載時檔名變成 `_app_..._Notes_` 的問題。
+- **增強 Bot Detection 繞過**：Playwright 策略加入 Desktop User-Agent 偽裝與 Stealth Headers，提升備援下載的成功率。
+
+#### ✨ 功能增強
+- **新增來源連結**：在生成的 Markdown 筆記中自動附上 `[來源: URL]`，方便回溯原始影片。
+- **優化成功訊息**：簡化分析完成後的提示訊息，使其更簡潔易讀。
+
+---
+
 ## [2.1.0] - 2026-01-06
 
 ### 🌟 介面與功能大改版 (Vibe Coding Update)

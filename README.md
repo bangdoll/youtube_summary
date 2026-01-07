@@ -5,8 +5,11 @@
 
 ## ✨ 核心特色 (Unique Selling Points)
 
-### 1. 🧠 Gemini 3.0 核心引擎
-使用最新的 Google Gemini 3.0 模型直接「觀看」與「理解」影片內容。超越傳統逐字稿限制，能夠捕捉語氣、畫面脈絡與深層含義。
+### 1. 🧠 Gemini 3 Flash Preview 核心引擎
+使用 Google 最新的 **Gemini 3 Flash Preview** 模型直接「觀看」與「理解」影片內容。具備極速回應能力與長文本上下文視窗，超越傳統逐字稿限制，能夠捕捉語氣、畫面脈絡與深層含義。
+
+### 1.1 ✨ 來源回溯 (Source Attribution)
+自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
 ### 2. 💰 智慧成本監控 (Smart Cost Control)
 - **Token 級追蹤**：精準計算 GPT-4o Input/Output Token 與 Whisper 分鐘數。
