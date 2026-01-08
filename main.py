@@ -177,7 +177,7 @@ async def get_user(request: Request):
 
 
 @app.get("/api/summarize")
-async def summarize(request: Request, url: str):
+async def summarize(request: Request, url: str, gemini_key: str = None, openai_key: str = None):
     """SSE Endpoint that streams processing logs and final result."""
     # Check authentication
     if is_auth_enabled():
@@ -187,10 +187,11 @@ async def summarize(request: Request, url: str):
                 yield f"data: {json.dumps({'type': 'error', 'message': '❌ 請先登入'})}\\n\\n"
             return StreamingResponse(error_gen(), media_type="text/event-stream")
     
-    return StreamingResponse(event_generator(url), media_type="text/event-stream")
+    return StreamingResponse(event_generator(url, gemini_key, openai_key), media_type="text/event-stream")
 
 
-async def event_generator(url: str):
+
+async def event_generator(url: str, gemini_key: str = None, openai_key: str = None):
     yield f"data: {json.dumps({'type': 'log', 'data': '🔌 連線建立中...'})}\n\n"
     
     if processing_lock.locked():
@@ -227,7 +228,7 @@ async def event_generator(url: str):
         youtube_summary.set_log_callback(log_callback)
         
         executor = ThreadPoolExecutor(max_workers=1)
-        future = loop.run_in_executor(executor, run_processing_safe, url)
+        future = loop.run_in_executor(executor, run_processing_safe, url, gemini_key, openai_key)
         
         start_time = asyncio.get_running_loop().time()
         
@@ -269,9 +270,9 @@ async def event_generator(url: str):
         youtube_summary.set_log_callback(print)
 
 
-def run_processing_safe(url):
+def run_processing_safe(url, gemini_key=None, openai_key=None):
     """Wrapper to run the pipeline."""
-    return youtube_summary.process_video_pipeline(url)
+    return youtube_summary.process_video_pipeline(url, gemini_key=gemini_key, openai_key=openai_key)
 
 
 if __name__ == "__main__":

@@ -105,12 +105,12 @@ def get_transcript(video_id):
             log(f"Transcript CLI Warning: {e}")
             return None
 
-def analyze_transcript(transcript, video_title="Unknown Video", video_url=""):
+def analyze_transcript(transcript, video_title="Unknown Video", video_url="", openai_api_key=None):
     """Sends transcript to LLM for analysis."""
     
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
     if not api_key:
-        error_msg = "錯誤：在環境變數或 .env 檔案中找不到 OPENAI_API_KEY。\n請在您的 .env 檔案中設定：OPENAI_API_KEY=sk-..."
+        error_msg = "錯誤：找不到 OpenAI API Key。請設定環境變數或在網頁端輸入您的金鑰。"
         log(error_msg)
         raise Exception(error_msg)
         
@@ -158,7 +158,7 @@ def analyze_transcript(transcript, video_title="Unknown Video", video_url=""):
         raise Exception(f"呼叫 OpenAI API 時發生錯誤: {e}")
 
 
-def analyze_with_gemini(youtube_url, video_title="Unknown"):
+def analyze_with_gemini(youtube_url, video_title="Unknown", api_key=None):
     """
     Analyzes a YouTube video directly using Gemini.
     No need to download or transcribe - Gemini can watch the video!
@@ -166,9 +166,9 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
     from google import genai
     from google.genai import types
     
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = api_key or os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        error_msg = "錯誤：找不到 GOOGLE_API_KEY 環境變數。"
+        error_msg = "錯誤：找不到 Google Gemini API Key。請設定環境變數或在網頁端輸入您的金鑰。"
         log(error_msg)
         raise Exception(error_msg)
     
@@ -213,13 +213,13 @@ def analyze_with_gemini(youtube_url, video_title="Unknown"):
         # Check for "Too many images" or "Invalid Argument" which implies video is too long for direct processing
         if "400" in error_str and ("images" in error_str or "INVALID_ARGUMENT" in error_str):
             log("⚠️ 影片過長 (超過 3 小時或幀數限制)，切換至 Audio Upload 模式...")
-            return analyze_long_video_fallback(client, youtube_url, prompt_template, video_title)
+            return analyze_long_video_fallback(client, youtube_url, prompt_template, video_title, api_key)
             
         log(f"Gemini 分析失敗: {e}")
         # If it's another error, we let it fall back to Transcript method
         raise e
 
-def analyze_long_video_fallback(client, youtube_url, prompt_template, video_title):
+def analyze_long_video_fallback(client, youtube_url, prompt_template, video_title, api_key=None):
     """
     Fallback for long videos: Download audio -> Upload to Gemini -> Analyze Audio File.
     This bypasses the video frame limit.
@@ -438,7 +438,7 @@ def get_video_info(url):
         raise e
 
     
-def process_video_pipeline(url):
+def process_video_pipeline(url, gemini_key=None, openai_key=None):
     """Orchestrates the video processing pipeline. Returns (filename, note_content)."""
     # Ensure cookies are set up (env var -> file)
     setup_cookies()
@@ -460,11 +460,11 @@ def process_video_pipeline(url):
         log(f"警告：無法取得影片標題 ({e})。繼續執行。")
     
     # === METHOD 1: Try Gemini Direct Analysis (Best - no download needed!) ===
-    google_api_key = os.getenv("GOOGLE_API_KEY")
+    google_api_key = gemini_key or os.getenv("GOOGLE_API_KEY")
     if google_api_key:
         try:
             log("嘗試使用 Gemini 直接分析影片...")
-            analysis = analyze_with_gemini(canonical_url, video_title)
+            analysis = analyze_with_gemini(canonical_url, video_title, api_key=google_api_key)
             filename = save_note(analysis, video_id)
             return filename, analysis
         except Exception as e:
@@ -485,7 +485,7 @@ def process_video_pipeline(url):
         raise Exception("嚴重錯誤：無法透過任何方式取得逐字稿。")
     
     log("正在分析內容...")
-    analysis = analyze_transcript(transcript, video_title, url)
+    analysis = analyze_transcript(transcript, video_title, url, openai_api_key=openai_key)
     
     filename = save_note(analysis, video_id)
     return filename, analysis

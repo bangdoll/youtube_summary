@@ -54,9 +54,35 @@
 
     <!-- User Info Bar (shown when logged in) -->
     <div id="userBar" class="user-bar hidden">
+        <button id="settingsBtn" class="settings-btn" title="設定 API Key"><i class="ri-settings-3-line"></i></button>
         <img id="userAvatar" src="" alt="avatar" class="user-avatar">
         <span id="userName"></span>
         <a href="/auth/logout" class="logout-btn"><i class="ri-logout-box-line"></i></a>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay hidden">
+        <div class="modal-content settings-content">
+            <div class="settings-header">
+                <h2><i class="ri-key-2-line"></i> 自訂 API 金鑰</h2>
+                <button id="closeSettingsBtn" class="close-btn"><i class="ri-close-line"></i></button>
+            </div>
+            <p class="settings-desc">若您擁有自己的 API Key，請在此設定。系統將優先使用您的金鑰進行分析，這能確保您隨時有足夠的配額。</p>
+            
+            <div class="input-group">
+                <label><i class="ri-google-fill"></i> Google Gemini API Key</label>
+                <input type="password" id="geminiKeyInput" placeholder="AIzaSy...">
+                <small>用於影片理解與超長影片分析 (Gemini 3 Flash)</small>
+            </div>
+
+            <div class="input-group">
+                <label><i class="ri-openai-fill"></i> OpenAI API Key</label>
+                <input type="password" id="openaiKeyInput" placeholder="sk-...">
+                <small>用於逐字稿分析 (Fallback 模式)</small>
+            </div>
+
+            <button id="saveSettingsBtn" class="save-btn">儲存設定</button>
+        </div>
     </div>
 
     <div class="bg-glow"></div>

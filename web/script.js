@@ -24,6 +24,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const landingSection = document.getElementById('landingSection');
     const inputSection = document.getElementById('inputSection');
 
+    // Settings Modal Elements
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    const geminiKeyInput = document.getElementById('geminiKeyInput');
+    const openaiKeyInput = document.getElementById('openaiKeyInput');
+
+    // Load API Keys from local storage
+    loadSettings();
+
     // Check authentication on page load
     checkAuth();
 
@@ -80,7 +91,62 @@ document.addEventListener('DOMContentLoaded', () => {
                 copyBtn.innerHTML = originalText;
             }, 2000);
         });
+    copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(currentResult).then(() => {
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="ri-check-line"></i> 已複製！';
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+            }, 2000);
+        });
     });
+
+    // Settings Modal Listeners
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            loadSettings(); // Reload just in case
+            settingsModal.classList.remove('hidden');
+        });
+    }
+
+    if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+    }
+
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', saveSettings);
+    }
+
+    // Close modal on outside click
+    window.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            settingsModal.classList.add('hidden');
+        }
+    });
+
+    function saveSettings() {
+        const geminiKey = geminiKeyInput.value.trim();
+        const openaiKey = openaiKeyInput.value.trim();
+
+        if (geminiKey) localStorage.setItem('gemini_api_key', geminiKey);
+        else localStorage.removeItem('gemini_api_key');
+
+        if (openaiKey) localStorage.setItem('openai_api_key', openaiKey);
+        else localStorage.removeItem('openai_api_key');
+
+        alert('設定已儲存！將優先使用您的 API Key 進行分析。');
+        settingsModal.classList.add('hidden');
+    }
+
+    function loadSettings() {
+        const geminiKey = localStorage.getItem('gemini_api_key');
+        const openaiKey = localStorage.getItem('openai_api_key');
+
+        if (geminiKey && geminiKeyInput) geminiKeyInput.value = geminiKey;
+        if (openaiKey && openaiKeyInput) openaiKeyInput.value = openaiKey;
+    }
 
     downloadBtn.addEventListener('click', () => {
         const blob = new Blob([currentResult], { type: 'text/markdown' });
@@ -120,7 +186,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Connect to SSE (session-based auth, no password needed)
-        const sseUrl = `/api/summarize?url=${encodeURIComponent(url)}`;
+        // Connect to SSE (session-based auth, no password needed)
+        // Inject API Keys from Local Storage
+        const geminiKey = localStorage.getItem('gemini_api_key') || "";
+        const openaiKey = localStorage.getItem('openai_api_key') || "";
+        
+        const sseUrl = `/api/summarize?url=${encodeURIComponent(url)}&gemini_key=${encodeURIComponent(geminiKey)}&openai_key=${encodeURIComponent(openaiKey)}`;
         currentEventSource = new EventSource(sseUrl);
 
         currentEventSource.onmessage = function (event) {
