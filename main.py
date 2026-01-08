@@ -180,12 +180,27 @@ async def get_user(request: Request):
 async def summarize(request: Request, url: str, gemini_key: str = None, openai_key: str = None):
     """SSE Endpoint that streams processing logs and final result."""
     # Check authentication
-    if is_auth_enabled():
+    # Logic:
+    # 1. If User provides Key -> Allow (BYOK Mode)
+    # 2. If User Logged In & Authorized -> Allow (Server Key Mode)
+    # 3. Else -> Deny
+    
+    is_authorized = False
+    
+    # Check for BYOK
+    if gemini_key or openai_key:
+        is_authorized = True
+    
+    # Check for Login (if not already authorized via BYOK)
+    if not is_authorized and is_auth_enabled():
         user_email = get_user_email(request)
-        if not user_email or not is_allowed_user(user_email):
-            async def error_gen():
-                yield f"data: {json.dumps({'type': 'error', 'message': '❌ 請先登入'})}\\n\\n"
-            return StreamingResponse(error_gen(), media_type="text/event-stream")
+        if user_email and is_allowed_user(user_email):
+            is_authorized = True
+            
+    if not is_authorized:
+        async def error_gen():
+            yield f"data: {json.dumps({'type': 'error', 'message': '❌ 請先登入或在設定中填入您的 API Key'})}\\n\\n"
+        return StreamingResponse(error_gen(), media_type="text/event-stream")
     
     return StreamingResponse(event_generator(url, gemini_key, openai_key), media_type="text/event-stream")
 

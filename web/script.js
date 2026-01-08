@@ -44,10 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
 
             if (data.auth_required && !data.logged_in) {
-                // Not logged in -> Show Landing Page
-                landingSection.classList.remove('hidden');
-                inputSection.classList.add('hidden');
-                loginModal.classList.add('hidden'); // Ensure modal is closed
+                // Public Access Mode (BYOK)
+                // Always show accessible UI
+                landingSection.classList.add('hidden');
+                inputSection.classList.remove('hidden');
+                loginModal.classList.add('hidden');
+
+                // Optionally show a toast or message? No, keep it clean.
             } else {
                 // Logged in (or Local mode) -> Show Feature
                 landingSection.classList.add('hidden');
