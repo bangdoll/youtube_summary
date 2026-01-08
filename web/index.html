@@ -53,11 +53,14 @@
     </div>
 
     <!-- User Info Bar (shown when logged in) -->
-    <div id="userBar" class="user-bar hidden">
+    <!-- Top Navigation (Always Visible) -->
+    <div id="topNav" class="user-bar">
         <button id="settingsBtn" class="settings-btn" title="設定 API Key"><i class="ri-settings-3-line"></i></button>
-        <img id="userAvatar" src="" alt="avatar" class="user-avatar">
-        <span id="userName"></span>
-        <a href="/auth/logout" class="logout-btn"><i class="ri-logout-box-line"></i></a>
+        <div id="userInfo" class="user-info-group hidden">
+            <img id="userAvatar" src="" alt="avatar" class="user-avatar">
+            <span id="userName"></span>
+            <a href="/auth/logout" class="logout-btn"><i class="ri-logout-box-line"></i></a>
+        </div>
     </div>
 
     <!-- Settings Modal -->

@@ -683,6 +683,12 @@ button#submitBtn:disabled {
     z-index: 100;
 }
 
+.user-info-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .user-avatar {
     width: 32px;
     height: 32px;

@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // OAuth elements
     const loginModal = document.getElementById('loginModal');
-    const userBar = document.getElementById('userBar');
+    const userInfo = document.getElementById('userInfo'); // was userBar
     const userAvatar = document.getElementById('userAvatar');
     const userName = document.getElementById('userName');
 
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (user.email && user.email !== 'local') {
                 userAvatar.src = user.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name);
                 userName.textContent = user.name || user.email;
-                userBar.classList.remove('hidden');
+                if (userInfo) userInfo.classList.remove('hidden');
             }
         } catch (e) {
             console.log('Failed to load user info');
