@@ -83,14 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') startAnalysis();
     });
 
-    copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(currentResult).then(() => {
-            const originalText = copyBtn.innerHTML;
-            copyBtn.innerHTML = '<i class="ri-check-line"></i> 已複製！';
-            setTimeout(() => {
-                copyBtn.innerHTML = originalText;
-            }, 2000);
-        });
+
     copyBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(currentResult).then(() => {
             const originalText = copyBtn.innerHTML;
@@ -190,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Inject API Keys from Local Storage
         const geminiKey = localStorage.getItem('gemini_api_key') || "";
         const openaiKey = localStorage.getItem('openai_api_key') || "";
-        
+
         const sseUrl = `/api/summarize?url=${encodeURIComponent(url)}&gemini_key=${encodeURIComponent(geminiKey)}&openai_key=${encodeURIComponent(openaiKey)}`;
         currentEventSource = new EventSource(sseUrl);
 
