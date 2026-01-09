@@ -17,6 +17,9 @@
 #### 🔄 CI/CD 自動化 (Automated Deployment)
 - **GitHub Actions**：建立 `.github/workflows/deploy.yml`，支援推送到 `main` 分支時自動構建 Docker Image 並部署至 Google Cloud Run。
 
+#### 🆕 品牌重塑 (Rebranding)
+- **Second Brain OS**：專案正式更名為「Second Brain OS (第二大腦作業系統)」，以反映更強大的多模態處理能力 (影片 + 文件)。
+
 #### 📊 NoteSlide 簡報生成 (PowerPoint Generator)
 - **PDF 轉 PPTX**：新增模式切換分頁，支援上傳 NotebookLM 輸出或任何 PDF 文件。
 - **Gemini Vision 識別**：利用多模態視覺模型識別每一頁的標題、內文重點與版面配置。

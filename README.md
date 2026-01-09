@@ -1,7 +1,7 @@
-# Youtube Intelligence Web App (Youtube 智慧大腦)
+# 🧠 Second Brain OS (原: Youtube 智慧大腦)
 
-> **Unlock the Wisdom of Video.**
-> 不僅僅是摘要。這是您的第二大腦，將數小時的影音內容轉化為可執行的結構化洞察。
+> **Unlock the Wisdom of Content.**
+> 不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。
 
 ## ✨ 核心特色 (Unique Selling Points)
 
