@@ -1267,7 +1267,7 @@ button#submitBtn:disabled {
 }
 
 .generate-btn:not(:disabled):hover {
-    transform: translateY(-3px) scale(1.02);
+    transform: scale(1.02);
     box-shadow: 0 8px 25px rgba(138, 43, 226, 0.5);
     filter: brightness(1.1);
 }

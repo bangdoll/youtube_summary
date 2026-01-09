@@ -516,102 +516,105 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Generate Slides
-    // Generate Slides
+    // Generate Slides (Event Delegation)
+    document.body.addEventListener('click', async (e) => {
+        const btn = e.target.closest('#generateSlideBtn');
+        if (!btn) return;
+
+        console.log("Generate Slide Button Clicked (Delegated)");
+        e.stopPropagation();
+
+        // Safety Check
+        if (btn.disabled) {
+            console.warn("Click ignored: Button is disabled");
+            return;
+        }
+
+        const file = selectedPdfFile;
+        if (!file) {
+            console.error("No file selected");
+            alert("未偵測到檔案");
+            return;
+        }
+
+        const geminiKey = localStorage.getItem('gemini_api_key');
+        if (!geminiKey) {
+            console.log("Missing API Key");
+            alert('請先在設定中輸入 Google Gemini API Key (BYOK)');
+            settingsModal.classList.remove('hidden');
+            return;
+        }
+
+        // Get Selected Indices
+        const selectedIndices = currentPreviewImages
+            .filter(i => i.selected)
+            .map(i => i.index);
+
+        if (selectedIndices.length === 0) {
+            alert("請至少選擇一頁");
+            return;
+        }
+
+        console.log(`Generating slides for ${selectedIndices.length} pages...`);
+
+        // UI Loading State
+        btn.disabled = true;
+        const originalBtnText = btn.innerHTML;
+        btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('gemini_key', geminiKey);
+        formData.append('selected_pages', JSON.stringify(selectedIndices));
+
+        try {
+            const response = await fetch('/api/generate-slides', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || '生成失敗');
+            }
+
+            console.log("Generation success, downloading...");
+
+            // Handle file download
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+
+            // Get filename from header or default
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let fileName = 'slides.pptx';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (filenameMatch.length === 2) fileName = filenameMatch[1];
+            }
+
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+
+            alert('簡報生成成功！下載即將開始。');
+
+        } catch (error) {
+            console.error("Slide Gen Error:", error);
+            alert(`錯誤: ${error.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnText;
+            }
+        }
+    });
+
     if (generateSlideBtn) {
-        // Initial state: Disabled until pages selected
-        generateSlideBtn.disabled = true;
-
-        generateSlideBtn.onclick = async (e) => {
-            console.log("Generate Slide Button Clicked (onclick event)");
-            e.stopPropagation();
-
-            // Safety Check
-            if (generateSlideBtn.disabled) {
-                console.warn("Click ignored: Button is disabled");
-                return;
-            }
-
-            const file = selectedPdfFile;
-            if (!file) {
-                console.error("No file selected");
-                alert("未偵測到檔案");
-                return;
-            }
-
-            const geminiKey = localStorage.getItem('gemini_api_key');
-            if (!geminiKey) {
-                console.log("Missing API Key");
-                alert('請先在設定中輸入 Google Gemini API Key (BYOK)');
-                settingsModal.classList.remove('hidden');
-                return;
-            }
-
-            // Get Selected Indices
-            const selectedIndices = currentPreviewImages
-                .filter(i => i.selected)
-                .map(i => i.index);
-
-            if (selectedIndices.length === 0) {
-                alert("請至少選擇一頁");
-                return;
-            }
-
-            console.log(`Generating slides for ${selectedIndices.length} pages...`);
-
-            // UI Loading State
-            generateSlideBtn.disabled = true;
-            const originalBtnText = generateSlideBtn.innerHTML;
-            generateSlideBtn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
-
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('gemini_key', geminiKey);
-            formData.append('selected_pages', JSON.stringify(selectedIndices));
-
-            try {
-                const response = await fetch('/api/generate-slides', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error || '生成失敗');
-                }
-
-                console.log("Generation success, downloading...");
-
-                // Handle file download
-                const blob = await response.blob();
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-
-                // Get filename from header or default
-                const contentDisposition = response.headers.get('Content-Disposition');
-                let fileName = 'slides.pptx';
-                if (contentDisposition) {
-                    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                    if (filenameMatch.length === 2) fileName = filenameMatch[1];
-                }
-
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(downloadUrl);
-
-                alert('簡報生成成功！下載即將開始。');
-
-            } catch (error) {
-                console.error("Slide Gen Error:", error);
-                alert(`錯誤: ${error.message}`);
-            } finally {
-                generateSlideBtn.disabled = false;
-                generateSlideBtn.innerHTML = originalBtnText;
-            }
-        };
+        generateSlideBtn.disabled = true; // Initial state
     }
 
     // === Demo Terminal Animation ===
