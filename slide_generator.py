@@ -54,7 +54,7 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
         # 這裡主要依賴 Prompt Engineering 與 JSON Mode
 
         response = client.models.generate_content(
-            model='gemini-2.0-flash-exp',
+            model='gemini-2.0-flash',  # 使用穩定版以獲得較高配額
             contents=[
                 types.Part.from_text(text=prompt),
                 types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
