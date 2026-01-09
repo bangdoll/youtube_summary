@@ -77,6 +77,13 @@ GOOGLE_CLIENT_SECRET=...
 ALLOWED_EMAILS=user@example.com,admin@example.com
 SECRET_KEY=...                  # Session 加密亂數
 
+### 4. 自動部署 (GitHub Actions)
+若要啟用自動部署至 Cloud Run，請在 GitHub Repository Settings -> Secrets and variables -> Actions 新增以下 Secrets:
+
+- **GCP_PROJECT_ID**: Google Cloud 專案 ID
+- **GCP_SA_KEY**: Service Account JSON Key (需具備 Cloud Run Admin 與 Storage Admin 權限)
+- **其他變數**: 建議將 `.env` 中的敏感資訊 (GOOGLE_CLIENT_ID, SECRET_KEY 等) 也設定為 GitHub Secrets，透過 workflow 注入。
+
 # Cost Persistence (Firebase)
 FIREBASE_DB_URL=https://your-project.firebaseio.com/
 FIREBASE_CREDENTIALS={...json content...}

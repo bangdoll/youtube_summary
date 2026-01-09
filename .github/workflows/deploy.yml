@@ -1,0 +1,58 @@
+name: 部署至 Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: asia-east1 # 預設區域，可依需求修改
+  SERVICE_NAME: youtube-summary # Cloud Run 服務名稱
+
+jobs:
+  deploy:
+    name: 構建與部署
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 檢出程式碼 (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Google Cloud 認證 (Auth)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: 設定 Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: 設定 Docker 授權
+        run: |
+          gcloud auth configure-docker
+
+      - name: 構建並推送 Docker 映像檔 (Build & Push)
+        run: |
+          IMAGE_NAME="gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          docker build -t $IMAGE_NAME .
+          docker push $IMAGE_NAME
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+
+      - name: 部署至 Cloud Run (Deploy)
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_NAME }}
+          flags: '--allow-unauthenticated' # 允許公開存取 (因為我們有自己的 Auth 機制)
+          env_vars: |
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            ALLOWED_EMAILS=${{ secrets.ALLOWED_EMAILS }}
+            FIREBASE_CREDENTIALS_JSON=${{ secrets.FIREBASE_CREDENTIALS_JSON }}
+
+      - name: 顯示部署結果
+        run: echo "部署成功！服務網址：${{ steps.deploy.outputs.url }}"

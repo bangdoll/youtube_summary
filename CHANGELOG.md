@@ -14,6 +14,9 @@
 - **申請引導連結**：在輸入框下方新增「取得 API Key」的官方連結，引導新用戶快速申請 Google AI Studio 或 OpenAI Platform 金鑰。
 - **介面優化**：重構頂部導航列 (Top Nav)，確保設定按鈕在任何狀態下皆可見，使用者資訊則僅在登入後顯示。
 
+#### 🔄 CI/CD 自動化 (Automated Deployment)
+- **GitHub Actions**：建立 `.github/workflows/deploy.yml`，支援推送到 `main` 分支時自動構建 Docker Image 並部署至 Google Cloud Run。
+
 #### 📊 NoteSlide 簡報生成 (PowerPoint Generator)
 - **PDF 轉 PPTX**：新增模式切換分頁，支援上傳 NotebookLM 輸出或任何 PDF 文件。
 - **Gemini Vision 識別**：利用多模態視覺模型識別每一頁的標題、內文重點與版面配置。
