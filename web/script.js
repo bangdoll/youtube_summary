@@ -517,22 +517,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // === Global Generation Function (Bulletproof for click handling) ===
+    // === Global Generation Function (Bulletproof for click handling) ===
     window.generateSlides = async function () {
         const btn = document.getElementById('generateSlideBtn');
         if (!btn) return;
 
-        console.log("Generate Slide Button Clicked (Global Function)");
+        console.log(">>> Generate Slide Button Clicked (Global Function) <<<");
+        console.log("Button Disabled State:", btn.disabled);
+        console.log("Selected PDF:", selectedPdfFile);
+
+        // Immediate Feedback to prove click reception
+        const originalText = btn.innerHTML;
+        // Don't change text yet if disabled, just log
 
         // Safety Check
         if (btn.disabled) {
             console.warn("Click ignored: Button is disabled");
-            return;
+            // FORCE ENABLE if it was disabled by mistake? 
+            // This is a "Heal" strategy.
+            // If user clicks and it's disabled, maybe we should check if we can enable it?
+            // Re-run validation:
+            if (selectedPdfFile && currentPreviewImages.some(i => i.selected)) {
+                console.warn("Button was disabled but valid state detected. Re-enabling and proceeding...");
+                btn.disabled = false;
+                // Continues...
+            } else {
+                return;
+            }
         }
 
         const file = selectedPdfFile;
         if (!file) {
             console.error("No file selected");
-            alert("未偵測到檔案");
+            alert("未偵測到檔案 (Internal State Missing)");
             return;
         }
 

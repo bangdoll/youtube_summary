@@ -1256,6 +1256,8 @@ button#submitBtn:disabled {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-top: 1.5rem;
     box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+    position: relative;
+    z-index: 100;
 }
 
 .generate-btn:disabled {
