@@ -50,22 +50,28 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         
         prompt = """
         你是一位專業的簡報設計顧問 (Presentation Consultant)。
-        請分析這張投影片，提取核心洞察並建議最佳的 PPTX 重製版型。
+        請分析這張簡報投影片圖片，並提取結構化內容。
         
-        請以對應的繁體中文 JSON 格式回傳：
+        請以 JSON 格式回傳，包含以下欄位：
         {
-            "title": "精簡有力的標題 (不超過 20 字)",
-            "content": ["關鍵洞察 1", "關鍵數據/論點 2", "行動建議 3"], 
-            "layout": "split_left_image", 
-            "speaker_notes": "演講者備忘錄 (口語化，解釋圖表或延伸觀點)"
+            "title": "投影片標題 (若無則自行總結)",
+            "content": ["重點1", "重點2", "重點3"],
+            "speaker_notes": "演講者備忘錄 (口語化，解釋圖表或延伸觀點)",
+            "layout": "layout_type",
+            "main_image_bbox": [ymin, xmin, ymax, xmax] 
         }
+
+        關於 "main_image_bbox" (重要的裁切功能!!!):
+        - 請精確偵測畫面中「主要圖片/圖表/架構圖」的邊界框 (Bounding Box)。
+        - 座標範圍請使用 0-1000 的整數 (normalized coordinate)。格式為 [ymin, xmin, ymax, xmax]。
+        - **非常重要**：請盡量「排除」標題文字、頁碼、與右側的 Bullet Points 文字。我只需要圖片/圖表本身。
+        - 如果整頁都是文字而沒有明顯的圖片，請回傳 null 或 []。
+        - 如果整頁都是圖 (如全版照片)，請回傳 [0, 0, 1000, 1000]。
         
         關於 "layout" 欄位，請從以下選擇最適合的一個：
         - "split_left_image": 圖像包含重要細節 (如複雜圖表、架構圖)，需保留左側大圖。
         - "full_width_text": 圖像僅為裝飾 (如插圖) 或文字量大，適合全寬文字排版。
         - "comparison": 內容包含明顯的對比 (如 Before/After)，適合左右並列。
-        
-        請確保內容不僅是「描述圖片」，而是提取「核心價值」與「商業洞察」。
         """
 
         for attempt in range(max_retries):
@@ -113,7 +119,8 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                         "title": "分析暫時無法使用",
                         "content": [f"錯誤: {error_str}", "請稍後再試或更換 API Key"],
                         "layout": "split_left_image",
-                        "speaker_notes": "系統無法讀取此頁面。"
+                        "speaker_notes": "系統無法讀取此頁面。",
+                        "main_image_bbox": None
                     }
     except Exception as e:
         logger.error(f"分析函式發生外層錯誤: {e}")
@@ -138,13 +145,49 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
         background = slide.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = RGBColor(17, 17, 17) # 深灰黑背景
+        fill.fore_color.rgb = RGBColor(24, 24, 27) # Zinc-900
         
-        layout_type = slide_data.get("layout", "split_left_image")
+        # 2. 處理圖片 (如果有的話)
+        layout_type = slide_data.get('layout', 'split_left_image')
         
-        # --- Layout Logic ---
+        # Determine image source
+        img_source = None
+        img_byte_arr = None # Initialize outside conditional
+        if i < len(images):
+            original_img = images[i]
+            
+            # --- Smart Crop Logic ---
+            bbox = slide_data.get('main_image_bbox')
+            if bbox and isinstance(bbox, list) and len(bbox) == 4:
+                try:
+                    # Bbox format: [ymin, xmin, ymax, xmax] (0-1000)
+                    ymin, xmin, ymax, xmax = bbox
+                    # Validation
+                    if 0 <= xmin < xmax <= 1000 and 0 <= ymin < ymax <= 1000:
+                        w, h = original_img.size
+                        left = int(xmin / 1000 * w)
+                        top = int(ymin / 1000 * h)
+                        right = int(xmax / 1000 * w)
+                        bottom = int(ymax / 1000 * h)
+                        
+                        logger.info(f"Slide {i+1}: Cropping image to ({left}, {top}, {right}, {bottom})")
+                        img_source = original_img.crop((left, top, right, bottom))
+                    else:
+                         img_source = original_img # Invalid bbox
+                except Exception as e:
+                    logger.error(f"Crop failed: {e}")
+                    img_source = original_img
+            else:
+                img_source = original_img # No bbox found
+            
+            if img_source: # Only process if an image source is determined
+                img_byte_arr = io.BytesIO()
+                img_source.save(img_byte_arr, format='JPEG', quality=95)
+                img_byte_arr.seek(0)
+            
         
-        if layout_type == "full_width_text":
+        # 版型分流
+        if layout_type == 'full_width_text':
             # --- 全寬文字版型 ---
             
             # 1. 標題居中/置頂
@@ -173,34 +216,25 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     p.level = 0
             
             # 3. 圖片 (縮小放在右下角裝飾，或是背景浮水印? 這裡先放右下小圖)
-            if i < len(images):
-                img_byte_arr = io.BytesIO()
-                images[i].save(img_byte_arr, format='PNG')
-                img_byte_arr.seek(0)
+            if img_byte_arr: # Use the potentially cropped image if available
                 slide.shapes.add_picture(img_byte_arr, Inches(10.5), Inches(5.5), width=Inches(2.5))
                 
         else:
             # --- 預設：左圖右文 (split_left_image) ---
             
             # 左側圖片 (Fit into Left Half to prevent overlap)
-            if i < len(images):
-                img_byte_arr = io.BytesIO()
-                images[i].save(img_byte_arr, format='PNG')
-                img_byte_arr.seek(0)
-                
+            # 左側圖片 (Fit into Left Half to prevent overlap)
+            if img_source and img_byte_arr:
                 # Layout Config
                 left_box_w = Inches(6.5) # Approx 50% of 13.33 inches
                 left_box_h = prs.slide_height
                 
-                # Get Aspect Ratio
-                img_w, img_h = images[i].size
+                # Get Aspect Ratio from SOURCE (Cropped or Original)
+                img_w, img_h = img_source.size
                 if img_h == 0: img_h = 1 # Safety
                 aspect = img_w / img_h
                 
                 # Calculate Box Aspect Ratio
-                # Inches is a Quantity, retrieve value if needed, but ratio handles it
-                # prs.slide_height is usually 7.5 inches = 6858000 EMU
-                # left_box_w = 5943600 EMU
                 box_aspect = left_box_w / left_box_h
                 
                 if aspect > box_aspect:
