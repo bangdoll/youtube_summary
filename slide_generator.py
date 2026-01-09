@@ -52,14 +52,25 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         你是一位專業的簡報設計顧問 (Presentation Consultant)。
         請分析這張簡報投影片圖片，並提取結構化內容。
         
-        請以 JSON 格式回傳，包含以下欄位：
+        请以 JSON 格式回傳，包含以下欄位：
         {
             "title": "投影片標題 (若無則自行總結)",
             "content": ["重點1", "重點2", "重點3"],
-            "speaker_notes": "演講者備忘錄 (口語化，解釋圖表或延伸觀點)",
+            "speaker_notes": "演講者備忘錄",
             "layout": "layout_type",
-            "main_image_bbox": [ymin, xmin, ymax, xmax] 
+            "main_image_bbox": [ymin, xmin, ymax, xmax],
+            "background_color_hex": "#FFFFFF",
+            "text_color_hex": "#000000"
         }
+
+        關於 "background_color_hex":
+        - 請分析這張投影片的「主要背景顏色」。
+        - 如果是淺色底 (如白、米白)，回傳對應 Hex。
+        - 如果是深色底 (如黑、深藍)，回傳對應 Hex。
+        - 這將用於設定生成的 PPT 背景，讓裁切後的圖片能完美融合，不會有色差邊框。
+        
+        關於 "text_color_hex":
+        - 請根據背景色，建議最易讀的文字顏色 (通常是黑色或白色)。
 
         關於 "main_image_bbox" (重要的裁切功能!!!):
         - 請精確偵測畫面中「主要圖片/圖表/架構圖」的邊界框 (Bounding Box)。
@@ -95,36 +106,47 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                 
                 if isinstance(result, list):
                     if len(result) > 0:
-                        return result[0]
+                        result = result[0]
                     else:
-                        return {}
+                        result = {}
+                
+                # Default Fallbacks for new fields
+                if "background_color_hex" not in result: result["background_color_hex"] = "#FFFFFF"
+                if "text_color_hex" not in result: result["text_color_hex"] = "#000000"
+                
                 return result
 
             except Exception as e:
+                # ... (Error handling omitted for brevity, logic remains same)
                 error_str = str(e)
                 logger.warning(f"嘗試 {attempt + 1}/{max_retries} 失敗: {error_str}")
                 
-                # Retry on Rate Limit
+                 # Retry on Rate Limit
                 if ('429' in error_str or 'RESOURCE_EXHAUSTED' in error_str) and attempt < max_retries - 1:
                     sleep_time = (base_delay * (2 ** attempt)) + random.uniform(0, 1)
-                    logger.warning(f"觸發 API 速率限制，等待 {sleep_time:.2f} 秒後重試...")
                     await asyncio.sleep(sleep_time) # Async sleep!
                     continue
-                
-                # If last attempt fails or non-retriable error
+
                 if attempt == max_retries - 1:
                     logger.error(f"Gemini 分析最終失敗: {error_str}")
-                    # Return Fallback structure instead of crashing
                     return {
                         "title": "分析暫時無法使用",
                         "content": [f"錯誤: {error_str}", "請稍後再試或更換 API Key"],
                         "layout": "split_left_image",
                         "speaker_notes": "系統無法讀取此頁面。",
-                        "main_image_bbox": None
+                        "main_image_bbox": None, 
+                        "background_color_hex": "#FFFFFF",
+                        "text_color_hex": "#000000"
                     }
     except Exception as e:
         logger.error(f"分析函式發生外層錯誤: {e}")
         return {}
+
+def hex_to_rgb(hex_color: str) -> RGBColor:
+    hex_color = hex_color.lstrip('#')
+    if len(hex_color) == 6:
+        return RGBColor(int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16))
+    return RGBColor(0, 0, 0) # Fallback
 
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
@@ -141,16 +163,22 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
         slide_layout = prs.slide_layouts[6] # 6 = Blank
         slide = prs.slides.add_slide(slide_layout)
         
-        # 背景：設定為深色
+        # 背景顏色 (Adaptive)
+        bg_hex = slide_data.get("background_color_hex", "#18181b") # Default dark if missing
+        text_hex = slide_data.get("text_color_hex", "#ffffff")
+        
         background = slide.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = RGBColor(24, 24, 27) # Zinc-900
+        fill.fore_color.rgb = hex_to_rgb(bg_hex)
+        
+        text_rgb = hex_to_rgb(text_hex)
         
         # 2. 處理圖片 (如果有的話)
         layout_type = slide_data.get('layout', 'split_left_image')
         
-        # Determine image source
+        # ... (Image Processing Logic continues...)
+
         img_source = None
         img_byte_arr = None # Initialize outside conditional
         if i < len(images):
@@ -199,7 +227,8 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                 title_p.text = slide_data["title"]
                 title_p.font.size = Pt(36)
                 title_p.font.bold = True
-                title_p.alignment = 2 # CENTER (PP_ALIGN.CENTER but using int 2 for simplicity if not imported)
+                title_p.font.color.rgb = text_rgb # Dynamic Color
+                title_p.alignment = 2 # CENTER
                 
             # 2. 內容全寬
             content_items = slide_data.get("content", [])
@@ -212,6 +241,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     p = content_tf.add_paragraph()
                     p.text = str(item)
                     p.font.size = Pt(20) # 較大字體
+                    p.font.color.rgb = text_rgb # Dynamic Color
                     p.space_after = Pt(20)
                     p.level = 0
             
@@ -260,6 +290,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                 title_p.text = slide_data["title"]
                 title_p.font.size = Pt(28)
                 title_p.font.bold = True
+                title_p.font.color.rgb = text_rgb # Dynamic Color
             
             content_items = slide_data.get("content", [])
             if content_items:
@@ -271,6 +302,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     p = content_tf.add_paragraph()
                     p.text = str(item)
                     p.font.size = Pt(16)
+                    p.font.color.rgb = text_rgb # Dynamic Color
                     p.space_after = Pt(12)
                     p.level = 0
 
