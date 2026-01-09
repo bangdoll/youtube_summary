@@ -247,6 +247,11 @@ def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
         logger.error(f"預覽生成失敗: {e}")
         raise ValueError(f"無法生成預覽: {e}")
 
+import asyncio
+
+# ... (Previous imports should be preserved, but I need to add asyncio at top ideally, but I can add here or assume added).
+# Actually better to add import at top. But for this tool I'll focus on the function body.
+
 async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None) -> str:
     """
     主要流程：PDF -> 圖片 -> Gemini 分析 -> PPTX
@@ -255,9 +260,9 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
     """
     logger.info(f"開始處理 PDF: {filename}")
     
-    # 1. PDF 轉圖片
+    # 1. PDF 轉圖片 (Blocking operation, run in thread)
     try:
-        images = convert_from_bytes(pdf_bytes)
+        images = await asyncio.to_thread(convert_from_bytes, pdf_bytes)
         logger.info(f"成功將 PDF 轉換為 {len(images)} 張圖片")
         
         # 過濾頁面
@@ -266,8 +271,6 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
                 # 確保 indices 為整數且在範圍內
                 valid_indices = [i for i in selected_indices if 0 <= i < len(images)]
                 if valid_indices:
-                    # 按照 user 選擇的順序重新排列 (或是保持原本順序但過濾)
-                    # 這裡假設 user 想要保持順序
                     valid_indices.sort()
                     images = [images[i] for i in valid_indices]
                     logger.info(f"篩選後剩餘 {len(images)} 頁 (Indices: {valid_indices})")
@@ -284,12 +287,14 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
     analyses = []
     for i, img in enumerate(images):
         logger.info(f"正在分析第 {i+1}/{len(images)} 頁...")
-        result = analyze_slide_with_gemini(img, api_key)
-        analyses.append(result)
         
+        # Use to_thread to prevent blocking event loop with sync Gemini call
+        result = await asyncio.to_thread(analyze_slide_with_gemini, img, api_key)
+        analyses.append(result)
+
         # Throttling to avoid Rate Limit (Free Tier ~15 RPM)
         if i < len(images) - 1:
-            time.sleep(2)
+            await asyncio.sleep(2)
 
     # 3. 生成 PPTX
     output_dir = "temp_slides"
@@ -298,7 +303,7 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
     base_name = os.path.splitext(filename)[0]
     output_path = os.path.join(output_dir, f"{base_name}_converted.pptx")
     
-    # 傳入 images 進行圖文整合排版
-    create_pptx_from_analysis(analyses, images, output_path)
+    # 傳入 images 進行圖文整合排版 (Blocking I/O)
+    await asyncio.to_thread(create_pptx_from_analysis, analyses, images, output_path)
     
     return output_path
