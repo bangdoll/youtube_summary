@@ -81,39 +81,78 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
             "speaker_notes": "系統無法讀取此頁面。"
         }
 
-def create_pptx_from_analysis(analyses: List[dict], output_path: str):
+def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
-    根據分析結果生成 PPTX 檔案。
+    根據分析結果與原始圖片生成 PPTX 檔案 (Split Layout: 左圖右文)。
     """
     prs = Presentation()
     
-    # 定義母片樣式 (簡單深色主題)
-    # 這裡使用預設樣式，實務上可以載入自定義 template.pptx
+    # 設定 16:9 寬螢幕
+    prs.slide_width = Inches(13.333)
+    prs.slide_height = Inches(7.5)
     
-    for slide_data in analyses:
-        # 選擇版型 (1 = Title and Content)
-        slide_layout = prs.slide_layouts[1] 
+    for i, slide_data in enumerate(analyses):
+        # 建立空白投影片
+        slide_layout = prs.slide_layouts[6] # 6 = Blank
         slide = prs.slides.add_slide(slide_layout)
         
-        # 設定標題
-        title = slide.shapes.title
-        if title and slide_data.get("title"):
-            title.text = slide_data["title"]
-            
-        # 設定內容
-        body_shape = slide.placeholders[1]
-        tf = body_shape.text_frame
+        # 背景：設定為深色
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = 0x111111 # 深灰黑背景
         
-        content_items = slide_data.get("content", [])
-        if content_items:
-            tf.text = content_items[0] # 第一點
+        # --- 左側：原始 PDF 圖片 (佔 60% 寬度) ---
+        if i < len(images):
+            # 儲存圖片到記憶體
+            img_byte_arr = io.BytesIO()
+            images[i].save(img_byte_arr, format='PNG')
+            img_byte_arr.seek(0)
             
+            pic_height = prs.slide_height
+            # 圖片置左，佔據約 60% 寬度 (約 8 英吋)
+            slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), height=pic_height)
+            
+        # --- 右側：AI 分析內容 (佔 40% 寬度) ---
+        text_left = Inches(7.8) 
+        text_top = Inches(0.5)
+        text_width = Inches(5.0)
+        
+        # 1. 標題文字框
+        if slide_data.get("title"):
+            title_box = slide.shapes.add_textbox(text_left, text_top, text_width, Inches(1.5))
+            title_kf = title_box.text_frame
+            title_kf.word_wrap = True
+            
+            title_p = title_kf.paragraphs[0]
+            title_p.text = slide_data["title"]
+            title_p.font.size = Pt(28)
+            title_p.font.bold = True
+        
+        # 2. 內容文字框
+        content_top = Inches(2.2)
+        content_items = slide_data.get("content", [])
+        
+        if content_items:
+            content_box = slide.shapes.add_textbox(text_left, content_top, text_width, Inches(4.5))
+            content_tf = content_box.text_frame
+            content_tf.word_wrap = True
+            
+            # 第一點
+            p = content_tf.paragraphs[0]
+            p.text = str(content_items[0])
+            p.font.size = Pt(16)
+            p.space_after = Pt(12)
+            
+            # 後續點
             for item in content_items[1:]:
-                p = tf.add_paragraph()
-                p.text = item
+                p = content_tf.add_paragraph()
+                p.text = str(item)
+                p.font.size = Pt(16)
+                p.space_after = Pt(12)
                 p.level = 0
                 
-        # 設定備忘錄
+        # --- 演講者備忘錄 ---
         if slide_data.get("speaker_notes"):
             notes_slide = slide.notes_slide
             text_frame = notes_slide.notes_text_frame
@@ -151,6 +190,7 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str) -
     base_name = os.path.splitext(filename)[0]
     output_path = os.path.join(output_dir, f"{base_name}_converted.pptx")
     
-    create_pptx_from_analysis(analyses, output_path)
+    # 傳入 images 進行圖文整合排版
+    create_pptx_from_analysis(analyses, images, output_path)
     
     return output_path
