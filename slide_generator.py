@@ -70,14 +70,19 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
         return json.loads(cleaned_json)
         
     except Exception as e:
-        logger.error(f"Gemini 分析失敗: {e}")
+        error_str = str(e)
+        logger.error(f"Gemini 分析失敗: {error_str}")
         if 'response' in locals() and hasattr(response, 'text'):
              logger.error(f"原始回應: {response.text}")
+        
+        # 檢查是否是 API 配額錯誤，這類錯誤需要向上傳遞
+        if '429' in error_str or 'RESOURCE_EXHAUSTED' in error_str or 'quota' in error_str.lower():
+            raise ValueError(f"API 配額已用盡，請稍後再試或更換 API Key。詳情: {error_str[:200]}")
              
-        # 回傳預設空結構以免整份失敗
+        # 其他錯誤回傳預設空結構以免整份失敗
         return {
             "title": "分析失敗",
-            "content": [f"錯誤: {str(e)}", "請確認您的圖片內容或 API Key 配額"],
+            "content": [f"錯誤: {error_str}", "請確認您的圖片內容或 API Key 配額"],
             "layout": "bullet_points",
             "speaker_notes": "系統無法讀取此頁面。"
         }
