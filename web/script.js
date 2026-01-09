@@ -517,19 +517,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Generate Slides
+    // Generate Slides
     if (generateSlideBtn) {
-        generateSlideBtn.addEventListener('click', async (e) => {
-            console.log("Generate Slide Button Clicked");
+        // Initial state: Disabled until pages selected
+        generateSlideBtn.disabled = true;
+
+        generateSlideBtn.onclick = async (e) => {
+            console.log("Generate Slide Button Clicked (onclick event)");
             e.stopPropagation();
+
+            // Safety Check
+            if (generateSlideBtn.disabled) {
+                console.warn("Click ignored: Button is disabled");
+                return;
+            }
 
             const file = selectedPdfFile;
             if (!file) {
+                console.error("No file selected");
                 alert("未偵測到檔案");
                 return;
             }
 
             const geminiKey = localStorage.getItem('gemini_api_key');
             if (!geminiKey) {
+                console.log("Missing API Key");
                 alert('請先在設定中輸入 Google Gemini API Key (BYOK)');
                 settingsModal.classList.remove('hidden');
                 return;
@@ -544,6 +556,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("請至少選擇一頁");
                 return;
             }
+
+            console.log(`Generating slides for ${selectedIndices.length} pages...`);
 
             // UI Loading State
             generateSlideBtn.disabled = true;
@@ -565,6 +579,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const err = await response.json();
                     throw new Error(err.error || '生成失敗');
                 }
+
+                console.log("Generation success, downloading...");
 
                 // Handle file download
                 const blob = await response.blob();
@@ -595,7 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 generateSlideBtn.disabled = false;
                 generateSlideBtn.innerHTML = originalBtnText;
             }
-        });
+        };
     }
 
     // === Demo Terminal Animation ===
