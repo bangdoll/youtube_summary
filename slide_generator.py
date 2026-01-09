@@ -11,6 +11,8 @@ from google import genai
 from google.genai import types
 import re
 import secrets
+import time
+import random
 
 # 設定日誌
 logging.basicConfig(level=logging.INFO)
@@ -31,80 +33,83 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
     使用 Gemini Vision API 分析單張投影片圖片，提取標題、內文與結構。
     """
     try:
-        client = genai.Client(api_key=api_key)
-        
-        prompt = """
-        你是一位專業的簡報設計顧問 (Presentation Consultant)。
-        請分析這張投影片，提取核心洞察並建議最佳的 PPTX 重製版型。
-        
-        請以對應的繁體中文 JSON 格式回傳：
-        {
-            "title": "精簡有力的標題 (不超過 20 字)",
-            "content": ["關鍵洞察 1", "關鍵數據/論點 2", "行動建議 3"], 
-            "layout": "split_left_image", 
-            "speaker_notes": "演講者備忘錄 (口語化，解釋圖表或延伸觀點)"
-        }
-        
-        關於 "layout" 欄位，請從以下選擇最適合的一個：
-        - "split_left_image": 圖像包含重要細節 (如複雜圖表、架構圖)，需保留左側大圖。
-        - "full_width_text": 圖像僅為裝飾 (如插圖) 或文字量大，適合全寬文字排版。
-        - "comparison": 內容包含明顯的對比 (如 Before/After)，適合左右並列。
-        
-        請確保內容不僅是「描述圖片」，而是提取「核心價值」與「商業洞察」。
-        """
-        
-        # 將 PIL Image 轉為 Bytes
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='JPEG')
-        img_bytes = img_byte_arr.getvalue()
+    max_retries = 3
+    base_delay = 2
+    
+    # 建立 Client
+    client = genai.Client(api_key=api_key)
+    
+    # 準備內容
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='JPEG')
+    img_bytes = img_byte_arr.getvalue()
+    
+    prompt = """
+    你是一位專業的簡報設計顧問 (Presentation Consultant)。
+    請分析這張投影片，提取核心洞察並建議最佳的 PPTX 重製版型。
+    
+    請以對應的繁體中文 JSON 格式回傳：
+    {
+        "title": "精簡有力的標題 (不超過 20 字)",
+        "content": ["關鍵洞察 1", "關鍵數據/論點 2", "行動建議 3"], 
+        "layout": "split_left_image", 
+        "speaker_notes": "演講者備忘錄 (口語化，解釋圖表或延伸觀點)"
+    }
+    
+    關於 "layout" 欄位，請從以下選擇最適合的一個：
+    - "split_left_image": 圖像包含重要細節 (如複雜圖表、架構圖)，需保留左側大圖。
+    - "full_width_text": 圖像僅為裝飾 (如插圖) 或文字量大，適合全寬文字排版。
+    - "comparison": 內容包含明顯的對比 (如 Before/After)，適合左右並列。
+    
+    請確保內容不僅是「描述圖片」，而是提取「核心價值」與「商業洞察」。
+    """
 
-        # 設定安全性以避免誤判 (例如醫學或歷史圖片被當作暴力/不雅)
-        # 注意：Gemini SDK v2 的安全性設定方式可能不同，這裡使用通用寬鬆設定
-        # 若是透過 google-genai SDK，通常預設已較寬鬆，若需調整可參考官方文件
-        # 這裡主要依賴 Prompt Engineering 與 JSON Mode
-
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',  # 使用穩定版以獲得較高配額
-            contents=[
-                types.Part.from_text(text=prompt),
-                types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type='application/json',
-                temperature=0.2 # 降低隨機性以確保 JSON 格式穩定
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=[
+                    types.Part.from_text(text=prompt),
+                    types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type='application/json',
+                    temperature=0.2
+                )
             )
-        )
-        
-        raw_text = response.text
-        cleaned_json = clean_json_string(raw_text)
-        result = json.loads(cleaned_json)
-        
-        # 容錯處理：如果 Gemini 回傳 List，取第一個項目
-        if isinstance(result, list):
-            if len(result) > 0:
-                return result[0]
-            else:
-                return {} # 空 List 回傳空 Dict
-                
-        return result
-        
-    except Exception as e:
-        error_str = str(e)
-        logger.error(f"Gemini 分析失敗: {error_str}")
-        if 'response' in locals() and hasattr(response, 'text'):
-             logger.error(f"原始回應: {response.text}")
-        
-        # 檢查是否是 API 配額錯誤，這類錯誤需要向上傳遞
-        if '429' in error_str or 'RESOURCE_EXHAUSTED' in error_str or 'quota' in error_str.lower():
-            raise ValueError(f"API 配額已用盡，請稍後再試或更換 API Key。詳情: {error_str[:200]}")
-             
-        # 其他錯誤回傳預設空結構以免整份失敗
-        return {
-            "title": "分析失敗",
-            "content": [f"錯誤: {error_str}", "請確認您的圖片內容或 API Key 配額"],
-            "layout": "bullet_points",
-            "speaker_notes": "系統無法讀取此頁面。"
-        }
+            
+            raw_text = response.text
+            cleaned_json = clean_json_string(raw_text)
+            result = json.loads(cleaned_json)
+            
+            if isinstance(result, list):
+                if len(result) > 0:
+                    return result[0]
+                else:
+                    return {}
+            return result
+
+        except Exception as e:
+            error_str = str(e)
+            logger.warning(f"嘗試 {attempt + 1}/{max_retries} 失敗: {error_str}")
+            
+            # Retry on Rate Limit
+            if ('429' in error_str or 'RESOURCE_EXHAUSTED' in error_str) and attempt < max_retries - 1:
+                sleep_time = (base_delay * (2 ** attempt)) + random.uniform(0, 1)
+                logger.warning(f"觸發 API 速率限制，等待 {sleep_time:.2f} 秒後重試...")
+                time.sleep(sleep_time)
+                continue
+            
+            # If last attempt fails or non-retriable error
+            if attempt == max_retries - 1:
+                logger.error(f"Gemini 分析最終失敗: {error_str}")
+                # Return Fallback structure instead of crashing
+                return {
+                    "title": "分析暫時無法使用",
+                    "content": [f"錯誤: {error_str}", "請稍後再試或更換 API Key"],
+                    "layout": "split_left_image",
+                    "speaker_notes": "系統無法讀取此頁面。"
+                }
 
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
@@ -278,6 +283,10 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
         logger.info(f"正在分析第 {i+1}/{len(images)} 頁...")
         result = analyze_slide_with_gemini(img, api_key)
         analyses.append(result)
+        
+        # Throttling to avoid Rate Limit (Free Tier ~15 RPM)
+        if i < len(images) - 1:
+            time.sleep(2)
 
     # 3. 生成 PPTX
     output_dir = "temp_slides"
