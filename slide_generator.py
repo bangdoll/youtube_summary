@@ -34,15 +34,23 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
         client = genai.Client(api_key=api_key)
         
         prompt = """
-        你是一個專業的簡報分析師。請分析這張投影片圖片，並提取結構化資料。
-        請以 JSON 格式回傳，欄位如下：
+        你是一位專業的簡報設計顧問 (Presentation Consultant)。
+        請分析這張投影片，提取核心洞察並建議最佳的 PPTX 重製版型。
+        
+        請以對應的繁體中文 JSON 格式回傳：
         {
-            "title": "投影片標題 (若無則留空)",
-            "content": ["重點1", "重點2", ...],
-            "layout": "bullet_points" (或是 "title_only", "image_with_caption"),
-            "speaker_notes": "演講者備忘錄建議 (繁體中文)"
+            "title": "精簡有力的標題 (不超過 20 字)",
+            "content": ["關鍵洞察 1", "關鍵數據/論點 2", "行動建議 3"], 
+            "layout": "split_left_image", 
+            "speaker_notes": "演講者備忘錄 (口語化，解釋圖表或延伸觀點)"
         }
-        請確保提取的文字準確，若有程式碼請保留格式。
+        
+        關於 "layout" 欄位，請從以下選擇最適合的一個：
+        - "split_left_image": 圖像包含重要細節 (如複雜圖表、架構圖)，需保留左側大圖。
+        - "full_width_text": 圖像僅為裝飾 (如插圖) 或文字量大，適合全寬文字排版。
+        - "comparison": 內容包含明顯的對比 (如 Before/After)，適合左右並列。
+        
+        請確保內容不僅是「描述圖片」，而是提取「核心價值」與「商業洞察」。
         """
         
         # 將 PIL Image 轉為 Bytes
@@ -119,57 +127,83 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
         fill.solid()
         fill.fore_color.rgb = RGBColor(17, 17, 17) # 深灰黑背景
         
-        # --- 左側：原始 PDF 圖片 (佔 60% 寬度) ---
-        if i < len(images):
-            # 儲存圖片到記憶體
-            img_byte_arr = io.BytesIO()
-            images[i].save(img_byte_arr, format='PNG')
-            img_byte_arr.seek(0)
-            
-            pic_height = prs.slide_height
-            # 圖片置左，佔據約 60% 寬度 (約 8 英吋)
-            slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), height=pic_height)
-            
-        # --- 右側：AI 分析內容 (佔 40% 寬度) ---
-        text_left = Inches(7.8) 
-        text_top = Inches(0.5)
-        text_width = Inches(5.0)
+        layout_type = slide_data.get("layout", "split_left_image")
         
-        # 1. 標題文字框
-        if slide_data.get("title"):
-            title_box = slide.shapes.add_textbox(text_left, text_top, text_width, Inches(1.5))
-            title_kf = title_box.text_frame
-            title_kf.word_wrap = True
-            
-            title_p = title_kf.paragraphs[0]
-            title_p.text = slide_data["title"]
-            title_p.font.size = Pt(28)
-            title_p.font.bold = True
+        # --- Layout Logic ---
         
-        # 2. 內容文字框
-        content_top = Inches(2.2)
-        content_items = slide_data.get("content", [])
-        
-        if content_items:
-            content_box = slide.shapes.add_textbox(text_left, content_top, text_width, Inches(4.5))
-            content_tf = content_box.text_frame
-            content_tf.word_wrap = True
+        if layout_type == "full_width_text":
+            # --- 全寬文字版型 ---
             
-            # 第一點
-            p = content_tf.paragraphs[0]
-            p.text = str(content_items[0])
-            p.font.size = Pt(16)
-            p.space_after = Pt(12)
-            
-            # 後續點
-            for item in content_items[1:]:
-                p = content_tf.add_paragraph()
-                p.text = str(item)
-                p.font.size = Pt(16)
-                p.space_after = Pt(12)
-                p.level = 0
+            # 1. 標題居中/置頂
+            if slide_data.get("title"):
+                title_box = slide.shapes.add_textbox(Inches(1), Inches(0.5), Inches(11.3), Inches(1.5))
+                title_tf = title_box.text_frame
+                title_tf.word_wrap = True
+                title_p = title_tf.paragraphs[0]
+                title_p.text = slide_data["title"]
+                title_p.font.size = Pt(36)
+                title_p.font.bold = True
+                title_p.alignment = 2 # CENTER (PP_ALIGN.CENTER but using int 2 for simplicity if not imported)
                 
-        # --- 演講者備忘錄 ---
+            # 2. 內容全寬
+            content_items = slide_data.get("content", [])
+            if content_items:
+                content_box = slide.shapes.add_textbox(Inches(1.5), Inches(2.2), Inches(10.3), Inches(4.5))
+                content_tf = content_box.text_frame
+                content_tf.word_wrap = True
+                
+                for item in content_items:
+                    p = content_tf.add_paragraph()
+                    p.text = str(item)
+                    p.font.size = Pt(20) # 較大字體
+                    p.space_after = Pt(20)
+                    p.level = 0
+            
+            # 3. 圖片 (縮小放在右下角裝飾，或是背景浮水印? 這裡先放右下小圖)
+            if i < len(images):
+                img_byte_arr = io.BytesIO()
+                images[i].save(img_byte_arr, format='PNG')
+                img_byte_arr.seek(0)
+                slide.shapes.add_picture(img_byte_arr, Inches(10.5), Inches(5.5), width=Inches(2.5))
+                
+        else:
+            # --- 預設：左圖右文 (split_left_image) ---
+            
+            # 左側圖片
+            if i < len(images):
+                img_byte_arr = io.BytesIO()
+                images[i].save(img_byte_arr, format='PNG')
+                img_byte_arr.seek(0)
+                pic_height = prs.slide_height
+                slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), height=pic_height)
+            
+            # 右側文字
+            text_left = Inches(7.8)
+            text_width = Inches(5.0)
+            
+            if slide_data.get("title"):
+                title_box = slide.shapes.add_textbox(text_left, Inches(0.5), text_width, Inches(1.5))
+                title_tf = title_box.text_frame
+                title_tf.word_wrap = True
+                title_p = title_tf.paragraphs[0]
+                title_p.text = slide_data["title"]
+                title_p.font.size = Pt(28)
+                title_p.font.bold = True
+            
+            content_items = slide_data.get("content", [])
+            if content_items:
+                content_box = slide.shapes.add_textbox(text_left, Inches(2.2), text_width, Inches(4.5))
+                content_tf = content_box.text_frame
+                content_tf.word_wrap = True
+                
+                for item in content_items:
+                    p = content_tf.add_paragraph()
+                    p.text = str(item)
+                    p.font.size = Pt(16)
+                    p.space_after = Pt(12)
+                    p.level = 0
+
+        # --- 演講者備忘錄 (通用) ---
         if slide_data.get("speaker_notes"):
             notes_slide = slide.notes_slide
             text_frame = notes_slide.notes_text_frame
