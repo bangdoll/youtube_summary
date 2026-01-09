@@ -286,6 +286,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeFileBtn = document.getElementById('removeFileBtn');
     const generateSlideBtn = document.getElementById('generateSlideBtn');
 
+    // 用於存儲拖曳上傳或點擊上傳的檔案
+    let selectedPdfFile = null;
+
     // Tab Switching
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -307,8 +310,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Toggle Features
                         const youtubeFeatures = document.getElementById('youtubeFeatures');
                         const slideFeatures = document.getElementById('slideFeatures');
+                        const youtubeComparison = document.getElementById('youtubeComparison');
                         if (youtubeFeatures) youtubeFeatures.classList.add('hidden');
                         if (slideFeatures) slideFeatures.classList.remove('hidden');
+                        if (youtubeComparison) youtubeComparison.classList.add('hidden');
 
                     } else {
                         appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
@@ -316,8 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Toggle Features
                         const youtubeFeatures = document.getElementById('youtubeFeatures');
                         const slideFeatures = document.getElementById('slideFeatures');
+                        const youtubeComparison = document.getElementById('youtubeComparison');
                         if (youtubeFeatures) youtubeFeatures.classList.remove('hidden');
                         if (slideFeatures) slideFeatures.classList.add('hidden');
+                        if (youtubeComparison) youtubeComparison.classList.remove('hidden');
                     }
                 } else {
                     content.classList.remove('active');
@@ -366,19 +373,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // 儲存檔案到變數 (解決拖曳上傳時 pdfInput.files 為空的問題)
+        selectedPdfFile = file;
+
         fileNameDisplay.textContent = file.name;
         dropZone.classList.add('has-file');
         fileInfo.classList.remove('hidden');
         generateSlideBtn.disabled = false;
-
-        // Hide initial text/icon to clean up UI? 
-        // Maybe keep them but show file info prominently
     }
 
     if (removeFileBtn) {
         removeFileBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Stop bubbling to dropZone
             pdfInput.value = '';
+            selectedPdfFile = null; // 清空存儲的檔案
             fileInfo.classList.add('hidden');
             generateSlideBtn.disabled = true;
             dropZone.classList.remove('has-file');
@@ -388,7 +396,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Generate Slides
     if (generateSlideBtn) {
         generateSlideBtn.addEventListener('click', async () => {
-            const file = pdfInput.files[0];
+            // 優先使用 selectedPdfFile (拖曳上傳)，fallback 到 pdfInput.files (點擊上傳)
+            const file = selectedPdfFile || pdfInput.files[0];
             if (!file) return;
 
             const geminiKey = localStorage.getItem('gemini_api_key');
