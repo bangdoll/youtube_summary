@@ -395,10 +395,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Generate Slides
     if (generateSlideBtn) {
-        generateSlideBtn.addEventListener('click', async () => {
+        generateSlideBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log("Generate Slide Button Clicked!");
+
             // 優先使用 selectedPdfFile (拖曳上傳)，fallback 到 pdfInput.files (點擊上傳)
-            const file = selectedPdfFile || pdfInput.files[0];
-            if (!file) return;
+            const file = selectedPdfFile || (pdfInput.files ? pdfInput.files[0] : null);
+
+            console.log("File selected:", file);
+
+            if (!file) {
+                alert("未偵測到檔案，請重新上傳");
+                return;
+            }
 
             const geminiKey = localStorage.getItem('gemini_api_key');
             if (!geminiKey) {
