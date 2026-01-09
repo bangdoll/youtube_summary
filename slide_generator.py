@@ -67,7 +67,16 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
         
         raw_text = response.text
         cleaned_json = clean_json_string(raw_text)
-        return json.loads(cleaned_json)
+        result = json.loads(cleaned_json)
+        
+        # 容錯處理：如果 Gemini 回傳 List，取第一個項目
+        if isinstance(result, list):
+            if len(result) > 0:
+                return result[0]
+            else:
+                return {} # 空 List 回傳空 Dict
+                
+        return result
         
     except Exception as e:
         error_str = str(e)
