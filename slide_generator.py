@@ -13,6 +13,16 @@ from google.genai import types
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+import re
+
+def clean_json_string(text: str) -> str:
+    """清理 Gemini 回傳的 JSON 字串 (移除 Markdown 標記)"""
+    # 移除 ```json ... ``` 標記
+    text = re.sub(r'^```json\s*', '', text, flags=re.MULTILINE)
+    text = re.sub(r'^```\s*', '', text, flags=re.MULTILINE)
+    text = re.sub(r'\s*```$', '', text, flags=re.MULTILINE)
+    return text.strip()
+
 def analyze_slide_with_gemini(image, api_key: str) -> dict:
     """
     使用 Gemini Vision API 分析單張投影片圖片，提取標題、內文與結構。
@@ -37,27 +47,38 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
         image.save(img_byte_arr, format='JPEG')
         img_bytes = img_byte_arr.getvalue()
 
+        # 設定安全性以避免誤判 (例如醫學或歷史圖片被當作暴力/不雅)
+        # 注意：Gemini SDK v2 的安全性設定方式可能不同，這裡使用通用寬鬆設定
+        # 若是透過 google-genai SDK，通常預設已較寬鬆，若需調整可參考官方文件
+        # 這裡主要依賴 Prompt Engineering 與 JSON Mode
+
         response = client.models.generate_content(
-            model='gemini-2.0-flash-exp',  # 使用快速視覺模型
+            model='gemini-2.0-flash-exp',
             contents=[
                 types.Part.from_text(text=prompt),
                 types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
             ],
             config=types.GenerateContentConfig(
-                response_mime_type='application/json'
+                response_mime_type='application/json',
+                temperature=0.2 # 降低隨機性以確保 JSON 格式穩定
             )
         )
         
-        return json.loads(response.text)
+        raw_text = response.text
+        cleaned_json = clean_json_string(raw_text)
+        return json.loads(cleaned_json)
         
     except Exception as e:
         logger.error(f"Gemini 分析失敗: {e}")
+        if 'response' in locals() and hasattr(response, 'text'):
+             logger.error(f"原始回應: {response.text}")
+             
         # 回傳預設空結構以免整份失敗
         return {
             "title": "分析失敗",
-            "content": ["無法讀取此頁面內容"],
+            "content": [f"錯誤: {str(e)}", "請確認您的圖片內容或 API Key 配額"],
             "layout": "bullet_points",
-            "speaker_notes": ""
+            "speaker_notes": "系統無法讀取此頁面。"
         }
 
 def create_pptx_from_analysis(analyses: List[dict], output_path: str):
