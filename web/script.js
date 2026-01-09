@@ -293,11 +293,19 @@ document.addEventListener('DOMContentLoaded', () => {
             tabBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            // Update contents
+            // Update contents and subtitle
             const targetId = btn.getAttribute('data-target');
+            const appSubtitle = document.getElementById('appSubtitle');
+
             modeContents.forEach(content => {
                 if (content.id === targetId) {
                     content.classList.add('active');
+                    // Dynamic Subtitle Logic
+                    if (targetId === 'slideMode') {
+                        appSubtitle.textContent = "上傳 NotebookLM 匯出的 PDF，AI 自動為您生成圖文並茂的 PowerPoint 簡報。";
+                    } else {
+                        appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
+                    }
                 } else {
                     content.classList.remove('active');
                 }
