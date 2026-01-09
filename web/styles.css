@@ -1086,3 +1086,19 @@ button#submitBtn:disabled {
     background: var(--accent-secondary);
     transform: translateY(-2px);
 }
+
+.api-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--accent-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.api-link:hover {
+    color: var(--accent-primary);
+    text-decoration: underline;
+}
