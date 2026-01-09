@@ -303,8 +303,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Dynamic Subtitle Logic
                     if (targetId === 'slideMode') {
                         appSubtitle.textContent = "上傳 NotebookLM 匯出的 PDF，AI 自動為您生成圖文並茂的 PowerPoint 簡報。";
+
+                        // Toggle Features
+                        const youtubeFeatures = document.getElementById('youtubeFeatures');
+                        const slideFeatures = document.getElementById('slideFeatures');
+                        if (youtubeFeatures) youtubeFeatures.classList.add('hidden');
+                        if (slideFeatures) slideFeatures.classList.remove('hidden');
+
                     } else {
                         appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
+
+                        // Toggle Features
+                        const youtubeFeatures = document.getElementById('youtubeFeatures');
+                        const slideFeatures = document.getElementById('slideFeatures');
+                        if (youtubeFeatures) youtubeFeatures.classList.remove('hidden');
+                        if (slideFeatures) slideFeatures.classList.add('hidden');
                     }
                 } else {
                     content.classList.remove('active');
@@ -316,6 +329,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // File Upload Handling
     if (dropZone) {
         dropZone.addEventListener('click', (e) => {
+            // 如果已選擇檔案，或點擊的是移除按鈕，則不再觸發檔案選擇
+            if (dropZone.classList.contains('has-file')) return;
             if (e.target !== removeFileBtn && !removeFileBtn.contains(e.target)) {
                 pdfInput.click();
             }

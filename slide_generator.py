@@ -6,6 +6,7 @@ from typing import List, Optional
 from pdf2image import convert_from_bytes
 from pptx import Presentation
 from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
 from google import genai
 from google.genai import types
 
@@ -100,7 +101,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
         background = slide.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = 0x111111 # 深灰黑背景
+        fill.fore_color.rgb = RGBColor(17, 17, 17) # 深灰黑背景
         
         # --- 左側：原始 PDF 圖片 (佔 60% 寬度) ---
         if i < len(images):
