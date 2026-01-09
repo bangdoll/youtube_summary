@@ -148,15 +148,49 @@
         </div>
 
         <!-- Input Section (Shown to Logged-in Users) -->
+        <!-- Input Section -->
         <section id="inputSection" class="input-section hidden">
-            <div class="input-wrapper">
-                <i class="ri-youtube-fill icon"></i>
-                <input type="text" id="urlInput" placeholder="在此輸入 Youtube 連結，解鎖影片智慧..." autocomplete="off">
-                <button id="submitBtn">
-                    <span>開始分析</span>
-                    <i class="ri-flashlight-line"></i>
+
+            <!-- Mode Tabs -->
+            <div class="mode-tabs">
+                <button class="tab-btn active" data-target="youtubeMode">
+                    <i class="ri-youtube-fill"></i> 影片智慧分析
+                </button>
+                <button class="tab-btn" data-target="slideMode">
+                    <i class="ri-slideshow-line"></i> 簡報生成器 (Beta)
                 </button>
             </div>
+
+            <!-- YouTube Analysis Mode -->
+            <div id="youtubeMode" class="mode-content active">
+                <div class="input-wrapper">
+                    <i class="ri-youtube-fill icon"></i>
+                    <input type="text" id="urlInput" placeholder="在此輸入 Youtube 連結，解鎖影片智慧..." autocomplete="off">
+                    <button id="submitBtn">
+                        <span>開始分析</span>
+                        <i class="ri-flashlight-line"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Slide Generator Mode -->
+            <div id="slideMode" class="mode-content">
+                <div class="upload-wrapper" id="dropZone">
+                    <i class="ri-file-ppt-2-line upload-icon"></i>
+                    <h3>NotebookLM PDF 轉 PPTX</h3>
+                    <p>將 NotebookLM 輸出的 PDF 拖曳至此，或點擊上傳</p>
+                    <input type="file" id="pdfInput" accept=".pdf" hidden>
+                    <div id="fileInfo" class="file-info hidden">
+                        <span id="fileName">placeholder.pdf</span>
+                        <button id="removeFileBtn" class="remove-btn"><i class="ri-close-line"></i></button>
+                    </div>
+                    <button id="generateSlideBtn" class="generate-btn" disabled>
+                        <span>生成簡報</span>
+                        <i class="ri-magic-line"></i>
+                    </button>
+                </div>
+            </div>
+
         </section>
 
         <!-- Status / Terminal -->

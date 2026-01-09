@@ -13,3 +13,5 @@ httpx
 itsdangerous
 firebase-admin
 pytubefix
+python-pptx
+pdf2image

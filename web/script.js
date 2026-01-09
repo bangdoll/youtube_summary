@@ -271,8 +271,162 @@ document.addEventListener('DOMContentLoaded', () => {
             currentEventSource = null;
         }
         submitBtn.disabled = false;
-        submitBtn.innerHTML = '<span>開始分析</span><i class="ri-arrow-right-line"></i>';
+        submitBtn.innerHTML = '<span>開始分析</span><i class="ri-flashlight-line"></i>';
     }
+
+    // === Mode Switching & Slide Generator logic ===
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const modeContents = document.querySelectorAll('.mode-content');
+
+    // Slide Gen Elements
+    const dropZone = document.getElementById('dropZone');
+    const pdfInput = document.getElementById('pdfInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileNameDisplay = document.getElementById('fileName');
+    const removeFileBtn = document.getElementById('removeFileBtn');
+    const generateSlideBtn = document.getElementById('generateSlideBtn');
+
+    // Tab Switching
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Update buttons
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update contents
+            const targetId = btn.getAttribute('data-target');
+            modeContents.forEach(content => {
+                if (content.id === targetId) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+        });
+    });
+
+    // File Upload Handling
+    if (dropZone) {
+        dropZone.addEventListener('click', (e) => {
+            if (e.target !== removeFileBtn && !removeFileBtn.contains(e.target)) {
+                pdfInput.click();
+            }
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+
+        pdfInput.addEventListener('change', () => {
+            if (pdfInput.files.length) {
+                handleFileSelect(pdfInput.files[0]);
+            }
+        });
+    }
+
+    function handleFileSelect(file) {
+        if (file.type !== 'application/pdf') {
+            alert('請上傳 PDF 檔案');
+            return;
+        }
+
+        fileNameDisplay.textContent = file.name;
+        dropZone.classList.add('has-file');
+        fileInfo.classList.remove('hidden');
+        generateSlideBtn.disabled = false;
+
+        // Hide initial text/icon to clean up UI? 
+        // Maybe keep them but show file info prominently
+    }
+
+    if (removeFileBtn) {
+        removeFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Stop bubbling to dropZone
+            pdfInput.value = '';
+            fileInfo.classList.add('hidden');
+            generateSlideBtn.disabled = true;
+            dropZone.classList.remove('has-file');
+        });
+    }
+
+    // Generate Slides
+    if (generateSlideBtn) {
+        generateSlideBtn.addEventListener('click', async () => {
+            const file = pdfInput.files[0];
+            if (!file) return;
+
+            const geminiKey = localStorage.getItem('gemini_api_key');
+            if (!geminiKey) {
+                alert('請先在設定中輸入 Google Gemini API Key (BYOK)');
+                settingsModal.classList.remove('hidden');
+                return;
+            }
+
+            // UI Loading State
+            generateSlideBtn.disabled = true;
+            const originalBtnText = generateSlideBtn.innerHTML;
+            generateSlideBtn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('gemini_key', geminiKey);
+
+            try {
+                const response = await fetch('/api/generate-slides', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || '生成失敗');
+                }
+
+                // Handle file download
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+
+                // Get filename from header or default
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let fileName = 'slides.pptx';
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                    if (filenameMatch.length === 2) fileName = filenameMatch[1];
+                }
+
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(downloadUrl);
+
+                alert('簡報生成成功！下載即將開始。');
+
+            } catch (error) {
+                console.error("Slide Gen Error:", error);
+                alert(`錯誤: ${error.message}`);
+            } finally {
+                generateSlideBtn.disabled = false;
+                generateSlideBtn.innerHTML = originalBtnText;
+            }
+        });
+    }
+
     // === Demo Terminal Animation ===
     const demoBody = document.getElementById('demoTerminalBody');
     const typewriter = document.getElementById('typewriter');
