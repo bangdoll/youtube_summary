@@ -973,23 +973,29 @@ button#submitBtn:disabled {
 }
 
 /* Settings UI */
+/* Settings UI */
 .settings-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 1.2rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 500;
     cursor: pointer;
-    padding: 4px;
+    padding: 6px 16px;
     margin-right: 8px;
-    transition: color 0.2s;
+    transition: all 0.2s;
     display: flex;
     align-items: center;
+    gap: 8px;
 }
 
 .settings-btn:hover {
-    color: var(--accent-primary);
-    transform: rotate(90deg);
-    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.2);
+    border-color: var(--accent-primary);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .settings-content {
