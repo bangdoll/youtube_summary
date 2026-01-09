@@ -516,13 +516,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Generate Slides (Event Delegation)
-    document.body.addEventListener('click', async (e) => {
-        const btn = e.target.closest('#generateSlideBtn');
+    // === Global Generation Function (Bulletproof for click handling) ===
+    window.generateSlides = async function () {
+        const btn = document.getElementById('generateSlideBtn');
         if (!btn) return;
 
-        console.log("Generate Slide Button Clicked (Delegated)");
-        e.stopPropagation();
+        console.log("Generate Slide Button Clicked (Global Function)");
 
         // Safety Check
         if (btn.disabled) {
@@ -568,10 +567,16 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('selected_pages', JSON.stringify(selectedIndices));
 
         try {
+            // Use local timeout logic just in case connection hangs
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 min timeout (matching Cloud Run)
+
             const response = await fetch('/api/generate-slides', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 const err = await response.json();
@@ -604,14 +609,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Slide Gen Error:", error);
-            alert(`錯誤: ${error.message}`);
+            if (error.name === 'AbortError') {
+                alert('請求超時 (15分鐘)，請嘗試減少頁數再試。');
+            } else {
+                alert(`錯誤: ${error.message}`);
+            }
         } finally {
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalBtnText;
             }
         }
-    });
+    };
 
     if (generateSlideBtn) {
         generateSlideBtn.disabled = true; // Initial state
