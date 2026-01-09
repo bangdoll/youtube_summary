@@ -367,20 +367,143 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function handleFileSelect(file) {
+    // State for Preview
+    let currentPreviewImages = [];
+
+    // DOM Elements for Preview
+    const uploadStep = document.getElementById('uploadStep');
+    const previewStep = document.getElementById('previewStep');
+    const pageGrid = document.getElementById('pageGrid');
+    const previewLoading = document.getElementById('previewLoading');
+    const selectedCountSpan = document.getElementById('selectedCount');
+    const totalCountSpan = document.getElementById('totalCount');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const deselectAllBtn = document.getElementById('deselectAllBtn');
+    const cancelPreviewBtn = document.getElementById('cancelPreviewBtn');
+
+
+    async function handleFileSelect(file) {
         if (file.type !== 'application/pdf') {
             alert('請上傳 PDF 檔案');
             return;
         }
 
-        // 儲存檔案到變數 (解決拖曳上傳時 pdfInput.files 為空的問題)
         selectedPdfFile = file;
 
-        fileNameDisplay.textContent = file.name;
-        dropZone.classList.add('has-file');
-        fileInfo.classList.remove('hidden');
-        generateSlideBtn.disabled = false;
+        // Start Preview Flow
+        await startPreview(file);
     }
+
+    async function startPreview(file) {
+        // Show Loading
+        previewLoading.classList.remove('hidden');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/preview-pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) throw new Error('預覽生成失敗');
+
+            const data = await res.json();
+
+            // Init State
+            currentPreviewImages = data.images.map((url, index) => ({
+                url: url,
+                index: index,
+                selected: true // Default select all
+            }));
+
+            renderGrid();
+
+            // Switch UI
+            uploadStep.classList.add('hidden');
+            previewStep.classList.remove('hidden');
+
+            // Enable Generate Button
+            if (generateSlideBtn) generateSlideBtn.disabled = false;
+
+        } catch (e) {
+            console.error(e);
+            alert('無法產生預覽，請確認 PDF 格式');
+            // Reset
+            selectedPdfFile = null;
+        } finally {
+            previewLoading.classList.add('hidden');
+        }
+    }
+
+    function renderGrid() {
+        if (!pageGrid) return;
+        pageGrid.innerHTML = '';
+
+        let selectedCount = 0;
+
+        currentPreviewImages.forEach((item) => {
+            if (item.selected) selectedCount++;
+
+            const div = document.createElement('div');
+            div.className = `grid-item ${item.selected ? 'selected' : ''}`;
+            div.onclick = () => toggleSelection(item.index);
+
+            div.innerHTML = `
+                <img src="${item.url}" loading="lazy">
+                <div class="checkbox-overlay">
+                    <i class="ri-check-line"></i>
+                </div>
+                <span class="page-number">${item.index + 1}</span>
+            `;
+
+            pageGrid.appendChild(div);
+        });
+
+        // Update Counts
+        if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
+        if (totalCountSpan) totalCountSpan.textContent = currentPreviewImages.length;
+
+        // Update Generate Button State
+        if (generateSlideBtn) {
+            generateSlideBtn.disabled = selectedCount === 0;
+            const span = generateSlideBtn.querySelector('span');
+            if (span) span.textContent = selectedCount === 0 ? '請選擇頁面' : `生成簡報 (${selectedCount} 頁)`;
+        }
+    }
+
+    function toggleSelection(index) {
+        if (currentPreviewImages[index]) {
+            currentPreviewImages[index].selected = !currentPreviewImages[index].selected;
+            renderGrid();
+        }
+    }
+
+    // Preview Actions
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', () => {
+            currentPreviewImages.forEach(i => i.selected = true);
+            renderGrid();
+        });
+    }
+
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', () => {
+            currentPreviewImages.forEach(i => i.selected = false);
+            renderGrid();
+        });
+    }
+
+    if (cancelPreviewBtn) {
+        cancelPreviewBtn.addEventListener('click', () => {
+            selectedPdfFile = null;
+            uploadStep.classList.remove('hidden');
+            previewStep.classList.add('hidden');
+            if (pdfInput) pdfInput.value = '';
+        });
+    }
+
 
     if (removeFileBtn) {
         removeFileBtn.addEventListener('click', (e) => {
@@ -398,15 +521,10 @@ document.addEventListener('DOMContentLoaded', () => {
         generateSlideBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log("Generate Slide Button Clicked!");
 
-            // 優先使用 selectedPdfFile (拖曳上傳)，fallback 到 pdfInput.files (點擊上傳)
-            const file = selectedPdfFile || (pdfInput.files ? pdfInput.files[0] : null);
-
-            console.log("File selected:", file);
-
+            const file = selectedPdfFile;
             if (!file) {
-                alert("未偵測到檔案，請重新上傳");
+                alert("未偵測到檔案");
                 return;
             }
 
@@ -414,6 +532,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!geminiKey) {
                 alert('請先在設定中輸入 Google Gemini API Key (BYOK)');
                 settingsModal.classList.remove('hidden');
+                return;
+            }
+
+            // Get Selected Indices
+            const selectedIndices = currentPreviewImages
+                .filter(i => i.selected)
+                .map(i => i.index);
+
+            if (selectedIndices.length === 0) {
+                alert("請至少選擇一頁");
                 return;
             }
 
@@ -425,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('gemini_key', geminiKey);
+            formData.append('selected_pages', JSON.stringify(selectedIndices));
 
             try {
                 const response = await fetch('/api/generate-slides', {

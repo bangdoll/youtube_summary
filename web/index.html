@@ -175,21 +175,62 @@
 
             <!-- Slide Generator Mode -->
             <div id="slideMode" class="mode-content">
-                <div class="upload-wrapper" id="dropZone">
-                    <i class="ri-file-ppt-2-line upload-icon"></i>
-                    <h3>NotebookLM PDF 轉 PPTX</h3>
-                    <p>將 NotebookLM 輸出的 PDF 拖曳至此，或點擊上傳</p>
-                    <input type="file" id="pdfInput" accept=".pdf" hidden>
-                    <div id="fileInfo" class="file-info hidden">
-                        <span id="fileName">placeholder.pdf</span>
-                        <button id="removeFileBtn" class="remove-btn"><i class="ri-close-line"></i></button>
+                <!-- Step 1: Upload Area -->
+                <div id="uploadStep" class="step-container">
+                    <div class="upload-wrapper" id="dropZone">
+                        <i class="ri-file-ppt-2-line upload-icon"></i>
+                        <h3>NotebookLM PDF 轉 PPTX</h3>
+                        <p>將 NotebookLM 輸出的 PDF 拖曳至此，或點擊上傳</p>
+                        <input type="file" id="pdfInput" accept=".pdf" hidden>
+                        <div id="fileInfo" class="file-info hidden">
+                            <span id="fileName">placeholder.pdf</span>
+                            <button id="removeFileBtn" class="remove-btn"><i class="ri-close-line"></i></button>
+                        </div>
                     </div>
                 </div>
-                <div style="text-align: center;">
-                    <button id="generateSlideBtn" class="generate-btn" disabled>
-                        <span>生成簡報</span>
-                        <i class="ri-magic-line"></i>
-                    </button>
+
+                <!-- Step 2: Preview & Selection (Hidden by default) -->
+                <div id="previewStep" class="step-container hidden">
+                    <div class="preview-header">
+                        <div class="header-left">
+                            <h3>選擇要轉換的頁面</h3>
+                            <span class="count-badge">已選 <strong id="selectedCount">0</strong> / <span
+                                    id="totalCount">0</span></span>
+                        </div>
+                        <div class="header-right">
+                            <button id="selectAllBtn" class="btn-text">全選</button>
+                            <button id="deselectAllBtn" class="btn-text">取消全選</button>
+                        </div>
+                    </div>
+
+                    <!-- Grid Container -->
+                    <div id="pageGrid" class="page-grid">
+                        <!-- Grid Items will be injected here -->
+                        <!-- Example:
+                        <div class="grid-item selected">
+                            <img src="...">
+                            <div class="checkbox-overlay"><i class="ri-check-line"></i></div>
+                            <span class="page-number">1</span>
+                        </div>
+                        -->
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="preview-actions">
+                        <button id="cancelPreviewBtn" class="btn-secondary">
+                            <i class="ri-arrow-left-line"></i> 重新上傳
+                        </button>
+                        <button id="generateSlideBtn" class="generate-btn" disabled>
+                            <span>生成簡報</span>
+                            <i class="ri-magic-line"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Loading Overlay for Preview -->
+                <div id="previewLoading" class="loading-overlay hidden">
+                    <div class="loader"></div>
+                    <p>正在分析 PDF 結構...</p>
                 </div>
             </div>
 
@@ -338,7 +379,7 @@
         </section>
     </main>
 
-    <script src="/static/script.js?v=2.3.1"></script>
+    <script src="/static/script.js?v=2.3.2"></script>
 </body>
 
 </html>

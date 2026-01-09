@@ -62,6 +62,8 @@ if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
 # Ensure web directory exists
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 os.makedirs(WEB_DIR, exist_ok=True)
+TEMP_DIR = os.path.join(WEB_DIR, "temp")
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
@@ -290,14 +292,45 @@ def run_processing_safe(url, gemini_key=None, openai_key=None):
     """Wrapper to run the pipeline."""
     return youtube_summary.process_video_pipeline(url, gemini_key=gemini_key, openai_key=openai_key)
 
+@app.post("/api/preview-pdf")
+async def preview_pdf(file: UploadFile = File(...)):
+    """
+    接收 PDF，回傳所有頁面的預覽圖片 URL。
+    """
+    if not file.filename.lower().endswith(".pdf"):
+        return JSONResponse(status_code=400, content={"error": "請上傳 PDF 檔案"})
+
+    try:
+        pdf_bytes = await file.read()
+        
+        # 使用線程池執行轉檔，避免阻塞 Event Loop
+        loop = asyncio.get_running_loop()
+        image_urls = await loop.run_in_executor(
+            None, 
+            slide_generator.generate_preview_images, 
+            pdf_bytes, 
+            TEMP_DIR
+        )
+        
+        return JSONResponse({
+            "total_pages": len(image_urls),
+            "images": image_urls
+        })
+        
+    except Exception as e:
+        print(f"Preview PDF Error: {e}")
+        return JSONResponse(status_code=500, content={"error": f"預覽生成失敗: {str(e)}"})
+
 @app.post("/api/generate-slides")
 async def generate_slides(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    gemini_key: str = Form(None)
+    gemini_key: str = Form(None),
+    selected_pages: str = Form(None)
 ):
     """
     接收 PDF 檔案，使用 Gemini Vision 分析並生成 PPTX。
+    selected_pages: JSON 字串 (e.g. "[0, 1, 2]")
     """
     # 驗證輸入
     if not gemini_key:
@@ -316,11 +349,22 @@ async def generate_slides(
         # 讀取 PDF 內容
         pdf_bytes = await file.read()
         
+        # 解析 selected_pages
+        selected_indices = None
+        if selected_pages:
+            try:
+                selected_indices = json.loads(selected_pages)
+                if not isinstance(selected_indices, list):
+                    selected_indices = None
+            except Exception as e:
+                print(f"解析 selected_pages 失敗: {e}")
+                
         # 進行處理
         pptx_path = await slide_generator.process_pdf_to_slides(
             pdf_bytes=pdf_bytes,
             api_key=gemini_key,
-            filename=file.filename
+            filename=file.filename,
+            selected_indices=selected_indices
         )
         
         # 設定回傳檔名

@@ -9,6 +9,8 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from google import genai
 from google.genai import types
+import re
+import secrets
 
 # 設定日誌
 logging.basicConfig(level=logging.INFO)
@@ -176,10 +178,38 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
     prs.save(output_path)
     logger.info(f"簡報已儲存至: {output_path}")
 
-async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str) -> str:
+def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
+    """
+    將 PDF 轉換為圖片並儲存，用於前端預覽。
+    回傳圖片的相對路徑列表。
+    """
+    try:
+        images = convert_from_bytes(pdf_bytes)
+        logger.info(f"預覽生成: 轉換了 {len(images)} 張圖片")
+        
+        image_paths = []
+        for i, img in enumerate(images):
+            # 檔名使用隨機數以避免快取問題，或需定期清理
+            filename = f"preview_{secrets.token_hex(4)}_{i}.jpg"
+            filepath = os.path.join(output_dir, filename)
+            
+            # Resize 圖片以加快傳輸 (例如寬度 800)
+            img.thumbnail((800, 800))
+            img.save(filepath, "JPEG", quality=80)
+            
+            # 回傳給前端的相對 URL
+            image_paths.append(f"/static/temp/{filename}")
+            
+        return image_paths
+    except Exception as e:
+        logger.error(f"預覽生成失敗: {e}")
+        raise ValueError(f"無法生成預覽: {e}")
+
+async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None) -> str:
     """
     主要流程：PDF -> 圖片 -> Gemini 分析 -> PPTX
     回傳生成的 PPTX 檔案路徑。
+    若有 selected_indices，只處理指定頁面 (0-based index)。
     """
     logger.info(f"開始處理 PDF: {filename}")
     
@@ -187,6 +217,23 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str) -
     try:
         images = convert_from_bytes(pdf_bytes)
         logger.info(f"成功將 PDF 轉換為 {len(images)} 張圖片")
+        
+        # 過濾頁面
+        if selected_indices:
+            try:
+                # 確保 indices 為整數且在範圍內
+                valid_indices = [i for i in selected_indices if 0 <= i < len(images)]
+                if valid_indices:
+                    # 按照 user 選擇的順序重新排列 (或是保持原本順序但過濾)
+                    # 這裡假設 user 想要保持順序
+                    valid_indices.sort()
+                    images = [images[i] for i in valid_indices]
+                    logger.info(f"篩選後剩餘 {len(images)} 頁 (Indices: {valid_indices})")
+                else:
+                    logger.warning("提供的 selected_indices 無效，使用全部頁面")
+            except Exception as e:
+                logger.error(f"頁面篩選失敗: {e}, 使用全部頁面")
+                
     except Exception as e:
         logger.error(f"PDF 轉圖片失敗: {e}")
         raise ValueError("無法讀取 PDF 檔案，請確認格式是否正確 (需安裝 poppler)")
