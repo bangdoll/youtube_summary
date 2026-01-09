@@ -19,9 +19,11 @@
 - **預算警示**：內建每月 $20 USD 預算監控，超過額度自動在 UI 發出紅色警報。
 - **Firebase Persistence**：整合 Firebase Realtime Database，成本數據永久保存，不受伺服器休眠影響。
 
-### 3. 🔒 企業級安全架構
-- **Google OAuth 2.0**：強制登入驗證，支援網域白名單 (Allowed Emails)。
-- **Session 加密**：完整的登入狀態管理，保障資料隱私。
+### 3. 🔓 開放架構與 BYOK (Public by Default)
+- **全面開放**：移除強制登入限制，訪客可立即使用。
+- **Bring Your Own Key**：支援使用者輸入自己的 Google / OpenAI API Key。
+- **隱私優先**：金鑰僅儲存於本地瀏覽器 (localStorage)，從不經過資料庫，確保您的配額安全。
+- **混合模式**：保留 Google OAuth 供內部團隊使用伺服器端金鑰，兼顧開放與管理。
 
 ### 4. 🎨 Vibe Coding 現代化介面
 - **Premium UI**：深色玻璃擬態 (Glassmorphism)、流暢動畫與響應式設計。
