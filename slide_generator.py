@@ -33,83 +33,86 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
     使用 Gemini Vision API 分析單張投影片圖片，提取標題、內文與結構。
     """
     try:
-    max_retries = 3
-    base_delay = 2
-    
-    # 建立 Client
-    client = genai.Client(api_key=api_key)
-    
-    # 準備內容
-    img_byte_arr = io.BytesIO()
-    image.save(img_byte_arr, format='JPEG')
-    img_bytes = img_byte_arr.getvalue()
-    
-    prompt = """
-    你是一位專業的簡報設計顧問 (Presentation Consultant)。
-    請分析這張投影片，提取核心洞察並建議最佳的 PPTX 重製版型。
-    
-    請以對應的繁體中文 JSON 格式回傳：
-    {
-        "title": "精簡有力的標題 (不超過 20 字)",
-        "content": ["關鍵洞察 1", "關鍵數據/論點 2", "行動建議 3"], 
-        "layout": "split_left_image", 
-        "speaker_notes": "演講者備忘錄 (口語化，解釋圖表或延伸觀點)"
-    }
-    
-    關於 "layout" 欄位，請從以下選擇最適合的一個：
-    - "split_left_image": 圖像包含重要細節 (如複雜圖表、架構圖)，需保留左側大圖。
-    - "full_width_text": 圖像僅為裝飾 (如插圖) 或文字量大，適合全寬文字排版。
-    - "comparison": 內容包含明顯的對比 (如 Before/After)，適合左右並列。
-    
-    請確保內容不僅是「描述圖片」，而是提取「核心價值」與「商業洞察」。
-    """
+        max_retries = 3
+        base_delay = 2
+        
+        # 建立 Client
+        client = genai.Client(api_key=api_key)
+        
+        # 準備內容
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format='JPEG')
+        img_bytes = img_byte_arr.getvalue()
+        
+        prompt = """
+        你是一位專業的簡報設計顧問 (Presentation Consultant)。
+        請分析這張投影片，提取核心洞察並建議最佳的 PPTX 重製版型。
+        
+        請以對應的繁體中文 JSON 格式回傳：
+        {
+            "title": "精簡有力的標題 (不超過 20 字)",
+            "content": ["關鍵洞察 1", "關鍵數據/論點 2", "行動建議 3"], 
+            "layout": "split_left_image", 
+            "speaker_notes": "演講者備忘錄 (口語化，解釋圖表或延伸觀點)"
+        }
+        
+        關於 "layout" 欄位，請從以下選擇最適合的一個：
+        - "split_left_image": 圖像包含重要細節 (如複雜圖表、架構圖)，需保留左側大圖。
+        - "full_width_text": 圖像僅為裝飾 (如插圖) 或文字量大，適合全寬文字排版。
+        - "comparison": 內容包含明顯的對比 (如 Before/After)，適合左右並列。
+        
+        請確保內容不僅是「描述圖片」，而是提取「核心價值」與「商業洞察」。
+        """
 
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=[
-                    types.Part.from_text(text=prompt),
-                    types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type='application/json',
-                    temperature=0.2
+        for attempt in range(max_retries):
+            try:
+                response = client.models.generate_content(
+                    model='gemini-2.0-flash',
+                    contents=[
+                        types.Part.from_text(text=prompt),
+                        types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type='application/json',
+                        temperature=0.2
+                    )
                 )
-            )
-            
-            raw_text = response.text
-            cleaned_json = clean_json_string(raw_text)
-            result = json.loads(cleaned_json)
-            
-            if isinstance(result, list):
-                if len(result) > 0:
-                    return result[0]
-                else:
-                    return {}
-            return result
+                
+                raw_text = response.text
+                cleaned_json = clean_json_string(raw_text)
+                result = json.loads(cleaned_json)
+                
+                if isinstance(result, list):
+                    if len(result) > 0:
+                        return result[0]
+                    else:
+                        return {}
+                return result
 
-        except Exception as e:
-            error_str = str(e)
-            logger.warning(f"嘗試 {attempt + 1}/{max_retries} 失敗: {error_str}")
-            
-            # Retry on Rate Limit
-            if ('429' in error_str or 'RESOURCE_EXHAUSTED' in error_str) and attempt < max_retries - 1:
-                sleep_time = (base_delay * (2 ** attempt)) + random.uniform(0, 1)
-                logger.warning(f"觸發 API 速率限制，等待 {sleep_time:.2f} 秒後重試...")
-                time.sleep(sleep_time)
-                continue
-            
-            # If last attempt fails or non-retriable error
-            if attempt == max_retries - 1:
-                logger.error(f"Gemini 分析最終失敗: {error_str}")
-                # Return Fallback structure instead of crashing
-                return {
-                    "title": "分析暫時無法使用",
-                    "content": [f"錯誤: {error_str}", "請稍後再試或更換 API Key"],
-                    "layout": "split_left_image",
-                    "speaker_notes": "系統無法讀取此頁面。"
-                }
+            except Exception as e:
+                error_str = str(e)
+                logger.warning(f"嘗試 {attempt + 1}/{max_retries} 失敗: {error_str}")
+                
+                # Retry on Rate Limit
+                if ('429' in error_str or 'RESOURCE_EXHAUSTED' in error_str) and attempt < max_retries - 1:
+                    sleep_time = (base_delay * (2 ** attempt)) + random.uniform(0, 1)
+                    logger.warning(f"觸發 API 速率限制，等待 {sleep_time:.2f} 秒後重試...")
+                    time.sleep(sleep_time)
+                    continue
+                
+                # If last attempt fails or non-retriable error
+                if attempt == max_retries - 1:
+                    logger.error(f"Gemini 分析最終失敗: {error_str}")
+                    # Return Fallback structure instead of crashing
+                    return {
+                        "title": "分析暫時無法使用",
+                        "content": [f"錯誤: {error_str}", "請稍後再試或更換 API Key"],
+                        "layout": "split_left_image",
+                        "speaker_notes": "系統無法讀取此頁面。"
+                    }
+    except Exception as e:
+        logger.error(f"分析函式發生外層錯誤: {e}")
+        return {}
 
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
