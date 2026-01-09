@@ -622,9 +622,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    if (generateSlideBtn) {
-        generateSlideBtn.disabled = true; // Initial state
-    }
+    // if (generateSlideBtn) {
+    //    generateSlideBtn.disabled = true; // Initial state
+    // }
 
     // === Demo Terminal Animation ===
     const demoBody = document.getElementById('demoTerminalBody');

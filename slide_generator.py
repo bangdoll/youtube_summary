@@ -182,17 +182,41 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
         else:
             # --- 預設：左圖右文 (split_left_image) ---
             
-            # 左側圖片
+            # 左側圖片 (Fit into Left Half to prevent overlap)
             if i < len(images):
                 img_byte_arr = io.BytesIO()
                 images[i].save(img_byte_arr, format='PNG')
                 img_byte_arr.seek(0)
-                pic_height = prs.slide_height
-                slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), height=pic_height)
+                
+                # Layout Config
+                left_box_w = Inches(6.5) # Approx 50% of 13.33 inches
+                left_box_h = prs.slide_height
+                
+                # Get Aspect Ratio
+                img_w, img_h = images[i].size
+                if img_h == 0: img_h = 1 # Safety
+                aspect = img_w / img_h
+                
+                # Calculate Box Aspect Ratio
+                # Inches is a Quantity, retrieve value if needed, but ratio handles it
+                # prs.slide_height is usually 7.5 inches = 6858000 EMU
+                # left_box_w = 5943600 EMU
+                box_aspect = left_box_w / left_box_h
+                
+                if aspect > box_aspect:
+                    # Wider -> Fit Width, Center Vertically
+                    pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), width=left_box_w)
+                    top_offset = (left_box_h - pic.height) / 2
+                    pic.top = top_offset
+                else:
+                    # Taller -> Fit Height, Center Horizontally (in left box)
+                    pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), height=left_box_h)
+                    left_offset = (left_box_w - pic.width) / 2
+                    pic.left = left_offset
             
             # 右側文字
-            text_left = Inches(7.8)
-            text_width = Inches(5.0)
+            text_left = Inches(7.0) # Move slightly right for padding
+            text_width = Inches(5.8)
             
             if slide_data.get("title"):
                 title_box = slide.shapes.add_textbox(text_left, Inches(0.5), text_width, Inches(1.5))
