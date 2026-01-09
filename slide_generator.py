@@ -206,12 +206,12 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                 if aspect > box_aspect:
                     # Wider -> Fit Width, Center Vertically
                     pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), width=left_box_w)
-                    top_offset = (left_box_h - pic.height) / 2
+                    top_offset = int((left_box_h - pic.height) / 2)
                     pic.top = top_offset
                 else:
                     # Taller -> Fit Height, Center Horizontally (in left box)
                     pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), height=left_box_h)
-                    left_offset = (left_box_w - pic.width) / 2
+                    left_offset = int((left_box_w - pic.width) / 2)
                     pic.left = left_offset
             
             # 右側文字
