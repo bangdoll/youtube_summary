@@ -14,6 +14,12 @@
 ### 1.2 ✨ 來源回溯 (Source Attribution)
 自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
+### 1.3 📊 NoteSlide 簡報生成器 (New)
+類似 `codia.ai` 的簡報生成引擎。
+- **PDF to PPTX**：支援上傳 NotebookLM 匯出的 PDF 文件。
+- **Gemini Vision**：利用 AI 視覺模型識別每一頁的投影片結構、重點與備忘錄。
+- **自動化排版**：一鍵將靜態 PDF 轉化為完全可編輯的 PowerPoint (.pptx) 檔案。
+
 ### 2. 💰 智慧成本監控 (Smart Cost Control)
 - **Token 級追蹤**：精準計算 GPT-4o Input/Output Token 與 Whisper 分鐘數。
 - **預算警示**：內建每月 $20 USD 預算監控，超過額度自動在 UI 發出紅色警報。
