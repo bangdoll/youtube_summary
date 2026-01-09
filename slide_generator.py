@@ -28,9 +28,10 @@ def clean_json_string(text: str) -> str:
     text = re.sub(r'\s*```$', '', text, flags=re.MULTILINE)
     return text.strip()
 
-def analyze_slide_with_gemini(image, api_key: str) -> dict:
+async def analyze_slide_with_gemini(image, api_key: str) -> dict:
     """
     使用 Gemini Vision API 分析單張投影片圖片，提取標題、內文與結構。
+    (Async Version)
     """
     try:
         max_retries = 3
@@ -39,10 +40,13 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
         # 建立 Client
         client = genai.Client(api_key=api_key)
         
-        # 準備內容
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='JPEG')
-        img_bytes = img_byte_arr.getvalue()
+        # 準備內容 (Image processing is CPU bound, run in thread)
+        def process_image():
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='JPEG')
+            return img_byte_arr.getvalue()
+            
+        img_bytes = await asyncio.to_thread(process_image)
         
         prompt = """
         你是一位專業的簡報設計顧問 (Presentation Consultant)。
@@ -66,7 +70,8 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
 
         for attempt in range(max_retries):
             try:
-                response = client.models.generate_content(
+                # Use Async Client
+                response = await client.aio.models.generate_content(
                     model='gemini-2.0-flash',
                     contents=[
                         types.Part.from_text(text=prompt),
@@ -97,7 +102,7 @@ def analyze_slide_with_gemini(image, api_key: str) -> dict:
                 if ('429' in error_str or 'RESOURCE_EXHAUSTED' in error_str) and attempt < max_retries - 1:
                     sleep_time = (base_delay * (2 ** attempt)) + random.uniform(0, 1)
                     logger.warning(f"觸發 API 速率限制，等待 {sleep_time:.2f} 秒後重試...")
-                    time.sleep(sleep_time)
+                    await asyncio.sleep(sleep_time) # Async sleep!
                     continue
                 
                 # If last attempt fails or non-retriable error
@@ -262,8 +267,9 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
     
     # 1. PDF 轉圖片 (Blocking operation, run in thread)
     try:
-        images = await asyncio.to_thread(convert_from_bytes, pdf_bytes)
-        logger.info(f"成功將 PDF 轉換為 {len(images)} 張圖片")
+        # Reduce DPI to 150 to save memory and speed up processing (OOM Prevention)
+        images = await asyncio.to_thread(convert_from_bytes, pdf_bytes, dpi=150)
+        logger.info(f"成功將 PDF 轉換為 {len(images)} 張圖片 (DPI=150)")
         
         # 過濾頁面
         if selected_indices:
@@ -288,8 +294,8 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
     for i, img in enumerate(images):
         logger.info(f"正在分析第 {i+1}/{len(images)} 頁...")
         
-        # Use to_thread to prevent blocking event loop with sync Gemini call
-        result = await asyncio.to_thread(analyze_slide_with_gemini, img, api_key)
+        # Use native async call (Non-blocking)
+        result = await analyze_slide_with_gemini(img, api_key)
         analyses.append(result)
 
         # Throttling to avoid Rate Limit (Free Tier ~15 RPM)
