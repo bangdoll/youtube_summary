@@ -519,7 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Generate Slides
     if (generateSlideBtn) {
         generateSlideBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
+            console.log("Generate Slide Button Clicked");
             e.stopPropagation();
 
             const file = selectedPdfFile;
