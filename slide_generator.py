@@ -413,9 +413,9 @@ async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, se
     analyses = []
     cleaned_images = []
     
-    # 每批處理的頁數 (為了達到 100% 成功率，改為 Sequential 處理)
-    BATCH_SIZE = 1
-    DELAY_BETWEEN_BATCHES = 0  # 序列處理不需要額外延遲  
+    # Optimized for 2GB RAM Cloud Run
+    BATCH_SIZE = 3
+    DELAY_BETWEEN_BATCHES = 2  
     async def process_single_page(img, page_num, total):
         logger.info(f"處理第 {page_num}/{total} 頁...")
         # Fail-safe execution

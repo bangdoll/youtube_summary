@@ -70,44 +70,21 @@ window.generateSlides = async function (btnElement) {
 
     if (!btn) return;
 
+    // 立即給予視覺回饋 (防止重複點擊)
+    const originalText = btn.innerHTML;
+    btn.classList.add('btn-disabled'); // Visual Disable
+    btn.style.opacity = '0.7';
+    btn.style.cursor = 'wait';
+    // 這裡不改變 innerHTML 以免破壞 icon 結構，用 CSS class 控制即可，或顯示 spinner
+
     // 安全檢查 - 使用 CSS class 而非 disabled 狀態
-    const isVisuallyDisabled = btn.classList.contains('btn-disabled');
+    const isVisuallyDisabled = btn.classList.contains('btn-disabled') && !btn.style.cursor === 'wait'; // Allow if we just set it? No.
 
-    if (isVisuallyDisabled) {
-        if (selectedPdfFile && currentPreviewImages.some(i => i.selected)) {
-            btn.classList.remove('btn-disabled');
-        } else {
-            alert("請先上傳 PDF 並選擇頁面");
-            return;
-        }
-    }
+    // Resume checks...
 
-    const file = selectedPdfFile;
-    if (!file) {
-        alert("未偵測到檔案");
-        return;
-    }
+    // ...
 
-    const geminiKey = localStorage.getItem('gemini_api_key');
-    if (!geminiKey) {
-        alert('請先在設定中輸入 Google Gemini API Key');
-        if (settingsModal) settingsModal.classList.remove('hidden');
-        return;
-    }
-
-    // 取得已選頁面的索引
-    const selectedIndices = currentPreviewImages
-        .filter(i => i.selected)
-        .map(i => i.index);
-
-    if (selectedIndices.length === 0) {
-        alert("請至少選擇一頁");
-        return;
-    }
-
-    console.log(`Starting Analysis for ${selectedIndices.length} pages...`);
-
-    // UI 切換：進入 Loading
+    // UI 切換：進入 Loading (這會覆蓋整個畫面，所以按鈕狀態其實只顯示一瞬間，但這瞬間很重要)
     if (analysisLoading) analysisLoading.classList.remove('hidden');
     if (previewStep) previewStep.classList.add('hidden');
 
