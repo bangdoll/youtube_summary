@@ -394,7 +394,8 @@ async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, se
     
     # 1. PDF 轉圖片
     try:
-        images = await asyncio.to_thread(convert_from_bytes, pdf_bytes, dpi=150)
+        # Memory Optimization: dpi=100 (sufficient for AI), single thread
+        images = await asyncio.to_thread(convert_from_bytes, pdf_bytes, dpi=100, thread_count=1)
         logger.info(f"成功將 PDF 轉換為 {len(images)} 張圖片")
         
         if selected_indices:
@@ -405,7 +406,7 @@ async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, se
                 logger.info(f"篩選後剩餘 {len(images)} 頁")
     except Exception as e:
         logger.error(f"PDF 轉圖片失敗: {e}")
-        raise ValueError("無法讀取 PDF 檔案")
+        raise ValueError(f"無法讀取 PDF 檔案: {str(e)}")
 
     # 2. 逐頁分析
     analyses = []
