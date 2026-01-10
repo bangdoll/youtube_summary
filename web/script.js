@@ -116,6 +116,12 @@ window.generateSlides = async function (btnElement) {
     formData.append('gemini_key', geminiKey);
     formData.append('selected_pages', JSON.stringify(selectedIndices));
 
+    // Add Remove Icon Flag
+    const removeIconCheckbox = document.getElementById('removeIconCheckbox');
+    if (removeIconCheckbox && removeIconCheckbox.checked) {
+        formData.append('remove_icon', 'true');
+    }
+
     try {
         // Step 1: Call Analyze API
         const response = await fetch('/api/analyze-slides', {

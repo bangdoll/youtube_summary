@@ -334,7 +334,8 @@ async def analyze_slides(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     gemini_key: str = Form(...),
-    selected_pages: str = Form(None)
+    selected_pages: str = Form(None),
+    remove_icon: bool = Form(False)
 ):
     """
     [Web Editor Step 1] 接收 PDF，進行分析與去字，但不生成 PPTX。
@@ -358,7 +359,7 @@ async def analyze_slides(
 
         # 1. 執行核心分析 (分析 + 去字)
         analyses, cleaned_images = await slide_generator.analyze_presentation(
-            pdf_bytes, gemini_key, file.filename, selected_indices
+            pdf_bytes, gemini_key, file.filename, selected_indices, remove_icon=remove_icon
         )
         
         # 2. 儲存清理後的圖片供前端預覽

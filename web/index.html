@@ -190,12 +190,23 @@
                             <button id="removeFileBtn" class="remove-btn" onclick="removeFile(event)"><i
                                     class="ri-close-line"></i></button>
                         </div>
-                        <button id="startPreviewBtn" class="btn-primary hidden" onclick="triggerPreview()"
-                            style="margin-top: 1rem; width: 100%;">
-                            <span>下一步：解析頁面</span>
-                            <i class="ri-arrow-right-line"></i>
-                        </button>
+
+                        <!-- Remove Icon Option -->
+                        <div class="checkbox-wrapper"
+                            style="margin-top: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 8px;">
+                            <input type="checkbox" id="removeIconCheckbox"
+                                style="margin-right: 8px; transform: scale(1.2); cursor: pointer;">
+                            <label for="removeIconCheckbox"
+                                style="cursor: pointer; user-select: none; font-size: 0.9rem; color: #e2e8f0;">移除
+                                NotebookLM 圖標</label>
+                        </div>
+
                     </div>
+                    <button id="startPreviewBtn" class="btn-primary hidden" onclick="triggerPreview(event)"
+                        style="margin-top: 1rem; width: 100%;">
+                        <span>下一步：解析頁面</span>
+                        <i class="ri-arrow-right-line"></i>
+                    </button>
                 </div>
 
                 <!-- Step 2: Preview & Selection (Hidden by default) -->
@@ -434,7 +445,7 @@
         </section>
     </main>
 
-    <script src="/static/script.js?v=2.6.5"></script>
+    <script src="/static/script.js?v=2.10.2"></script>
 </body>
 
 </html>
