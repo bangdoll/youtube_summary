@@ -446,64 +446,19 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     left_offset = int((left_box_w - pic.width) / 2)
                     pic.left = left_offset
             
-            # --- 嘗試使用 text_elements 精確定位 ---
+            # --- v2.8.0: 禁用 OCR 精確定位，改用乾淨分離版面 ---
+            # text_elements OCR 邊界框不可靠，文字會散落各處
+            # 強制使用傳統 Split Layout (左圖右文)
+            USE_OCR_POSITIONING = False  # 禁用 OCR 定位
+            
             text_elements = slide_data.get("text_elements", [])
             
-            if text_elements and len(text_elements) > 0:
-                # 使用 OCR 偵測到的精確位置
-                logger.info(f"Slide {i+1}: Using {len(text_elements)} precise text elements")
-                
-                slide_w = prs.slide_width
-                slide_h = prs.slide_height
-                
-                for elem in text_elements:
-                    try:
-                        text = elem.get("text", "")
-                        bbox = elem.get("bbox", [])
-                        font_size = elem.get("font_size", 14)
-                        is_bold = elem.get("is_bold", False)
-                        color_hex = elem.get("color_hex", text_hex)
-                        alignment = elem.get("alignment", "left")  # 新增：文字對齊
-                        
-                        if not text or not bbox or len(bbox) != 4:
-                            continue
-                        
-                        # 轉換 normalized coords (0-1000) 到實際位置
-                        ymin, xmin, ymax, xmax = bbox
-                        
-                        # 計算位置和尺寸 (使用 EMUs for precision)
-                        left = int(xmin / 1000 * slide_w)
-                        top = int(ymin / 1000 * slide_h)
-                        width = int((xmax - xmin) / 1000 * slide_w)
-                        height = int((ymax - ymin) / 1000 * slide_h)
-                        
-                        # 確保最小尺寸
-                        if width < Inches(0.5): width = Inches(2)
-                        if height < Inches(0.1): height = Inches(0.5)
-                        
-                        # 建立精確定位的文字框
-                        text_box = slide.shapes.add_textbox(left, top, width, height)
-                        tf = text_box.text_frame
-                        tf.word_wrap = True  # 啟用換行以支援多行文字
-                        
-                        p = tf.paragraphs[0]
-                        p.text = text
-                        p.font.size = Pt(min(font_size, 48))  # 限制最大字體
-                        p.font.bold = is_bold
-                        p.font.color.rgb = hex_to_rgb(color_hex)
-                        
-                        # 階段三：設定文字對齊
-                        if alignment == "center":
-                            p.alignment = PP_ALIGN.CENTER
-                        elif alignment == "right":
-                            p.alignment = PP_ALIGN.RIGHT
-                        else:
-                            p.alignment = PP_ALIGN.LEFT
-                        
-                    except Exception as e:
-                        logger.warning(f"Failed to add text element: {e}")
-                        continue
+            if USE_OCR_POSITIONING and text_elements and len(text_elements) > 0:
+                # [已禁用] 使用 OCR 偵測到的精確位置
+                logger.info(f"Slide {i+1}: Using {len(text_elements)} precise text elements (DISABLED)")
+                pass  # 此區塊目前禁用
             else:
+                # --- 強制使用：乾淨分離版面 (Split Layout) ---
                 # --- 備用：使用傳統標題+內容方式 ---
                 text_left = Inches(7.0)
                 text_width = Inches(5.8)

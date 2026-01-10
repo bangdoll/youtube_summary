@@ -1,6 +1,21 @@
 # CHANGELOG
 
 
+## [2.8.0] - 2026-01-10
+
+### 🔧 品質優化：乾淨分離版面 (Clean Split Layout)
+
+#### ❌ 禁用 OCR 精確定位
+- **問題**：Gemini 回傳的 `text_elements` 邊界框座標極度不準確，導致文字散落各處。
+- **解決方案**：設定 `USE_OCR_POSITIONING = False`，禁用 OCR 定位功能。
+
+#### ✅ 強制使用 Split Layout
+- **左側 50%**：放置 AI 清理後的圖片 (無文字)
+- **右側 50%**：放置結構化的標題 + Bullet Points
+- **結果**：乾淨、一致、可預測的版面
+
+---
+
 ## [2.7.0] - 2026-01-10
 
 ### 🎯 階段二：視覺元素分割 (Stage 2: Visual Element Segmentation)
