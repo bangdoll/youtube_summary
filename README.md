@@ -22,6 +22,7 @@
     - **完全可控**：再也不用為了改一個錯字而重新生成整份簡報。
 - **乾淨分離版面 (Clean Split Layout)**：
     - **AI 圖片去字**：整合 **Nano Banana Pro** 模型，自動擦除原始圖片上的文字，保留乾淨背景。
+    - **移除 NotebookLM 圖標**：新增一鍵移除頁面底部 NotebookLM Logo 與頁碼的功能，讓簡報看起來更專業。
     - **圖文不打架**：強制採用「左圖右文」工整排版，徹底杜絕文字重疊與 OCR 漂移問題。
 - **像素級 Shape 重建**：每個文字區塊都是獨立的 PowerPoint Shape，而非死圖。
 - **Codia 風格網格預覽**：直觀的頁面選擇介面，支援全選/取消全選。
@@ -107,7 +108,7 @@ python3 -m uvicorn main:app --reload
 1. **推送至 GitHub**
 2. **在 Cloud Run 建立服務**：選擇 `Continuously deploy from a repository`
 3. **設定環境變數**：填入上述 Key 與 `FIREBASE_CREDENTIALS` (JSON)
-4. **設定資源**：**建議記憶體 2 GiB** (以支援 Playwright 無頭瀏覽器)
+4. **設定資源**：**必須設定為 2 GiB RAM / 2 vCPU 以上** (由於 PDF 圖像處理需要較大記憶體，512MB 預設值會導致崩潰)
 5. **部署！** 🚀
 
 ---
