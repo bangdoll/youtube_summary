@@ -153,7 +153,7 @@ window.generateSlides = async function () {
         }
     }
 }
-};
+
 
 window.openSettings = function () {
     console.log("Opening Settings Modal");
@@ -720,156 +720,120 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pdfInput) pdfInput.value = '';
     };
 
-    // Update Counts
-    if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
-    if (totalCountSpan) totalCountSpan.textContent = currentPreviewImages.length;
 
-    // Update Generate Button State
-    if (generateSlideBtn) {
-        generateSlideBtn.disabled = selectedCount === 0;
-        const span = generateSlideBtn.querySelector('span');
-        if (span) span.textContent = selectedCount === 0 ? '請選擇頁面' : `生成簡報 (${selectedCount} 頁)`;
-    }
-}
-
-    function toggleSelection(index) {
-        if (currentPreviewImages[index]) {
-            currentPreviewImages[index].selected = !currentPreviewImages[index].selected;
-            renderGrid();
-        }
-    }
 
     // Preview Actions
     if (selectAllBtn) {
-    selectAllBtn.addEventListener('click', () => {
-        currentPreviewImages.forEach(i => i.selected = true);
-        renderGrid();
-    });
-}
-
-if (deselectAllBtn) {
-    deselectAllBtn.addEventListener('click', () => {
-        currentPreviewImages.forEach(i => i.selected = false);
-        renderGrid();
-    });
-}
-
-if (cancelPreviewBtn) {
-    cancelPreviewBtn.addEventListener('click', () => {
-        selectedPdfFile = null;
-        uploadStep.classList.remove('hidden');
-        previewStep.classList.add('hidden');
-        if (pdfInput) pdfInput.value = '';
-    });
-}
-
-
-if (removeFileBtn) {
-    removeFileBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Stop bubbling to dropZone
-        pdfInput.value = '';
-        selectedPdfFile = null; // 清空存儲的檔案
-        fileInfo.classList.add('hidden');
-        generateSlideBtn.disabled = true;
-        dropZone.classList.remove('has-file');
-    });
-}
-
-// Inner generateSlides removed (Moved to Global)
-
-// if (generateSlideBtn) {
-//    generateSlideBtn.disabled = true; // Initial state
-// }
-
-// === Demo Terminal Animation ===
-const demoBody = document.getElementById('demoTerminalBody');
-const typewriter = document.getElementById('typewriter');
-const replayBtn = document.getElementById('replayDemoBtn');
-
-if (demoBody && typewriter) {
-    // Sequence of events for the demo
-    const demoSequence = [
-        { text: "youtu-brain analyze https://youtu.be/demo123", type: "command" },
-        { text: "🔌 連線建立中...", type: "info", delay: 500 },
-        { text: "🚀 系統核心已啟動", type: "info", delay: 800 },
-        { text: "🔒 安全模組: ✅ 已啟用 (Google OAuth)", type: "info", delay: 1000 },
-        { text: "處理影片 ID: demo123 (Google DeepMind Dev Day)", type: "info", delay: 1500 },
-        { text: "嘗試使用 Gemini 直接分析影片...", type: "highlight", delay: 2000 },
-        { text: "正在使用 Gemini 3 Flash Preview (最新預覽版)...", type: "system", delay: 2500 },
-        { text: "影片 URL: https://www.youtube.com/watch?v=demo123", type: "info", delay: 2600 },
-        { text: "Gemini 分析中 (Understanding Visuals & Audio)...", type: "warn", delay: 3500 },
-        { text: "> [DeepMind]: Multimodal understanding achieved.", type: "info", delay: 5000 },
-        { text: "> [DeepMind]: Context window usage: 45K tokens.", type: "info", delay: 5500 },
-        { text: "生成結構化筆記 (Markdown)...", type: "highlight", delay: 7000 },
-        { text: "分析流程成功完成。", type: "success", delay: 8500 }
-    ];
-
-    let isAnimating = false;
-
-    async function runDemo() {
-        if (isAnimating) return;
-        isAnimating = true;
-
-        // Clear previous content except cursor line
-        const existingLogs = demoBody.querySelectorAll('.log-line');
-        existingLogs.forEach(el => el.remove());
-        replayBtn.classList.add('hidden');
-        typewriter.textContent = "";
-
-        // Step 1: Type the command
-        await typeCommand(demoSequence[0].text);
-
-        // Step 2: Process logs
-        for (let i = 1; i < demoSequence.length; i++) {
-            const item = demoSequence[i];
-            await new Promise(r => setTimeout(r, item.delay - (i > 1 ? demoSequence[i - 1].delay : 0)));
-            appendDemoLog(item.text, item.type);
-            // Scroll to bottom
-            demoBody.scrollTop = demoBody.scrollHeight;
-        }
-
-        isAnimating = false;
-        replayBtn.classList.remove('hidden');
-    }
-
-    function typeCommand(text) {
-        return new Promise(resolve => {
-            let charIndex = 0;
-            typewriter.textContent = "";
-            const interval = setInterval(() => {
-                if (charIndex < text.length) {
-                    typewriter.textContent += text.charAt(charIndex);
-                    charIndex++;
-                } else {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        // "Enter" key effect
-                        const cmdLine = document.createElement('div');
-                        cmdLine.className = 'cursor-line';
-                        cmdLine.innerHTML = `<span class="prompt">$</span> <span class="command-text">${text}</span>`;
-                        demoBody.insertBefore(cmdLine, demoBody.firstChild);
-                        typewriter.textContent = ""; // Clear for next input implication
-                        resolve();
-                    }, 500);
-                }
-            }, 50); // Typing speed
+        selectAllBtn.addEventListener('click', () => {
+            currentPreviewImages.forEach(i => i.selected = true);
+            renderGrid();
         });
     }
 
-    function appendDemoLog(message, type) {
-        const div = document.createElement('div');
-        div.className = `log-entry log-line ${type}`;
-        div.textContent = `> ${message}`;
-        // Insert before the cursor line (which is always last)
-        const cursorLine = demoBody.querySelector('.cursor-line');
-        demoBody.insertBefore(div, cursorLine);
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', () => {
+            currentPreviewImages.forEach(i => i.selected = false);
+            renderGrid();
+        });
     }
 
-    // Auto run on load
-    setTimeout(runDemo, 1000);
 
-    // Replay handler
-    replayBtn.addEventListener('click', runDemo);
-}
+
+    // Inner generateSlides removed (Moved to Global)
+
+    // if (generateSlideBtn) {
+    //    generateSlideBtn.disabled = true; // Initial state
+    // }
+
+    // === Demo Terminal Animation ===
+    const demoBody = document.getElementById('demoTerminalBody');
+    const typewriter = document.getElementById('typewriter');
+    const replayBtn = document.getElementById('replayDemoBtn');
+
+    if (demoBody && typewriter) {
+        // Sequence of events for the demo
+        const demoSequence = [
+            { text: "youtu-brain analyze https://youtu.be/demo123", type: "command" },
+            { text: "🔌 連線建立中...", type: "info", delay: 500 },
+            { text: "🚀 系統核心已啟動", type: "info", delay: 800 },
+            { text: "🔒 安全模組: ✅ 已啟用 (Google OAuth)", type: "info", delay: 1000 },
+            { text: "處理影片 ID: demo123 (Google DeepMind Dev Day)", type: "info", delay: 1500 },
+            { text: "嘗試使用 Gemini 直接分析影片...", type: "highlight", delay: 2000 },
+            { text: "正在使用 Gemini 3 Flash Preview (最新預覽版)...", type: "system", delay: 2500 },
+            { text: "影片 URL: https://www.youtube.com/watch?v=demo123", type: "info", delay: 2600 },
+            { text: "Gemini 分析中 (Understanding Visuals & Audio)...", type: "warn", delay: 3500 },
+            { text: "> [DeepMind]: Multimodal understanding achieved.", type: "info", delay: 5000 },
+            { text: "> [DeepMind]: Context window usage: 45K tokens.", type: "info", delay: 5500 },
+            { text: "生成結構化筆記 (Markdown)...", type: "highlight", delay: 7000 },
+            { text: "分析流程成功完成。", type: "success", delay: 8500 }
+        ];
+
+        let isAnimating = false;
+
+        async function runDemo() {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            // Clear previous content except cursor line
+            const existingLogs = demoBody.querySelectorAll('.log-line');
+            existingLogs.forEach(el => el.remove());
+            replayBtn.classList.add('hidden');
+            typewriter.textContent = "";
+
+            // Step 1: Type the command
+            await typeCommand(demoSequence[0].text);
+
+            // Step 2: Process logs
+            for (let i = 1; i < demoSequence.length; i++) {
+                const item = demoSequence[i];
+                await new Promise(r => setTimeout(r, item.delay - (i > 1 ? demoSequence[i - 1].delay : 0)));
+                appendDemoLog(item.text, item.type);
+                // Scroll to bottom
+                demoBody.scrollTop = demoBody.scrollHeight;
+            }
+
+            isAnimating = false;
+            replayBtn.classList.remove('hidden');
+        }
+
+        function typeCommand(text) {
+            return new Promise(resolve => {
+                let charIndex = 0;
+                typewriter.textContent = "";
+                const interval = setInterval(() => {
+                    if (charIndex < text.length) {
+                        typewriter.textContent += text.charAt(charIndex);
+                        charIndex++;
+                    } else {
+                        clearInterval(interval);
+                        setTimeout(() => {
+                            // "Enter" key effect
+                            const cmdLine = document.createElement('div');
+                            cmdLine.className = 'cursor-line';
+                            cmdLine.innerHTML = `<span class="prompt">$</span> <span class="command-text">${text}</span>`;
+                            demoBody.insertBefore(cmdLine, demoBody.firstChild);
+                            typewriter.textContent = ""; // Clear for next input implication
+                            resolve();
+                        }, 500);
+                    }
+                }, 50); // Typing speed
+            });
+        }
+
+        function appendDemoLog(message, type) {
+            const div = document.createElement('div');
+            div.className = `log-entry log-line ${type}`;
+            div.textContent = `> ${message}`;
+            // Insert before the cursor line (which is always last)
+            const cursorLine = demoBody.querySelector('.cursor-line');
+            demoBody.insertBefore(div, cursorLine);
+        }
+
+        // Auto run on load
+        setTimeout(runDemo, 1000);
+
+        // Replay handler
+        replayBtn.addEventListener('click', runDemo);
+    }
 
 });
