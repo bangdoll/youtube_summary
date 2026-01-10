@@ -40,8 +40,9 @@ window.switchTab = function (targetMode) {
     }
 };
 
-window.generateSlides = async function () {
-    const btn = document.getElementById('generateSlideBtn');
+window.generateSlides = async function (btnElement) {
+    // Fallback if no button passed (legacy calls)
+    const btn = btnElement || document.getElementById('generateSlideBtn') || document.getElementById('generateSlideBtnResult');
     const settingsModal = document.getElementById('settingsModal');
 
     if (!btn) return;
@@ -56,6 +57,7 @@ window.generateSlides = async function () {
     // Safety Check
     if (btn.disabled) {
         console.warn("Click ignored: Button is disabled");
+        // Self-healing: If we have files selected but button is disabled, re-enable it
         if (selectedPdfFile && currentPreviewImages.some(i => i.selected)) {
             console.warn("Button was disabled but valid state detected. Re-enabling and proceeding...");
             btn.disabled = false;
@@ -93,7 +95,6 @@ window.generateSlides = async function () {
 
     // UI Loading State
     btn.disabled = true;
-    const originalBtnText = btn.innerHTML;
     btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
 
     const formData = new FormData();
@@ -149,181 +150,22 @@ window.generateSlides = async function () {
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = originalBtnText;
+            btn.innerHTML = originalText; // Restore original text/icon
         }
     }
 }
 
-
-window.openSettings = function () {
-    console.log("Opening Settings Modal");
-    const modal = document.getElementById('settingsModal');
-    const geminiKeyInput = document.getElementById('geminiKeyInput');
-    const openaiKeyInput = document.getElementById('openaiKeyInput');
-
-    if (modal) {
-        modal.classList.remove('hidden');
-
-        // Load Settings
-        const geminiKey = localStorage.getItem('gemini_api_key');
-        const openaiKey = localStorage.getItem('openai_api_key');
-        if (geminiKey && geminiKeyInput) geminiKeyInput.value = geminiKey;
-        if (openaiKey && openaiKeyInput) openaiKeyInput.value = openaiKey;
-    }
-};
-
-window.closeSettings = function () {
-    const modal = document.getElementById('settingsModal');
-    if (modal) modal.classList.add('hidden');
-};
-
-window.saveSettings = function () {
-    const geminiKeyInput = document.getElementById('geminiKeyInput');
-    const openaiKeyInput = document.getElementById('openaiKeyInput');
-    const modal = document.getElementById('settingsModal');
-
-    const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : "";
-    const openaiKey = openaiKeyInput ? openaiKeyInput.value.trim() : "";
-
-    if (geminiKey) localStorage.setItem('gemini_api_key', geminiKey);
-    else localStorage.removeItem('gemini_api_key');
-
-    if (openaiKey) localStorage.setItem('openai_api_key', openaiKey);
-    else localStorage.removeItem('openai_api_key');
-
-    alert('設定已儲存！將優先使用您的 API Key 進行分析。');
-    if (modal) modal.classList.add('hidden');
-};
-
-// === GLOBAL PDF HANDLERS (Moved from inner scope) ===
-window.triggerUpload = function () {
-    const pdfInput = document.getElementById('pdfInput');
-    if (pdfInput) pdfInput.click();
-};
-
-window.handleFileChange = function (input) {
-    if (input.files && input.files.length > 0) {
-        window.handleFileSelect(input.files[0]);
-    }
-};
-
-window.handleDragOver = function (e) {
-    e.preventDefault();
-    const dropZone = document.getElementById('dropZone');
-    if (dropZone) dropZone.classList.add('dragover');
-};
-
-window.handleDragLeave = function (e) {
-    e.preventDefault();
-    const dropZone = document.getElementById('dropZone');
-    if (dropZone) dropZone.classList.remove('dragover');
-};
-
-window.handleDrop = function (e) {
-    e.preventDefault();
-    const dropZone = document.getElementById('dropZone');
-    if (dropZone) dropZone.classList.remove('dragover');
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        window.handleFileSelect(e.dataTransfer.files[0]);
-    }
-};
-
-window.handleFileSelect = async function (file) {
-    if (file.type !== 'application/pdf') {
-        alert('請上傳 PDF 檔案');
-        return;
-    }
-
-    selectedPdfFile = file;
-
-    // Update File Info UI
-    const fileInfo = document.getElementById('fileInfo');
-    const fileNameDisplay = document.getElementById('fileName');
-    const dropZone = document.getElementById('dropZone');
-
-    if (fileNameDisplay) fileNameDisplay.textContent = file.name;
-    if (fileInfo) fileInfo.classList.remove('hidden');
-    if (dropZone) dropZone.classList.add('has-file');
-
-    // Start Preview Flow
-    await window.startPreview(file);
-};
-
-window.removeFile = function (e) {
-    if (e) e.stopPropagation();
-
-    const pdfInput = document.getElementById('pdfInput');
-    const fileInfo = document.getElementById('fileInfo');
-    const dropZone = document.getElementById('dropZone');
-
-    if (pdfInput) pdfInput.value = '';
-    selectedPdfFile = null;
-    currentPreviewImages = [];
-
-    if (fileInfo) fileInfo.classList.add('hidden');
-    if (dropZone) dropZone.classList.remove('has-file');
-
-    // Hide Preview
-    const uploadStep = document.getElementById('uploadStep');
-    const previewStep = document.getElementById('previewStep');
-    if (uploadStep) uploadStep.classList.remove('hidden');
-    if (previewStep) previewStep.classList.add('hidden');
-};
-
-window.startPreview = async function (file) {
-    const previewLoading = document.getElementById('previewLoading');
-    const uploadStep = document.getElementById('uploadStep');
-    const previewStep = document.getElementById('previewStep');
-    const generateSlideBtn = document.getElementById('generateSlideBtn');
-
-    // Show Loading
-    if (previewLoading) previewLoading.classList.remove('hidden');
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        const res = await fetch('/api/preview-pdf', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!res.ok) throw new Error('預覽生成失敗');
-
-        const data = await res.json();
-
-        // Init State
-        currentPreviewImages = data.images.map((url, index) => ({
-            url: url,
-            index: index,
-            selected: true // Default select all
-        }));
-
-        window.renderGrid();
-
-        // Switch UI
-        if (uploadStep) uploadStep.classList.add('hidden');
-        if (previewStep) previewStep.classList.remove('hidden');
-
-        // Enable Generate Button
-        if (generateSlideBtn) generateSlideBtn.disabled = false;
-
-    } catch (e) {
-        console.error(e);
-        alert('無法產生預覽，請確認 PDF 格式');
-        // Reset
-        selectedPdfFile = null;
-    } finally {
-        if (previewLoading) previewLoading.classList.add('hidden');
-    }
-};
+// ... empty space ...
 
 window.renderGrid = function () {
     const pageGrid = document.getElementById('pageGrid');
     const selectedCountSpan = document.getElementById('selectedCount');
     const totalCountSpan = document.getElementById('totalCount');
-    const generateSlideBtn = document.getElementById('generateSlideBtn');
+
+    // Update ALL generate buttons
+    const resultBtn = document.getElementById('generateSlideBtnResult');
+    const previewBtn = document.getElementById('generateSlideBtn');
+    const generateButtons = [previewBtn, resultBtn].filter(b => b !== null);
 
     if (!pageGrid) return;
     pageGrid.innerHTML = '';
@@ -353,11 +195,11 @@ window.renderGrid = function () {
     if (totalCountSpan) totalCountSpan.textContent = currentPreviewImages.length;
 
     // Update Generate Button State
-    if (generateSlideBtn) {
-        generateSlideBtn.disabled = selectedCount === 0;
-        const span = generateSlideBtn.querySelector('span');
+    generateButtons.forEach(btn => {
+        btn.disabled = selectedCount === 0;
+        const span = btn.querySelector('span');
         if (span) span.textContent = selectedCount === 0 ? '請選擇頁面' : `生成簡報 (${selectedCount} 頁)`;
-    }
+    });
 };
 
 window.toggleSelection = function (index) {

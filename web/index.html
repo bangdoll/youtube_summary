@@ -217,7 +217,7 @@
                         <button id="cancelPreviewBtn" class="btn-secondary" onclick="cancelPreview()">
                             <i class="ri-arrow-left-line"></i> 重新上傳
                         </button>
-                        <button id="generateSlideBtn" class="generate-btn" onmousedown="generateSlides()"
+                        <button id="generateSlideBtn" class="generate-btn" onclick="generateSlides(this)"
                             style="pointer-events: auto !important; position: relative; z-index: 9999;">
                             <span>生成簡報</span>
                             <i class="ri-magic-line"></i>
@@ -363,12 +363,12 @@
             <div class="result-header">
                 <h2><i class="ri-file-text-line"></i> 智慧分析報告</h2>
                 <div class="actions">
-                    <button id="generateSlideBtnResult" class="generate-btn" onmousedown="generateSlides()"
+                    <button id="generateSlideBtnResult" class="generate-btn" onclick="generateSlides(this)"
                         style="pointer-events: auto !important; position: relative; z-index: 9999;">
                         <i class="ri-magic-line"></i>
                         <span>生成簡報</span>
                     </button>
-                    <button class="btn-secondary" id="cancelPreviewBtn">重新上傳</button>
+                    <button class="btn-secondary" id="cancelPreviewBtnResult" onclick="cancelPreview()">重新上傳</button>
                 </div>
             </div>
             <div class="result-content markdown-body" id="markdownOutput">
