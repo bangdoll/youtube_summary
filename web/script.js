@@ -404,10 +404,17 @@ window.startPreview = async function (file) {
     const previewLoading = document.getElementById('previewLoading');
     const uploadStep = document.getElementById('uploadStep');
     const previewStep = document.getElementById('previewStep');
-    const generateSlideBtn = document.getElementById('generateSlideBtn');
+    const startPreviewBtn = document.getElementById('startPreviewBtn');
 
     // 顯示載入中
     if (previewLoading) previewLoading.classList.remove('hidden');
+
+    // 禁用按鈕防止重複點擊
+    if (startPreviewBtn) {
+        startPreviewBtn.classList.add('btn-disabled');
+        startPreviewBtn.style.cursor = 'wait';
+        startPreviewBtn.innerHTML = '<span>處理中...</span><i class="ri-loader-4-line ri-spin"></i>';
+    }
 
     const formData = new FormData();
     formData.append('file', file);
@@ -438,18 +445,27 @@ window.startPreview = async function (file) {
         if (uploadStep) uploadStep.classList.add('hidden');
         if (previewStep) previewStep.classList.remove('hidden');
 
-        // 啟用生成按鈕 (使用 CSS class 而非 disabled 屬性，確保 mousedown 永遠能觸發)
+        // 啟用生成按鈕
+        const generateSlideBtn = document.getElementById('generateSlideBtn');
         if (generateSlideBtn) {
             generateSlideBtn.classList.remove('btn-disabled');
         }
 
     } catch (e) {
         console.error(e);
-        alert('無法產生預覽，請確認 PDF 格式');
+        alert(`預覽生成失敗: ${e.message || '請確認 PDF 格式'}`);
         // 重置
         selectedPdfFile = null;
     } finally {
         if (previewLoading) previewLoading.classList.add('hidden');
+
+        // 恢復「下一步」按鈕狀態 (無論成功失敗都恢復，因為如果成功它只是隱藏了)
+        const startPreviewBtn = document.getElementById('startPreviewBtn');
+        if (startPreviewBtn) {
+            startPreviewBtn.classList.remove('btn-disabled');
+            startPreviewBtn.style.cursor = 'pointer';
+            startPreviewBtn.innerHTML = '<span>下一步：解析頁面</span><i class="ri-arrow-right-line"></i>';
+        }
     }
 };
 
