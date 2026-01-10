@@ -580,7 +580,19 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
             logger.info(f"等待 {DELAY_BETWEEN_BATCHES} 秒後處理下一批...")
             await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
-    # 4. 生成 PPTX
+    return analyses, cleaned_images
+
+
+async def process_pdf_to_slides(pdf_content, api_key: str, filename: str, selected_indices: List[int] = None):
+    """
+    [Legacy Wrapper] 完整流程：PDF -> 分析 -> 去字 -> 生成 PPTX
+    保留此函數以相容既有 API。
+    """
+    
+    # 1. 分析與去字
+    analyses, cleaned_images = await analyze_presentation(pdf_content, api_key, filename, selected_indices)
+    
+    # 2. 生成 PPTX
     output_dir = "temp_slides"
     os.makedirs(output_dir, exist_ok=True)
     

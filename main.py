@@ -4,6 +4,9 @@ import json
 import asyncio
 import logging
 import secrets
+import pydantic
+from typing import List
+from PIL import Image
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, Request, Response, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse, FileResponse
@@ -321,6 +324,123 @@ async def preview_pdf(file: UploadFile = File(...)):
         print(f"Preview PDF Error: {e}")
         return JSONResponse(status_code=500, content={"error": f"預覽生成失敗: {str(e)}"})
 
+    except Exception as e:
+        print(f"Preview PDF Error: {e}")
+        return JSONResponse(status_code=500, content={"error": f"預覽生成失敗: {str(e)}"})
+
+
+@app.post("/api/analyze-slides")
+async def analyze_slides(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    gemini_key: str = Form(...),
+    selected_pages: str = Form(None)
+):
+    """
+    [Web Editor Step 1] 接收 PDF，進行分析與去字，但不生成 PPTX。
+    回傳: JSON 分析結果 (Title, Content) + 清理後的圖片 URL
+    """
+    if not file.filename.lower().endswith(".pdf"):
+        return JSONResponse(status_code=400, content={"error": "請上傳 PDF 檔案"})
+
+    try:
+        pdf_bytes = await file.read()
+        
+        # 解析 selected_pages
+        selected_indices = None
+        if selected_pages:
+            try:
+                selected_indices = json.loads(selected_pages)
+                if not isinstance(selected_indices, list):
+                    selected_indices = None
+            except:
+                pass
+
+        # 1. 執行核心分析 (分析 + 去字)
+        analyses, cleaned_images = await slide_generator.analyze_presentation(
+            pdf_bytes, gemini_key, file.filename, selected_indices
+        )
+        
+        # 2. 儲存清理後的圖片供前端預覽
+        cleaned_image_urls = []
+        for i, img in enumerate(cleaned_images):
+            # 使用隨機檔名避免快取衝突
+            img_filename = f"clean_{secrets.token_hex(8)}.jpg"
+            img_path = os.path.join(TEMP_DIR, img_filename)
+            await asyncio.to_thread(img.save, img_path, "JPEG", quality=90)
+            
+            # 產生 URL (需配合 static mount)
+            cleaned_image_urls.append(f"/static/temp/{img_filename}")
+            
+        # 3. 回傳結構化資料
+        return JSONResponse({
+            "analyses": analyses,
+            "cleaned_images": cleaned_image_urls
+        })
+
+    except Exception as e:
+        print(f"Analyze Slides Error: {e}")
+        return JSONResponse(status_code=500, content={"error": f"分析失敗: {str(e)}"})
+
+
+class GenerateSlidesRequest(pydantic.BaseModel):
+    analyses: List[dict]
+    cleaned_images: List[str]  # 這裡接收的是圖片 URLPath
+    filename: str = "presentation"
+
+@app.post("/api/generate-slides-data")
+async def generate_slides_data(
+    request: Request,
+    data: GenerateSlidesRequest
+):
+    """
+    [Web Editor Step 2] 接收前端編輯後的 JSON 資料與圖片路徑，生成 PPTX。
+    """
+    try:
+        # 1. 還原圖片物件 (從 URL 路徑讀取 temp 檔案)
+        # URL 格式: /static/temp/filename.jpg
+        # 實體路徑: WEB_DIR/temp/filename.jpg
+        
+        pil_images = []
+        for url in data.cleaned_images:
+            # 去除 /static/temp/ 前綴，或是直接取檔名
+            filename = os.path.basename(url)
+            file_path = os.path.join(TEMP_DIR, filename)
+            
+            if os.path.exists(file_path):
+                img = Image.open(file_path)
+                pil_images.append(img)
+            else:
+                # 若找不到暫存檔 (可能過期)，這會是個問題
+                # 簡單解法：前端需確保圖片時效，或重新上傳
+                # 這裡補一個全白圖避免崩潰
+                pil_images.append(Image.new('RGB', (1024, 768), 'white'))
+
+        # 2. 生成 PPTX
+        output_dir = "temp_slides"
+        os.makedirs(output_dir, exist_ok=True)
+        
+        output_filename = f"{os.path.splitext(data.filename)[0]}_edited.pptx"
+        output_path = os.path.join(output_dir, output_filename)
+        
+        await asyncio.to_thread(
+            slide_generator.create_pptx_from_analysis, 
+            data.analyses, 
+            pil_images, 
+            output_path
+        )
+        
+        return FileResponse(
+            output_path,
+            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            filename=output_filename
+        )
+
+    except Exception as e:
+        print(f"Generate Slides Data Error: {e}")
+        return JSONResponse(status_code=500, content={"error": f"生成失敗: {str(e)}"})
+
+
 @app.post("/api/generate-slides")
 async def generate_slides(
     background_tasks: BackgroundTasks,
@@ -329,8 +449,8 @@ async def generate_slides(
     selected_pages: str = Form(None)
 ):
     """
-    接收 PDF 檔案，使用 Gemini Vision 分析並生成 PPTX。
-    selected_pages: JSON 字串 (e.g. "[0, 1, 2]")
+    [Legacy] 接收 PDF 檔案，使用 Gemini Vision 分析並生成 PPTX。
+    保留給舊版 UI 使用。
     """
     # 驗證輸入
     if not gemini_key:

@@ -1,5 +1,19 @@
-# CHANGELOG
+## [2.10.0] - 2026-01-10
 
+### ✨ 重量級功能：Web 簡報內容編輯器 (Web Slide Editor)
+
+#### 🖥️ 所見即所得 (What You See Is What You Get)
+- **全新工作流**：上傳 PDF -> AI 分析 -> **網頁預覽與編輯** -> 生成 PPTX。
+- **解決痛點**：再也不用為了修改一個字而重新生成整份簡報。
+- **雙欄介面**：
+  - **左側**：顯示 AI 自動去字的「乾淨版面」預覽。
+  - **右側**：即時修改標題與條列重點 (Bullet Points)。
+
+#### 📐 Backend 架構重構
+- 新增 `/api/analyze-slides`：只進行分析與去字，回傳結構化 JSON。
+- 新增 `/api/generate-slides-data`：接收編輯後的 JSON 生成最終 PPTX。
+
+---
 
 ## [2.9.0] - 2026-01-10
 

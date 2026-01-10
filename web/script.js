@@ -52,50 +52,45 @@ window.switchTab = function (targetMode) {
     }
 };
 
+// Editor State
+let editorData = {
+    analyses: [],
+    cleanedImages: [],
+    filename: ""
+};
+let currentEditIndex = 0;
+
 window.generateSlides = async function (btnElement) {
     // 兼容性處理：如果未傳入按鈕，則嘗試獲取預設 ID (支援舊版調用)
-    const btn = btnElement || document.getElementById('generateSlideBtn') || document.getElementById('generateSlideBtnResult');
+    const btn = btnElement || document.getElementById('generateSlideBtn');
     const settingsModal = document.getElementById('settingsModal');
+    const analysisLoading = document.getElementById('analysisLoading');
+    const previewStep = document.getElementById('previewStep');
+    const editorStep = document.getElementById('editorStep');
 
     if (!btn) return;
 
-    console.log(">>> Generate Slide Button Clicked (Global Function) <<<");
-    console.log("Button Disabled State:", btn.disabled);
-    console.log("Selected PDF:", selectedPdfFile);
-
-    // 提供即時反饋
-    const originalText = btn.innerHTML;
-
-    // 安全檢查 - 使用 CSS class 而非 disabled 狀態 (確保 mousedown 永遠觸發)
+    // 安全檢查 - 使用 CSS class 而非 disabled 狀態
     const isVisuallyDisabled = btn.classList.contains('btn-disabled');
 
     if (isVisuallyDisabled) {
-        // 如果按鈕視覺上被禁用，檢查是否有有效狀態
         if (selectedPdfFile && currentPreviewImages.some(i => i.selected)) {
-            console.log("Visual disabled but valid state - proceeding");
             btn.classList.remove('btn-disabled');
-        } else if (!selectedPdfFile) {
-            console.error("No file selected");
-            alert("請先上傳 PDF 檔案");
-            return;
         } else {
-            console.error("No pages selected");
-            alert("請至少選擇一頁");
+            alert("請先上傳 PDF 並選擇頁面");
             return;
         }
     }
 
     const file = selectedPdfFile;
     if (!file) {
-        console.error("No file selected");
-        alert("未偵測到檔案 (Internal State Missing)");
+        alert("未偵測到檔案");
         return;
     }
 
     const geminiKey = localStorage.getItem('gemini_api_key');
     if (!geminiKey) {
-        console.log("Missing API Key");
-        alert('請先在設定中輸入 Google Gemini API Key (BYOK)');
+        alert('請先在設定中輸入 Google Gemini API Key');
         if (settingsModal) settingsModal.classList.remove('hidden');
         return;
     }
@@ -110,11 +105,11 @@ window.generateSlides = async function (btnElement) {
         return;
     }
 
-    console.log(`Generating slides for ${selectedIndices.length} pages...`);
+    console.log(`Starting Analysis for ${selectedIndices.length} pages...`);
 
-    // UI 載入狀態
-    btn.disabled = true;
-    btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
+    // UI 切換：進入 Loading
+    if (analysisLoading) analysisLoading.classList.remove('hidden');
+    if (previewStep) previewStep.classList.add('hidden');
 
     const formData = new FormData();
     formData.append('file', file);
@@ -122,60 +117,160 @@ window.generateSlides = async function (btnElement) {
     formData.append('selected_pages', JSON.stringify(selectedIndices));
 
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 900000);
-
-        const response = await fetch('/api/generate-slides', {
+        // Step 1: Call Analyze API
+        const response = await fetch('/api/analyze-slides', {
             method: 'POST',
-            body: formData,
-            signal: controller.signal
+            body: formData
         });
-        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || '分析失敗');
+        }
+
+        const result = await response.json();
+
+        // Initialize Editor State
+        editorData.analyses = result.analyses;
+        editorData.cleanedImages = result.cleaned_images;
+        editorData.filename = file.name;
+        currentEditIndex = 0;
+
+        // Setup Editor UI
+        window.updateEditorUI();
+
+        // Switch to Editor Step
+        if (analysisLoading) analysisLoading.classList.add('hidden');
+        if (editorStep) editorStep.classList.remove('hidden');
+
+    } catch (error) {
+        console.error("Analysis Error:", error);
+        alert(`錯誤: ${error.message}`);
+        // 回到預覽
+        if (analysisLoading) analysisLoading.classList.add('hidden');
+        if (previewStep) previewStep.classList.remove('hidden');
+    }
+}
+
+// Editor Navigation & Logic
+window.updateEditorUI = function () {
+    if (editorData.analyses.length === 0) return;
+
+    const currentData = editorData.analyses[currentEditIndex];
+    const currentImage = editorData.cleanedImages[currentEditIndex];
+
+    // Update Counts
+    document.getElementById('currentEditPage').textContent = currentEditIndex + 1;
+    document.getElementById('totalEditPages').textContent = editorData.analyses.length;
+
+    // Update Image
+    const imgEl = document.getElementById('editorImage');
+    if (imgEl) imgEl.src = currentImage;
+
+    // Update Form Inputs
+    const titleInput = document.getElementById('editTitle');
+    const contentInput = document.getElementById('editContent');
+
+    if (titleInput) titleInput.value = currentData.title || "";
+    if (contentInput) {
+        // Join content array into newline-separated string
+        contentInput.value = (currentData.content || []).join('\n');
+    }
+
+    // Update Buttons State
+    const prevBtn = document.getElementById('prevSlideBtn');
+    const nextBtn = document.getElementById('nextSlideBtn');
+
+    if (prevBtn) prevBtn.disabled = currentEditIndex === 0;
+    if (nextBtn) nextBtn.disabled = currentEditIndex === editorData.analyses.length - 1;
+}
+
+window.saveCurrentSlideData = function () {
+    // Save UI inputs back to data object
+    const titleInput = document.getElementById('editTitle');
+    const contentInput = document.getElementById('editContent');
+
+    if (!titleInput || !contentInput) return;
+
+    const newTitle = titleInput.value.trim();
+    // Split by newline and filter empty items
+    const newContent = contentInput.value.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+    // Update State
+    editorData.analyses[currentEditIndex].title = newTitle;
+    editorData.analyses[currentEditIndex].content = newContent;
+}
+
+window.prevEditSlide = function () {
+    if (currentEditIndex > 0) {
+        window.saveCurrentSlideData(); // Save before move
+        currentEditIndex--;
+        window.updateEditorUI();
+    }
+}
+
+window.nextEditSlide = function () {
+    if (currentEditIndex < editorData.analyses.length - 1) {
+        window.saveCurrentSlideData(); // Save before move
+        currentEditIndex++;
+        window.updateEditorUI();
+    }
+}
+
+window.backToPreview = function () {
+    if (confirm("確定要返回嗎？這將會遺失目前的分析與編輯進度。")) {
+        document.getElementById('editorStep').classList.add('hidden');
+        document.getElementById('previewStep').classList.remove('hidden');
+    }
+}
+
+// Final Generation Step
+window.generatePresentations = async function () {
+    window.saveCurrentSlideData(); // Save current page first
+
+    const btn = document.getElementById('finalGenerateBtn');
+    if (!btn) return;
+
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
+
+    try {
+        const response = await fetch('/api/generate-slides-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(editorData)
+        });
 
         if (!response.ok) {
             const err = await response.json();
             throw new Error(err.error || '生成失敗');
         }
 
-        console.log("Generation success, downloading...");
-
+        // Download logic
         const blob = await response.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
 
-        // 從 Content-Disposition 標頭提取檔名
-        const contentDisposition = response.headers.get('Content-Disposition');
-        let fileName = selectedPdfFile ? selectedPdfFile.name.replace('.pdf', '.pptx') : 'slides.pptx';
-
-        if (contentDisposition) {
-            // 嘗試匹配 filename="xxx" 或 filename=xxx
-            const filenameMatch = contentDisposition.match(/filename[^;=\n]*=(['"]?)([^'"\n]*)\1/);
-            if (filenameMatch && filenameMatch[2]) {
-                fileName = filenameMatch[2];
-            }
-        }
-
+        let fileName = editorData.filename.replace('.pdf', '_edited.pptx');
         a.download = fileName;
+
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(downloadUrl);
 
-        alert('簡報生成成功！下載即將開始。');
+        alert('PPTX 生成成功！');
 
     } catch (error) {
-        console.error("Slide Gen Error:", error);
-        if (error.name === 'AbortError') {
-            alert('請求超時 (15分鐘)，請嘗試減少頁數再試。');
-        } else {
-            alert(`錯誤: ${error.message}`);
-        }
+        console.error("Final Gen Error:", error);
+        alert(`生成錯誤: ${error.message}`);
     } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalText; // 恢復原始文字/圖標
-        }
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
 }
 
