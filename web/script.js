@@ -66,17 +66,21 @@ window.generateSlides = async function (btnElement) {
     // 提供即時反饋
     const originalText = btn.innerHTML;
 
-    // 安全檢查 - 但不要阻擋第一次點擊
-    if (btn.disabled) {
-        console.warn("Button appears disabled, checking if we should proceed anyway...");
-        // 如果有有效狀態，強制繼續執行不要阻擋
+    // 安全檢查 - 使用 CSS class 而非 disabled 狀態 (確保 mousedown 永遠觸發)
+    const isVisuallyDisabled = btn.classList.contains('btn-disabled');
+
+    if (isVisuallyDisabled) {
+        // 如果按鈕視覺上被禁用，檢查是否有有效狀態
         if (selectedPdfFile && currentPreviewImages.some(i => i.selected)) {
-            console.log("Valid state detected, proceeding despite disabled state");
-            btn.disabled = false; // 解除禁用狀態
+            console.log("Visual disabled but valid state - proceeding");
+            btn.classList.remove('btn-disabled');
         } else if (!selectedPdfFile) {
-            // 只在真的沒有檔案時才阻擋
-            console.error("No file selected - blocking");
+            console.error("No file selected");
             alert("請先上傳 PDF 檔案");
+            return;
+        } else {
+            console.error("No pages selected");
+            alert("請至少選擇一頁");
             return;
         }
     }
@@ -337,8 +341,10 @@ window.startPreview = async function (file) {
         if (uploadStep) uploadStep.classList.add('hidden');
         if (previewStep) previewStep.classList.remove('hidden');
 
-        // 啟用生成按鈕
-        if (generateSlideBtn) generateSlideBtn.disabled = false;
+        // 啟用生成按鈕 (使用 CSS class 而非 disabled 屬性，確保 mousedown 永遠能觸發)
+        if (generateSlideBtn) {
+            generateSlideBtn.classList.remove('btn-disabled');
+        }
 
     } catch (e) {
         console.error(e);
@@ -389,9 +395,15 @@ window.renderGrid = function () {
     if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
     if (totalCountSpan) totalCountSpan.textContent = currentPreviewImages.length;
 
-    // 更新生成按鈕狀態
+    // 更新生成按鈕狀態 (使用 CSS class 而非 disabled 屬性，確保 mousedown 永遠能觸發)
     generateButtons.forEach(btn => {
-        btn.disabled = selectedCount === 0;
+        // 移除 disabled 屬性，改用 CSS class
+        btn.removeAttribute('disabled');
+        if (selectedCount === 0) {
+            btn.classList.add('btn-disabled');
+        } else {
+            btn.classList.remove('btn-disabled');
+        }
         const span = btn.querySelector('span');
         if (span) span.textContent = selectedCount === 0 ? '請選擇頁面' : `生成簡報 (${selectedCount} 頁)`;
     });

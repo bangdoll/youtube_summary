@@ -1260,7 +1260,8 @@ button#submitBtn:disabled {
     z-index: 100;
 }
 
-.generate-btn:disabled {
+.generate-btn:disabled,
+.generate-btn.btn-disabled {
     opacity: 0.5;
     cursor: not-allowed;
     filter: grayscale(0.8);
@@ -1268,7 +1269,7 @@ button#submitBtn:disabled {
     transform: none !important;
 }
 
-.generate-btn:not(:disabled):hover {
+.generate-btn:not(:disabled):not(.btn-disabled):hover {
     transform: scale(1.02);
     box-shadow: 0 8px 25px rgba(138, 43, 226, 0.5);
     filter: brightness(1.1);
