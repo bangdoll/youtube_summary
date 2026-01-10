@@ -33,17 +33,22 @@ window.switchTab = function (targetMode) {
     const appSubtitle = document.getElementById('appSubtitle');
     const youtubeFeatures = document.getElementById('youtubeFeatures');
     const slideFeatures = document.getElementById('slideFeatures');
+    const youtubeComparison = document.getElementById('youtubeComparison');
 
     if (targetMode === 'slideMode') {
         if (appSubtitle) appSubtitle.textContent = "上傳 NotebookLM 匯出的 PDF，AI 自動為您生成圖文並茂的 PowerPoint 簡報。";
         // 切換特色區塊
         if (youtubeFeatures) youtubeFeatures.classList.add('hidden');
         if (slideFeatures) slideFeatures.classList.remove('hidden');
+        // 隱藏 NotebookLM 比較區塊 (只在 YouTube 模式顯示)
+        if (youtubeComparison) youtubeComparison.classList.add('hidden');
     } else {
         if (appSubtitle) appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
         // 切換特色區塊
         if (youtubeFeatures) youtubeFeatures.classList.remove('hidden');
         if (slideFeatures) slideFeatures.classList.add('hidden');
+        // 顯示 NotebookLM 比較區塊
+        if (youtubeComparison) youtubeComparison.classList.remove('hidden');
     }
 };
 
