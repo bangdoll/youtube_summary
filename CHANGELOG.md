@@ -1,6 +1,47 @@
 # CHANGELOG
 
 
+## [2.6.0] - 2026-01-10
+
+### 🎨 NoteSlide 像素級重建 (Pixel-Perfect Reconstruction)
+
+#### ✨ AI 圖片文字移除 (AI Text Removal)
+- **Gemini Imagen 整合**：使用 **Nano Banana Pro** (`gemini-3-pro-image-preview`) 進行圖片編輯。
+- **智慧文字擦除**：AI 自動偵測並移除圖片上的所有文字（標題、標籤、數字等）。
+- **無縫填補**：使用 content-aware fill 技術，以周圍背景顏色/紋理自然填補文字區域。
+- **圖文分離**：生成的 PPTX 中，圖片為「乾淨版」，文字則作為獨立可編輯的文字框呈現。
+
+#### 📐 NoteSlide 風格 OCR 精確定位 (Stage 1)
+- **text_elements 陣列**：Gemini 現在會偵測每個文字區塊並回傳精確邊界框 `[ymin, xmin, ymax, xmax]`。
+- **字體屬性還原**：保留字體大小 (pt)、粗體狀態、文字顏色 (hex)。
+- **精確 Shape 定位**：每個文字區塊使用 OCR 偵測到的精確位置建立獨立 PowerPoint Shape。
+- **visual_elements 偵測**：偵測所有視覺元素 (圖片/圖表/圖示) 並回傳邊界框。
+
+#### 🎯 圖片邊界框偵測優化 (Improved Bounding Box Detection)
+- **英文提示詞**：所有 Gemini 提示改為英文以提升 AI 理解精度。
+- **緊密裁切**：強調只留 10-20 像素邊距，精準切割單一圖片。
+- **排除文字區域**：明確指示排除標題、Bullet Points、頁碼、Logo 等。
+- **多圖處理**：若頁面有多個視覺元素，自動選擇最大的。
+
+### 🐛 錯誤修復 (Bug Fixes)
+
+#### 🔧 前端修復
+- **修復 PDF 上傳功能**：恢復遺失的全域函式 (`triggerUpload`, `handleFileSelect`, `startPreview` 等)。
+- **修復設定按鈕**：恢復遺失的 `openSettings`, `closeSettings`, `saveSettings` 函式。
+- **修復複製/下載按鈕**：在 YouTube 分析結果頁恢復「複製內容」與「下載 Markdown」按鈕。
+- **移除錯誤按鈕**：從 YouTube 分析結果頁移除不適用的「生成簡報」按鈕。
+
+#### 📦 PPTX 下載修復
+- **修復下載檔名**：改進 `Content-Disposition` 標頭解析邏輯，確保下載的 PPTX 檔案有正確的 `.pptx` 副檔名。
+- **備用檔名邏輯**：若標頭解析失敗，自動使用原始 PDF 檔名作為 PPTX 檔名。
+
+### 📚 技術細節
+- **模型升級**：文字移除功能使用 `gemini-3-pro-image-preview` (Nano Banana Pro)。
+- **API 節流**：因雙倍 API 呼叫 (分析 + 文字移除)，間隔從 2 秒增加到 3 秒。
+- **備用機制**：若 Gemini 圖像編輯不可用或 OCR 未回傳 `text_elements`，自動使用傳統版面。
+
+---
+
 ## [2.5.1] - 2026-01-09
 
 ### 📊 NoteSlide 體驗重大升級 (Legacy Upgrade)

@@ -14,12 +14,16 @@
 ### 1.2 ✨ 來源回溯 (Source Attribution)
 自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
-### 1.3 📊 NoteSlide 簡報生成器 (NoteSlide Generator)
-類似 `codia.ai` 的簡報生成引擎 (v2.3)。
+### 1.3 📊 NoteSlide 簡報生成器 (NoteSlide Generator) v2.6
+類似 `codia.ai` 的像素級簡報重建引擎。
+
+- **AI 圖片文字移除**：使用 **Nano Banana Pro** (`gemini-3-pro-image-preview`) 智慧擦除圖片上的文字，輸出乾淨的視覺元素。
+- **OCR 精確定位**：偵測每個文字區塊的精確邊界框，保留字體大小、粗體、顏色等屬性。
+- **像素級 Shape 重建**：每個文字區塊使用 OCR 偵測位置建立獨立 PowerPoint Shape。
 - **Codia 風格網格預覽 (Grid View)**：上傳 NotebookLM 的 PDF 後，可直觀預覽每一頁縮圖，自由選擇要轉換的頁面。
 - **動態版型引擎 (Dynamic Layouts)**：
-    - **Split Layout**：保留左側原始圖表，右側列出分析重點（適合圖表密集頁面）。
-    - **Full Width**：針對裝飾性圖片或文字密集的頁面，自動切換為全寬排版，最大化資訊清晰度。
+    - **Split Layout**：保留左側原始圖表（已移除文字），右側列出可編輯文字。
+    - **Full Width**：針對文字密集的頁面，自動切換為全寬排版。
 - **Gemini Vision 分析**：利用 AI 視覺模型識別投影片結構、提取核心洞察與演講者備忘錄。
 - **一鍵轉換**：將靜態 PDF 轉化為完全可編輯的 PowerPoint (.pptx) 檔案。
 
