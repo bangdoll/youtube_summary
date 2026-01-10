@@ -31,12 +31,19 @@ window.switchTab = function (targetMode) {
 
     // 3. Update Text/Features
     const appSubtitle = document.getElementById('appSubtitle');
-    if (appSubtitle) {
-        if (targetMode === 'slideMode') {
-            appSubtitle.textContent = "上傳 NotebookLM 匯出的 PDF，AI 自動為您生成圖文並茂的 PowerPoint 簡報。";
-        } else {
-            appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
-        }
+    const youtubeFeatures = document.getElementById('youtubeFeatures');
+    const slideFeatures = document.getElementById('slideFeatures');
+
+    if (targetMode === 'slideMode') {
+        if (appSubtitle) appSubtitle.textContent = "上傳 NotebookLM 匯出的 PDF，AI 自動為您生成圖文並茂的 PowerPoint 簡報。";
+        // 切換特色區塊
+        if (youtubeFeatures) youtubeFeatures.classList.add('hidden');
+        if (slideFeatures) slideFeatures.classList.remove('hidden');
+    } else {
+        if (appSubtitle) appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
+        // 切換特色區塊
+        if (youtubeFeatures) youtubeFeatures.classList.remove('hidden');
+        if (slideFeatures) slideFeatures.classList.add('hidden');
     }
 };
 
@@ -54,14 +61,17 @@ window.generateSlides = async function (btnElement) {
     // 提供即時反饋
     const originalText = btn.innerHTML;
 
-    // 安全檢查
+    // 安全檢查 - 但不要阻擋第一次點擊
     if (btn.disabled) {
-        console.warn("Click ignored: Button is disabled");
-        // 自我修復機制：如果已選擇檔案但按鈕仍被禁用，則強制啟用並繼續執行
+        console.warn("Button appears disabled, checking if we should proceed anyway...");
+        // 如果有有效狀態，強制繼續執行不要阻擋
         if (selectedPdfFile && currentPreviewImages.some(i => i.selected)) {
-            console.warn("Button was disabled but valid state detected. Re-enabling and proceeding...");
-            btn.disabled = false;
-        } else {
+            console.log("Valid state detected, proceeding despite disabled state");
+            btn.disabled = false; // 解除禁用狀態
+        } else if (!selectedPdfFile) {
+            // 只在真的沒有檔案時才阻擋
+            console.error("No file selected - blocking");
+            alert("請先上傳 PDF 檔案");
             return;
         }
     }
