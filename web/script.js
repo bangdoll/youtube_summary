@@ -195,6 +195,199 @@ window.saveSettings = function () {
     if (modal) modal.classList.add('hidden');
 };
 
+// === GLOBAL PDF HANDLERS (Moved from inner scope) ===
+window.triggerUpload = function () {
+    const pdfInput = document.getElementById('pdfInput');
+    if (pdfInput) pdfInput.click();
+};
+
+window.handleFileChange = function (input) {
+    if (input.files && input.files.length > 0) {
+        window.handleFileSelect(input.files[0]);
+    }
+};
+
+window.handleDragOver = function (e) {
+    e.preventDefault();
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) dropZone.classList.add('dragover');
+};
+
+window.handleDragLeave = function (e) {
+    e.preventDefault();
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) dropZone.classList.remove('dragover');
+};
+
+window.handleDrop = function (e) {
+    e.preventDefault();
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) dropZone.classList.remove('dragover');
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        window.handleFileSelect(e.dataTransfer.files[0]);
+    }
+};
+
+window.handleFileSelect = async function (file) {
+    if (file.type !== 'application/pdf') {
+        alert('請上傳 PDF 檔案');
+        return;
+    }
+
+    selectedPdfFile = file;
+
+    // Update File Info UI
+    const fileInfo = document.getElementById('fileInfo');
+    const fileNameDisplay = document.getElementById('fileName');
+    const dropZone = document.getElementById('dropZone');
+
+    if (fileNameDisplay) fileNameDisplay.textContent = file.name;
+    if (fileInfo) fileInfo.classList.remove('hidden');
+    if (dropZone) dropZone.classList.add('has-file');
+
+    // Start Preview Flow
+    await window.startPreview(file);
+};
+
+window.removeFile = function (e) {
+    if (e) e.stopPropagation();
+
+    const pdfInput = document.getElementById('pdfInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const dropZone = document.getElementById('dropZone');
+
+    if (pdfInput) pdfInput.value = '';
+    selectedPdfFile = null;
+    currentPreviewImages = [];
+
+    if (fileInfo) fileInfo.classList.add('hidden');
+    if (dropZone) dropZone.classList.remove('has-file');
+
+    // Hide Preview
+    const uploadStep = document.getElementById('uploadStep');
+    const previewStep = document.getElementById('previewStep');
+    if (uploadStep) uploadStep.classList.remove('hidden');
+    if (previewStep) previewStep.classList.add('hidden');
+};
+
+window.startPreview = async function (file) {
+    const previewLoading = document.getElementById('previewLoading');
+    const uploadStep = document.getElementById('uploadStep');
+    const previewStep = document.getElementById('previewStep');
+    const generateSlideBtn = document.getElementById('generateSlideBtn');
+
+    // Show Loading
+    if (previewLoading) previewLoading.classList.remove('hidden');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/api/preview-pdf', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!res.ok) throw new Error('預覽生成失敗');
+
+        const data = await res.json();
+
+        // Init State
+        currentPreviewImages = data.images.map((url, index) => ({
+            url: url,
+            index: index,
+            selected: true // Default select all
+        }));
+
+        window.renderGrid();
+
+        // Switch UI
+        if (uploadStep) uploadStep.classList.add('hidden');
+        if (previewStep) previewStep.classList.remove('hidden');
+
+        // Enable Generate Button
+        if (generateSlideBtn) generateSlideBtn.disabled = false;
+
+    } catch (e) {
+        console.error(e);
+        alert('無法產生預覽，請確認 PDF 格式');
+        // Reset
+        selectedPdfFile = null;
+    } finally {
+        if (previewLoading) previewLoading.classList.add('hidden');
+    }
+};
+
+window.renderGrid = function () {
+    const pageGrid = document.getElementById('pageGrid');
+    const selectedCountSpan = document.getElementById('selectedCount');
+    const totalCountSpan = document.getElementById('totalCount');
+    const generateSlideBtn = document.getElementById('generateSlideBtn');
+
+    if (!pageGrid) return;
+    pageGrid.innerHTML = '';
+
+    let selectedCount = 0;
+
+    currentPreviewImages.forEach((item) => {
+        if (item.selected) selectedCount++;
+
+        const div = document.createElement('div');
+        div.className = `grid-item ${item.selected ? 'selected' : ''}`;
+        div.onclick = () => window.toggleSelection(item.index);
+
+        div.innerHTML = `
+        <img src="${item.url}" loading="lazy">
+        <div class="checkbox-overlay">
+            <i class="ri-check-line"></i>
+        </div>
+        <span class="page-number">${item.index + 1}</span>
+    `;
+
+        pageGrid.appendChild(div);
+    });
+
+    // Update Counts
+    if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
+    if (totalCountSpan) totalCountSpan.textContent = currentPreviewImages.length;
+
+    // Update Generate Button State
+    if (generateSlideBtn) {
+        generateSlideBtn.disabled = selectedCount === 0;
+        const span = generateSlideBtn.querySelector('span');
+        if (span) span.textContent = selectedCount === 0 ? '請選擇頁面' : `生成簡報 (${selectedCount} 頁)`;
+    }
+};
+
+window.toggleSelection = function (index) {
+    if (currentPreviewImages[index]) {
+        currentPreviewImages[index].selected = !currentPreviewImages[index].selected;
+        window.renderGrid();
+    }
+};
+
+window.selectAll = function () {
+    currentPreviewImages.forEach(i => i.selected = true);
+    window.renderGrid();
+};
+
+window.deselectAll = function () {
+    currentPreviewImages.forEach(i => i.selected = false);
+    window.renderGrid();
+};
+
+window.cancelPreview = function () {
+    selectedPdfFile = null;
+    const uploadStep = document.getElementById('uploadStep');
+    const previewStep = document.getElementById('previewStep');
+    const pdfInput = document.getElementById('pdfInput');
+
+    if (uploadStep) uploadStep.classList.remove('hidden');
+    if (previewStep) previewStep.classList.add('hidden');
+    if (pdfInput) pdfInput.value = '';
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('urlInput');
     const submitBtn = document.getElementById('submitBtn');
@@ -472,253 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelPreviewBtn = document.getElementById('cancelPreviewBtn');
 
 
-    // === GLOBAL PDF HANDLERS ===
-    window.triggerUpload = function () {
-        const pdfInput = document.getElementById('pdfInput');
-        const removeFileBtn = document.getElementById('removeFileBtn');
-
-        // Prevent double triggering if clicking remove button
-        // (Though inline onclick handles bubbling differently, this is safe)
-        if (pdfInput) pdfInput.click();
-    };
-
-    window.handleFileChange = function (input) {
-        if (input.files && input.files.length > 0) {
-            window.handleFileSelect(input.files[0]);
-        }
-    };
-
-    window.handleDragOver = function (e) {
-        e.preventDefault();
-        const dropZone = document.getElementById('dropZone');
-        if (dropZone) dropZone.classList.add('dragover');
-    };
-
-    window.handleDragLeave = function (e) {
-        e.preventDefault();
-        const dropZone = document.getElementById('dropZone');
-        if (dropZone) dropZone.classList.remove('dragover');
-    };
-
-    window.handleDrop = function (e) {
-        e.preventDefault();
-        const dropZone = document.getElementById('dropZone');
-        if (dropZone) dropZone.classList.remove('dragover');
-
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            window.handleFileSelect(e.dataTransfer.files[0]);
-        }
-    };
-
-    window.handleFileSelect = async function (file) {
-        if (file.type !== 'application/pdf') {
-            alert('請上傳 PDF 檔案');
-            return;
-        }
-
-        selectedPdfFile = file;
-
-        // Update File Info UI
-        const fileInfo = document.getElementById('fileInfo');
-        const fileNameDisplay = document.getElementById('fileName');
-        const dropZone = document.getElementById('dropZone');
-
-        if (fileNameDisplay) fileNameDisplay.textContent = file.name;
-        if (fileInfo) fileInfo.classList.remove('hidden');
-        if (dropZone) dropZone.classList.add('has-file');
-
-        // Start Preview Flow
-        await window.startPreview(file);
-    };
-
-    window.removeFile = function (e) {
-        if (e) e.stopPropagation();
-
-        const pdfInput = document.getElementById('pdfInput');
-        const fileInfo = document.getElementById('fileInfo');
-        const dropZone = document.getElementById('dropZone');
-        const generateSlideBtn = document.getElementById('generateSlideBtn'); // Note: we kept original ID logic but using global var in generateSlides
-        // Wait, we renamed the ID in HTML to generateSlideBtnResult! 
-        // BUT there might be TWO buttons (one in preview, one in result?)
-        // Actually, let's just clear global state.
-
-        if (pdfInput) pdfInput.value = '';
-        selectedPdfFile = null;
-        currentPreviewImages = [];
-
-        if (fileInfo) fileInfo.classList.add('hidden');
-        if (dropZone) dropZone.classList.remove('has-file');
-
-        // Hide Preview
-        const uploadStep = document.getElementById('uploadStep');
-        const previewStep = document.getElementById('previewStep');
-        if (uploadStep) uploadStep.classList.remove('hidden');
-        if (previewStep) previewStep.classList.add('hidden');
-    };
-
-    window.startPreview = async function (file) {
-        const previewLoading = document.getElementById('previewLoading');
-        const uploadStep = document.getElementById('uploadStep');
-        const previewStep = document.getElementById('previewStep');
-        const generateSlideBtn = document.getElementById('generateSlideBtn');
-
-        // Show Loading
-        if (previewLoading) previewLoading.classList.remove('hidden');
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            const res = await fetch('/api/preview-pdf', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!res.ok) throw new Error('預覽生成失敗');
-
-            const data = await res.json();
-
-            // Init State
-            currentPreviewImages = data.images.map((url, index) => ({
-                url: url,
-                index: index,
-                selected: true // Default select all
-            }));
-
-            window.renderGrid();
-
-            // Switch UI
-            if (uploadStep) uploadStep.classList.add('hidden');
-            if (previewStep) previewStep.classList.remove('hidden');
-
-            // Enable Generate Button
-            if (generateSlideBtn) generateSlideBtn.disabled = false;
-
-        } catch (e) {
-            console.error(e);
-            alert('無法產生預覽，請確認 PDF 格式');
-            // Reset
-            selectedPdfFile = null;
-        } finally {
-            if (previewLoading) previewLoading.classList.add('hidden');
-        }
-    };
-
-    async function startPreview(file) {
-        // Show Loading
-        previewLoading.classList.remove('hidden');
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            const res = await fetch('/api/preview-pdf', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!res.ok) throw new Error('預覽生成失敗');
-
-            const data = await res.json();
-
-            // Init State
-            currentPreviewImages = data.images.map((url, index) => ({
-                url: url,
-                index: index,
-                selected: true // Default select all
-            }));
-
-            renderGrid();
-
-            // Switch UI
-            uploadStep.classList.add('hidden');
-            previewStep.classList.remove('hidden');
-
-            // Enable Generate Button
-            if (generateSlideBtn) generateSlideBtn.disabled = false;
-
-        } catch (e) {
-            console.error(e);
-            alert('無法產生預覽，請確認 PDF 格式');
-            // Reset
-            selectedPdfFile = null;
-        } finally {
-            previewLoading.classList.add('hidden');
-        }
-    }
-
-    // Global Render Grid
-    window.renderGrid = function () {
-        const pageGrid = document.getElementById('pageGrid');
-        const selectedCountSpan = document.getElementById('selectedCount');
-        const totalCountSpan = document.getElementById('totalCount');
-        const generateSlideBtn = document.getElementById('generateSlideBtn'); // This looks for the preview one?
-        // Note: The HTML has id="generateSlideBtn" for the one in preview step.
-        // The previous refactor renamed the one in RESULT section to generateSlideBtnResult.
-
-        if (!pageGrid) return;
-        pageGrid.innerHTML = '';
-
-        let selectedCount = 0;
-
-        currentPreviewImages.forEach((item) => {
-            if (item.selected) selectedCount++;
-
-            const div = document.createElement('div');
-            div.className = `grid-item ${item.selected ? 'selected' : ''}`;
-            div.onclick = () => window.toggleSelection(item.index);
-
-            div.innerHTML = `
-            <img src="${item.url}" loading="lazy">
-            <div class="checkbox-overlay">
-                <i class="ri-check-line"></i>
-            </div>
-            <span class="page-number">${item.index + 1}</span>
-        `;
-
-            pageGrid.appendChild(div);
-        });
-
-        // Update Counts
-        if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
-        if (totalCountSpan) totalCountSpan.textContent = currentPreviewImages.length;
-
-        // Update Generate Button State
-        if (generateSlideBtn) {
-            generateSlideBtn.disabled = selectedCount === 0;
-            const span = generateSlideBtn.querySelector('span');
-            if (span) span.textContent = selectedCount === 0 ? '請選擇頁面' : `生成簡報 (${selectedCount} 頁)`;
-        }
-    };
-
-    window.toggleSelection = function (index) {
-        if (currentPreviewImages[index]) {
-            currentPreviewImages[index].selected = !currentPreviewImages[index].selected;
-            window.renderGrid();
-        }
-    };
-
-    // Selection Actions
-    window.selectAll = function () {
-        currentPreviewImages.forEach(i => i.selected = true);
-        window.renderGrid();
-    };
-
-    window.deselectAll = function () {
-        currentPreviewImages.forEach(i => i.selected = false);
-        window.renderGrid();
-    };
-
-    window.cancelPreview = function () {
-        selectedPdfFile = null;
-        const uploadStep = document.getElementById('uploadStep');
-        const previewStep = document.getElementById('previewStep');
-        const pdfInput = document.getElementById('pdfInput');
-
-        if (uploadStep) uploadStep.classList.remove('hidden');
-        if (previewStep) previewStep.classList.add('hidden');
-        if (pdfInput) pdfInput.value = '';
-    };
+    // (Moved to Global Scope above)
 
 
 
