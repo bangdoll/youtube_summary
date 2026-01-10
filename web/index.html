@@ -363,12 +363,17 @@
             <div class="result-header">
                 <h2><i class="ri-file-text-line"></i> 智慧分析報告</h2>
                 <div class="actions">
+                    <button id="copyBtn" class="btn-secondary">
+                        <i class="ri-clipboard-line"></i> 複製內容
+                    </button>
+                    <button id="downloadBtn" class="btn-secondary">
+                        <i class="ri-download-line"></i> 下載 Markdown
+                    </button>
                     <button id="generateSlideBtnResult" class="generate-btn" onclick="generateSlides(this)"
                         style="pointer-events: auto !important; position: relative; z-index: 9999;">
                         <i class="ri-magic-line"></i>
                         <span>生成簡報</span>
                     </button>
-                    <button class="btn-secondary" id="cancelPreviewBtnResult" onclick="cancelPreview()">重新上傳</button>
                 </div>
             </div>
             <div class="result-content markdown-body" id="markdownOutput">

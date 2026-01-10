@@ -206,7 +206,131 @@ window.saveSettings = function () {
     if (modal) modal.classList.add('hidden');
 };
 
-// ... empty space ...
+// === 全域 PDF 處理函式 (Global PDF Handlers) ===
+window.triggerUpload = function () {
+    const pdfInput = document.getElementById('pdfInput');
+    if (pdfInput) pdfInput.click();
+};
+
+window.handleFileChange = function (input) {
+    if (input.files && input.files.length > 0) {
+        window.handleFileSelect(input.files[0]);
+    }
+};
+
+window.handleDragOver = function (e) {
+    e.preventDefault();
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) dropZone.classList.add('dragover');
+};
+
+window.handleDragLeave = function (e) {
+    e.preventDefault();
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) dropZone.classList.remove('dragover');
+};
+
+window.handleDrop = function (e) {
+    e.preventDefault();
+    const dropZone = document.getElementById('dropZone');
+    if (dropZone) dropZone.classList.remove('dragover');
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        window.handleFileSelect(e.dataTransfer.files[0]);
+    }
+};
+
+window.handleFileSelect = async function (file) {
+    if (file.type !== 'application/pdf') {
+        alert('請上傳 PDF 檔案');
+        return;
+    }
+
+    selectedPdfFile = file;
+
+    // 更新檔案資訊 UI
+    const fileInfo = document.getElementById('fileInfo');
+    const fileNameDisplay = document.getElementById('fileName');
+    const dropZone = document.getElementById('dropZone');
+
+    if (fileNameDisplay) fileNameDisplay.textContent = file.name;
+    if (fileInfo) fileInfo.classList.remove('hidden');
+    if (dropZone) dropZone.classList.add('has-file');
+
+    // 開始預覽流程
+    await window.startPreview(file);
+};
+
+window.removeFile = function (e) {
+    if (e) e.stopPropagation();
+
+    const pdfInput = document.getElementById('pdfInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const dropZone = document.getElementById('dropZone');
+
+    if (pdfInput) pdfInput.value = '';
+    selectedPdfFile = null;
+    currentPreviewImages = [];
+
+    if (fileInfo) fileInfo.classList.add('hidden');
+    if (dropZone) dropZone.classList.remove('has-file');
+
+    // 隱藏預覽
+    const uploadStep = document.getElementById('uploadStep');
+    const previewStep = document.getElementById('previewStep');
+    if (uploadStep) uploadStep.classList.remove('hidden');
+    if (previewStep) previewStep.classList.add('hidden');
+};
+
+window.startPreview = async function (file) {
+    const previewLoading = document.getElementById('previewLoading');
+    const uploadStep = document.getElementById('uploadStep');
+    const previewStep = document.getElementById('previewStep');
+    const generateSlideBtn = document.getElementById('generateSlideBtn');
+
+    // 顯示載入中
+    if (previewLoading) previewLoading.classList.remove('hidden');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/api/preview-pdf', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!res.ok) throw new Error('預覽生成失敗');
+
+        const data = await res.json();
+
+        // 初始化狀態
+        currentPreviewImages = data.images.map((url, index) => ({
+            url: url,
+            index: index,
+            selected: true // 預設全選
+        }));
+
+        window.renderGrid();
+
+        // 切換 UI
+        if (uploadStep) uploadStep.classList.add('hidden');
+        if (previewStep) previewStep.classList.remove('hidden');
+
+        // 啟用生成按鈕
+        if (generateSlideBtn) generateSlideBtn.disabled = false;
+
+    } catch (e) {
+        console.error(e);
+        alert('無法產生預覽，請確認 PDF 格式');
+        // 重置
+        selectedPdfFile = null;
+    } finally {
+        if (previewLoading) previewLoading.classList.add('hidden');
+    }
+};
+
+// === GRID 與選擇邏輯 ===
 
 window.renderGrid = function () {
     const pageGrid = document.getElementById('pageGrid');
