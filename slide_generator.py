@@ -49,59 +49,68 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         img_bytes = await asyncio.to_thread(process_image)
         
         prompt = """
-        You are an expert presentation analyst. Analyze this slide image and extract structured content.
+        You are an expert presentation analyst performing PIXEL-PERFECT slide reconstruction.
+        Analyze this slide image and extract EVERY element with precise positioning.
         
         Return a JSON object with these fields:
         {
-            "title": "Slide title (summarize if none exists)",
+            "title": "Main slide title",
             "content": ["Point 1", "Point 2", "Point 3"],
             "speaker_notes": "Speaker notes in Traditional Chinese",
             "layout": "layout_type",
             "main_image_bbox": [ymin, xmin, ymax, xmax],
             "background_color_hex": "#FFFFFF",
-            "text_color_hex": "#000000"
+            "text_color_hex": "#000000",
+            "text_elements": [
+                {
+                    "text": "The actual text content",
+                    "bbox": [ymin, xmin, ymax, xmax],
+                    "font_size": 24,
+                    "is_bold": true,
+                    "color_hex": "#333333",
+                    "type": "title|subtitle|heading|body|label|caption"
+                }
+            ],
+            "visual_elements": [
+                {
+                    "type": "photo|diagram|chart|icon|shape",
+                    "bbox": [ymin, xmin, ymax, xmax],
+                    "description": "Brief description of the element"
+                }
+            ]
         }
 
-        **CRITICAL: main_image_bbox Detection Rules**
+        **CRITICAL: Element Detection Rules**
         
-        Your PRIMARY task is to detect the EXACT bounding box of the main visual element ONLY.
+        1. TEXT ELEMENTS (text_elements array):
+           - Detect EVERY visible text on the slide
+           - For each text, provide:
+             * bbox: [ymin, xmin, ymax, xmax] in 0-1000 normalized coordinates
+             * font_size: estimated point size (e.g., 12, 16, 24, 32, 48)
+             * is_bold: true if the text appears bold
+             * color_hex: the text color in hex
+             * type: classify as title/subtitle/heading/body/label/caption
+           - Be PRECISE with bounding boxes - tight fit around text
         
-        1. IDENTIFY the main visual element (ONE of these):
-           - Photo of a person/object
-           - Diagram or flowchart
-           - Chart or graph
-           - Architecture diagram
-           - Illustration or icon
-           - Screenshot
+        2. VISUAL ELEMENTS (visual_elements array):
+           - Detect ALL visual elements (photos, diagrams, charts, icons, shapes)
+           - For each visual, provide bbox and type
+           - Pick the LARGEST visual for main_image_bbox
         
-        2. PRECISE CROPPING:
-           - Use normalized coordinates [0-1000] format: [ymin, xmin, ymax, xmax]
-           - ymin = top edge, ymax = bottom edge
-           - xmin = left edge, xmax = right edge
-           - Be VERY TIGHT around the visual element
-           - Leave only 10-20 pixels of padding maximum
+        3. MAIN IMAGE (main_image_bbox):
+           - This should be the bbox of the PRIMARY visual element
+           - Use 0-1000 normalized coordinates: [ymin, xmin, ymax, xmax]
+           - EXCLUDE all text from this box
+           - Return null if no significant visual exists
         
-        3. MUST EXCLUDE from bounding box:
-           - Title text at top
-           - Bullet points and descriptive text
-           - Page numbers
-           - Headers and footers
-           - Logo watermarks
-           - Any Chinese/English text labels outside the main visual
-        
-        4. SPECIAL CASES:
-           - If the slide has NO visual element (text only): return null
-           - If the visual covers the ENTIRE slide: return [0, 0, 1000, 1000]
-           - If there are MULTIPLE separate visuals: pick the LARGEST one
-           - If visual has overlaid text (like infographic): still return the bbox of the entire visual
-        
-        5. LAYOUT selection:
-           - "split_left_image": Has a clear visual element worth preserving
-           - "full_width_text": Text-heavy slide with decorative or small images only
-           - "comparison": Before/after or side-by-side content
+        4. LAYOUT selection:
+           - "split_left_image": Has significant visual element
+           - "full_width_text": Text-dominant slide
+           - "comparison": Side-by-side comparison content
 
-        **background_color_hex**: Extract the dominant background color of the slide.
-        **text_color_hex**: Suggest readable text color (usually black or white).
+        5. COLORS:
+           - background_color_hex: Dominant background color
+           - text_color_hex: Most common text color
         """
 
         for attempt in range(max_retries):
@@ -392,33 +401,83 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     left_offset = int((left_box_w - pic.width) / 2)
                     pic.left = left_offset
             
-            # 右側文字
-            text_left = Inches(7.0) # Move slightly right for padding
-            text_width = Inches(5.8)
+            # --- 嘗試使用 text_elements 精確定位 ---
+            text_elements = slide_data.get("text_elements", [])
             
-            if slide_data.get("title"):
-                title_box = slide.shapes.add_textbox(text_left, Inches(0.5), text_width, Inches(1.5))
-                title_tf = title_box.text_frame
-                title_tf.word_wrap = True
-                title_p = title_tf.paragraphs[0]
-                title_p.text = slide_data["title"]
-                title_p.font.size = Pt(28)
-                title_p.font.bold = True
-                title_p.font.color.rgb = text_rgb # Dynamic Color
-            
-            content_items = slide_data.get("content", [])
-            if content_items:
-                content_box = slide.shapes.add_textbox(text_left, Inches(2.2), text_width, Inches(4.5))
-                content_tf = content_box.text_frame
-                content_tf.word_wrap = True
+            if text_elements and len(text_elements) > 0:
+                # 使用 OCR 偵測到的精確位置
+                logger.info(f"Slide {i+1}: Using {len(text_elements)} precise text elements")
                 
-                for item in content_items:
-                    p = content_tf.add_paragraph()
-                    p.text = str(item)
-                    p.font.size = Pt(16)
-                    p.font.color.rgb = text_rgb # Dynamic Color
-                    p.space_after = Pt(12)
-                    p.level = 0
+                slide_w = prs.slide_width
+                slide_h = prs.slide_height
+                
+                for elem in text_elements:
+                    try:
+                        text = elem.get("text", "")
+                        bbox = elem.get("bbox", [])
+                        font_size = elem.get("font_size", 14)
+                        is_bold = elem.get("is_bold", False)
+                        color_hex = elem.get("color_hex", text_hex)
+                        
+                        if not text or not bbox or len(bbox) != 4:
+                            continue
+                        
+                        # 轉換 normalized coords (0-1000) 到實際位置
+                        ymin, xmin, ymax, xmax = bbox
+                        
+                        # 計算位置和尺寸 (使用 EMUs for precision)
+                        left = int(xmin / 1000 * slide_w)
+                        top = int(ymin / 1000 * slide_h)
+                        width = int((xmax - xmin) / 1000 * slide_w)
+                        height = int((ymax - ymin) / 1000 * slide_h)
+                        
+                        # 確保最小尺寸
+                        if width < Inches(0.5): width = Inches(2)
+                        if height < Inches(0.1): height = Inches(0.5)
+                        
+                        # 建立精確定位的文字框
+                        text_box = slide.shapes.add_textbox(left, top, width, height)
+                        tf = text_box.text_frame
+                        tf.word_wrap = False  # 保持單行以維持精確位置
+                        tf.auto_size = True
+                        
+                        p = tf.paragraphs[0]
+                        p.text = text
+                        p.font.size = Pt(min(font_size, 48))  # 限制最大字體
+                        p.font.bold = is_bold
+                        p.font.color.rgb = hex_to_rgb(color_hex)
+                        
+                    except Exception as e:
+                        logger.warning(f"Failed to add text element: {e}")
+                        continue
+            else:
+                # --- 備用：使用傳統標題+內容方式 ---
+                text_left = Inches(7.0)
+                text_width = Inches(5.8)
+                
+                if slide_data.get("title"):
+                    title_box = slide.shapes.add_textbox(text_left, Inches(0.5), text_width, Inches(1.5))
+                    title_tf = title_box.text_frame
+                    title_tf.word_wrap = True
+                    title_p = title_tf.paragraphs[0]
+                    title_p.text = slide_data["title"]
+                    title_p.font.size = Pt(28)
+                    title_p.font.bold = True
+                    title_p.font.color.rgb = text_rgb
+                
+                content_items = slide_data.get("content", [])
+                if content_items:
+                    content_box = slide.shapes.add_textbox(text_left, Inches(2.2), text_width, Inches(4.5))
+                    content_tf = content_box.text_frame
+                    content_tf.word_wrap = True
+                    
+                    for item in content_items:
+                        p = content_tf.add_paragraph()
+                        p.text = str(item)
+                        p.font.size = Pt(16)
+                        p.font.color.rgb = text_rgb
+                        p.space_after = Pt(12)
+                        p.level = 0
 
         # --- 演講者備忘錄 (通用) ---
         if slide_data.get("speaker_notes"):
