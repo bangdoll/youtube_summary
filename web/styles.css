@@ -1411,6 +1411,28 @@ button#submitBtn:disabled {
     z-index: 10;
 }
 
+#startPreviewBtn {
+    background: var(--accent-gradient);
+    border: none;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+}
+
+#startPreviewBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6);
+}
+
 .grid-item.selected .checkbox-overlay {
     background: var(--accent-primary);
     border-color: var(--accent-primary);

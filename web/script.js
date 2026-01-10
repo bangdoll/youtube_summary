@@ -371,14 +371,23 @@ window.handleFileSelect = async function (file) {
     const fileInfo = document.getElementById('fileInfo');
     const fileNameDisplay = document.getElementById('fileName');
     const dropZone = document.getElementById('dropZone');
+    const startPreviewBtn = document.getElementById('startPreviewBtn');
 
     if (fileNameDisplay) fileNameDisplay.textContent = file.name;
     if (fileInfo) fileInfo.classList.remove('hidden');
     if (dropZone) dropZone.classList.add('has-file');
 
-    // 開始預覽流程
-    await window.startPreview(file);
+    // 顯示「開始解析」按鈕，讓使用者手動觸發 (比自動觸發更穩健)
+    if (startPreviewBtn) startPreviewBtn.classList.remove('hidden');
 };
+
+window.triggerPreview = async function () {
+    if (selectedPdfFile) {
+        await window.startPreview(selectedPdfFile);
+    } else {
+        alert("請先上傳檔案");
+    }
+}
 
 window.removeFile = function (e) {
     if (e) e.stopPropagation();
@@ -386,6 +395,7 @@ window.removeFile = function (e) {
     const pdfInput = document.getElementById('pdfInput');
     const fileInfo = document.getElementById('fileInfo');
     const dropZone = document.getElementById('dropZone');
+    const startPreviewBtn = document.getElementById('startPreviewBtn');
 
     if (pdfInput) pdfInput.value = '';
     selectedPdfFile = null;
@@ -393,6 +403,7 @@ window.removeFile = function (e) {
 
     if (fileInfo) fileInfo.classList.add('hidden');
     if (dropZone) dropZone.classList.remove('has-file');
+    if (startPreviewBtn) startPreviewBtn.classList.add('hidden');
 
     // 隱藏預覽
     const uploadStep = document.getElementById('uploadStep');
