@@ -552,25 +552,51 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
         logger.error(f"PDF 轉圖片失敗: {e}")
         raise ValueError("無法讀取 PDF 檔案，請確認格式是否正確 (需安裝 poppler)")
 
-    # 2. 逐頁分析 + 文字移除
+    # 2. 逐頁分析 + 文字移除 (並行處理以加速)
     analyses = []
     cleaned_images = []
     
-    for i, img in enumerate(images):
-        logger.info(f"正在分析第 {i+1}/{len(images)} 頁...")
+    # 每批處理的頁數 (避免 Rate Limit)
+    BATCH_SIZE = 3
+    DELAY_BETWEEN_BATCHES = 2  # 批次之間的延遲秒數
+    
+    async def process_single_page(img, page_num, total):
+        """並行處理單頁：分析 + 文字移除同時進行"""
+        logger.info(f"正在處理第 {page_num}/{total} 頁 (並行分析+文字移除)...")
         
-        # Use native async call (Non-blocking)
-        result = await analyze_slide_with_gemini(img, api_key)
-        analyses.append(result)
+        # 同時執行分析和文字移除
+        analysis_task = analyze_slide_with_gemini(img, api_key)
+        text_removal_task = remove_text_from_image(img, api_key)
         
-        # 3. 移除圖片上的文字 (新功能)
-        logger.info(f"正在移除第 {i+1}/{len(images)} 頁的文字...")
-        cleaned_img = await remove_text_from_image(img, api_key)
-        cleaned_images.append(cleaned_img)
-
-        # Throttling to avoid Rate Limit (Free Tier ~15 RPM, 加上文字移除共2次呼叫)
-        if i < len(images) - 1:
-            await asyncio.sleep(3)  # 增加間隔以適應雙倍 API 呼叫
+        # 等待兩者完成
+        result, cleaned_img = await asyncio.gather(analysis_task, text_removal_task)
+        
+        return result, cleaned_img
+    
+    # 分批處理以控制 API 負載
+    for batch_start in range(0, len(images), BATCH_SIZE):
+        batch_end = min(batch_start + BATCH_SIZE, len(images))
+        batch = images[batch_start:batch_end]
+        
+        logger.info(f"處理批次 {batch_start//BATCH_SIZE + 1}: 頁 {batch_start+1}-{batch_end}")
+        
+        # 並行處理批次內的所有頁面
+        tasks = [
+            process_single_page(img, batch_start + i + 1, len(images))
+            for i, img in enumerate(batch)
+        ]
+        
+        batch_results = await asyncio.gather(*tasks)
+        
+        # 收集結果
+        for result, cleaned_img in batch_results:
+            analyses.append(result)
+            cleaned_images.append(cleaned_img)
+        
+        # 批次間延遲 (避免 Rate Limit)
+        if batch_end < len(images):
+            logger.info(f"等待 {DELAY_BETWEEN_BATCHES} 秒後處理下一批...")
+            await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
     # 4. 生成 PPTX
     output_dir = "temp_slides"
