@@ -289,47 +289,48 @@ document.addEventListener('DOMContentLoaded', () => {
     // 用於存儲拖曳上傳或點擊上傳的檔案
     let selectedPdfFile = null;
 
-    // Tab Switching
+    // === Global Tab Switching (Nuclear Option) ===
+    window.switchTab = function (targetMode) {
+        console.log("Switching to tab:", targetMode);
+
+        // 1. Update Buttons
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(btn => {
+            const btnTarget = btn.getAttribute('data-target') || btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+            if (btnTarget === targetMode) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        // 2. Update Content
+        const modeContents = document.querySelectorAll('.mode-content');
+        modeContents.forEach(content => {
+            if (content.id === targetMode) {
+                content.classList.add('active');
+            } else {
+                content.classList.remove('active');
+            }
+        });
+
+        // 3. Update Text/Features
+        const appSubtitle = document.getElementById('appSubtitle');
+        if (appSubtitle) {
+            if (targetMode === 'slideMode') {
+                appSubtitle.textContent = "上傳 NotebookLM 匯出的 PDF，AI 自動為您生成圖文並茂的 PowerPoint 簡報。";
+            } else {
+                appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
+            }
+        }
+    };
+
+    // Keep existing listeners as backup, but inline onclick in HTML will take precedence
+    const tabBtns = document.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            // Update buttons
-            tabBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            // Update contents and subtitle
-            const targetId = btn.getAttribute('data-target');
-            const appSubtitle = document.getElementById('appSubtitle');
-
-            modeContents.forEach(content => {
-                if (content.id === targetId) {
-                    content.classList.add('active');
-                    // Dynamic Subtitle Logic
-                    if (targetId === 'slideMode') {
-                        appSubtitle.textContent = "上傳 NotebookLM 匯出的 PDF，AI 自動為您生成圖文並茂的 PowerPoint 簡報。";
-
-                        // Toggle Features
-                        const youtubeFeatures = document.getElementById('youtubeFeatures');
-                        const slideFeatures = document.getElementById('slideFeatures');
-                        const youtubeComparison = document.getElementById('youtubeComparison');
-                        if (youtubeFeatures) youtubeFeatures.classList.add('hidden');
-                        if (slideFeatures) slideFeatures.classList.remove('hidden');
-                        if (youtubeComparison) youtubeComparison.classList.add('hidden');
-
-                    } else {
-                        appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
-
-                        // Toggle Features
-                        const youtubeFeatures = document.getElementById('youtubeFeatures');
-                        const slideFeatures = document.getElementById('slideFeatures');
-                        const youtubeComparison = document.getElementById('youtubeComparison');
-                        if (youtubeFeatures) youtubeFeatures.classList.remove('hidden');
-                        if (slideFeatures) slideFeatures.classList.add('hidden');
-                        if (youtubeComparison) youtubeComparison.classList.remove('hidden');
-                    }
-                } else {
-                    content.classList.remove('active');
-                }
-            });
+            const target = btn.getAttribute('data-target');
+            if (target) window.switchTab(target);
         });
     });
 

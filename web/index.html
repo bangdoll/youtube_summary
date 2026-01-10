@@ -153,10 +153,10 @@
 
             <!-- Mode Tabs -->
             <div class="mode-tabs">
-                <button class="tab-btn active" data-target="youtubeMode">
+                <button class="tab-btn active" onclick="switchTab('youtubeMode')" data-target="youtubeMode">
                     <i class="ri-youtube-fill"></i> 影片智慧分析
                 </button>
-                <button class="tab-btn" data-target="slideMode">
+                <button class="tab-btn" onclick="switchTab('slideMode')" data-target="slideMode">
                     <i class="ri-slideshow-line"></i> 簡報生成器 (Beta)
                 </button>
             </div>
@@ -220,7 +220,8 @@
                         <button id="cancelPreviewBtn" class="btn-secondary">
                             <i class="ri-arrow-left-line"></i> 重新上傳
                         </button>
-                        <button id="generateSlideBtn" class="generate-btn" type="button" onclick="generateSlides()">
+                        <button id="generateSlideBtn" class="generate-btn" onmousedown="generateSlides()"
+                            style="pointer-events: auto !important; position: relative; z-index: 9999;">
                             <span>生成簡報</span>
                             <i class="ri-magic-line"></i>
                         </button>
