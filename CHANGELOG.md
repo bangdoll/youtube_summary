@@ -1,6 +1,31 @@
 # CHANGELOG
 
 
+## [2.7.0] - 2026-01-10
+
+### 🎯 階段二：視覺元素分割 (Stage 2: Visual Element Segmentation)
+
+#### ✂️ 新增 `crop_visual_element()` 函式
+- **精確裁切**：根據 `visual_elements` 的正規化邊界框 (0-1000) 裁切個別圖表/圖示。
+- **座標轉換**：自動將正規化座標轉換為實際像素座標。
+- **錯誤處理**：無效邊界框自動跳過，不影響整體流程。
+
+### 🎨 階段三：像素級完美重建 (Stage 3: Pixel-Perfect Reconstruction)
+
+#### 📐 文字對齊偵測 (Text Alignment Detection)
+- **Gemini 提示更新**：新增 `alignment: "left|center|right"` 欄位請求。
+- **PP_ALIGN 整合**：根據 AI 偵測結果套用 `PP_ALIGN.LEFT`、`PP_ALIGN.CENTER`、`PP_ALIGN.RIGHT`。
+
+#### 🔧 文字框優化
+- **啟用換行**：`word_wrap = True`，支援多行文字正確顯示。
+- **移除 auto_size**：避免自動調整破壞精確定位。
+
+### 📚 技術細節
+- **新增匯入**：`from pptx.enum.text import PP_ALIGN`
+- **背景顏色**：已在 v2.6.0 實作，持續生效
+
+---
+
 ## [2.6.1] - 2026-01-10
 
 ### ⚡ 效能大幅優化 (Performance Optimization)

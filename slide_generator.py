@@ -7,6 +7,7 @@ from pdf2image import convert_from_bytes
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
 from google import genai
 from google.genai import types
 import re
@@ -68,7 +69,8 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                     "font_size": 24,
                     "is_bold": true,
                     "color_hex": "#333333",
-                    "type": "title|subtitle|heading|body|label|caption"
+                    "type": "title|subtitle|heading|body|label|caption",
+                    "alignment": "left|center|right"
                 }
             ],
             "visual_elements": [
@@ -271,6 +273,49 @@ async def remove_text_from_image(image, api_key: str):
         return image
 
 
+def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height: int = 1000):
+    """
+    根據正規化邊界框裁切視覺元素。
+    
+    Args:
+        image: PIL Image 物件
+        bbox: [ymin, xmin, ymax, xmax] 正規化座標 (0-1000)
+        slide_width: 用於正規化的寬度基準
+        slide_height: 用於正規化的高度基準
+    
+    Returns:
+        裁切後的 PIL Image，若失敗則回傳 None
+    """
+    try:
+        if not bbox or len(bbox) != 4:
+            return None
+            
+        ymin, xmin, ymax, xmax = bbox
+        
+        # 轉換正規化座標為實際像素
+        img_width, img_height = image.size
+        
+        left = int(xmin / slide_width * img_width)
+        top = int(ymin / slide_height * img_height)
+        right = int(xmax / slide_width * img_width)
+        bottom = int(ymax / slide_height * img_height)
+        
+        # 確保座標有效
+        left = max(0, min(left, img_width - 1))
+        top = max(0, min(top, img_height - 1))
+        right = max(left + 1, min(right, img_width))
+        bottom = max(top + 1, min(bottom, img_height))
+        
+        # 裁切
+        cropped = image.crop((left, top, right, bottom))
+        logger.info(f"裁切視覺元素: ({left}, {top}) -> ({right}, {bottom})")
+        return cropped
+        
+    except Exception as e:
+        logger.error(f"裁切視覺元素失敗: {e}")
+        return None
+
+
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
     根據分析結果與原始圖片生成 PPTX 檔案 (Split Layout: 左圖右文)。
@@ -418,6 +463,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         font_size = elem.get("font_size", 14)
                         is_bold = elem.get("is_bold", False)
                         color_hex = elem.get("color_hex", text_hex)
+                        alignment = elem.get("alignment", "left")  # 新增：文字對齊
                         
                         if not text or not bbox or len(bbox) != 4:
                             continue
@@ -438,14 +484,21 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         # 建立精確定位的文字框
                         text_box = slide.shapes.add_textbox(left, top, width, height)
                         tf = text_box.text_frame
-                        tf.word_wrap = False  # 保持單行以維持精確位置
-                        tf.auto_size = True
+                        tf.word_wrap = True  # 啟用換行以支援多行文字
                         
                         p = tf.paragraphs[0]
                         p.text = text
                         p.font.size = Pt(min(font_size, 48))  # 限制最大字體
                         p.font.bold = is_bold
                         p.font.color.rgb = hex_to_rgb(color_hex)
+                        
+                        # 階段三：設定文字對齊
+                        if alignment == "center":
+                            p.alignment = PP_ALIGN.CENTER
+                        elif alignment == "right":
+                            p.alignment = PP_ALIGN.RIGHT
+                        else:
+                            p.alignment = PP_ALIGN.LEFT
                         
                     except Exception as e:
                         logger.warning(f"Failed to add text element: {e}")
