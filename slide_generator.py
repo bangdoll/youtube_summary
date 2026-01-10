@@ -184,7 +184,7 @@ async def remove_text_from_image(image, api_key: str):
         try:
             # 使用支援圖像生成的模型
             response = await client.aio.models.generate_content(
-                model='gemini-2.0-flash-exp',  # 實驗性模型，支援圖像編輯
+                model='gemini-3-pro-image-preview',  # Nano Banana Pro - 最先進的圖像編輯模型
                 contents=[
                     types.Part.from_text(text=prompt),
                     types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
