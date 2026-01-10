@@ -326,7 +326,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Keep existing listeners as backup, but inline onclick in HTML will take precedence
-    const tabBtns = document.querySelectorAll('.tab-btn');
+    // Keep existing listeners as backup
+    // tabBtns is already defined above
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const target = btn.getAttribute('data-target');
