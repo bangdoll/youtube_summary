@@ -49,40 +49,59 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         img_bytes = await asyncio.to_thread(process_image)
         
         prompt = """
-        你是一位專業的簡報設計顧問 (Presentation Consultant)。
-        請分析這張簡報投影片圖片，並提取結構化內容。
+        You are an expert presentation analyst. Analyze this slide image and extract structured content.
         
-        请以 JSON 格式回傳，包含以下欄位：
+        Return a JSON object with these fields:
         {
-            "title": "投影片標題 (若無則自行總結)",
-            "content": ["重點1", "重點2", "重點3"],
-            "speaker_notes": "演講者備忘錄",
+            "title": "Slide title (summarize if none exists)",
+            "content": ["Point 1", "Point 2", "Point 3"],
+            "speaker_notes": "Speaker notes in Traditional Chinese",
             "layout": "layout_type",
             "main_image_bbox": [ymin, xmin, ymax, xmax],
             "background_color_hex": "#FFFFFF",
             "text_color_hex": "#000000"
         }
 
-        關於 "background_color_hex":
-        - 請分析這張投影片的「主要背景顏色」。
-        - 如果是淺色底 (如白、米白)，回傳對應 Hex。
-        - 如果是深色底 (如黑、深藍)，回傳對應 Hex。
-        - 這將用於設定生成的 PPT 背景，讓裁切後的圖片能完美融合，不會有色差邊框。
+        **CRITICAL: main_image_bbox Detection Rules**
         
-        關於 "text_color_hex":
-        - 請根據背景色，建議最易讀的文字顏色 (通常是黑色或白色)。
+        Your PRIMARY task is to detect the EXACT bounding box of the main visual element ONLY.
+        
+        1. IDENTIFY the main visual element (ONE of these):
+           - Photo of a person/object
+           - Diagram or flowchart
+           - Chart or graph
+           - Architecture diagram
+           - Illustration or icon
+           - Screenshot
+        
+        2. PRECISE CROPPING:
+           - Use normalized coordinates [0-1000] format: [ymin, xmin, ymax, xmax]
+           - ymin = top edge, ymax = bottom edge
+           - xmin = left edge, xmax = right edge
+           - Be VERY TIGHT around the visual element
+           - Leave only 10-20 pixels of padding maximum
+        
+        3. MUST EXCLUDE from bounding box:
+           - Title text at top
+           - Bullet points and descriptive text
+           - Page numbers
+           - Headers and footers
+           - Logo watermarks
+           - Any Chinese/English text labels outside the main visual
+        
+        4. SPECIAL CASES:
+           - If the slide has NO visual element (text only): return null
+           - If the visual covers the ENTIRE slide: return [0, 0, 1000, 1000]
+           - If there are MULTIPLE separate visuals: pick the LARGEST one
+           - If visual has overlaid text (like infographic): still return the bbox of the entire visual
+        
+        5. LAYOUT selection:
+           - "split_left_image": Has a clear visual element worth preserving
+           - "full_width_text": Text-heavy slide with decorative or small images only
+           - "comparison": Before/after or side-by-side content
 
-        關於 "main_image_bbox" (重要的裁切功能!!!):
-        - 請精確偵測畫面中「主要圖片/圖表/架構圖」的邊界框 (Bounding Box)。
-        - 座標範圍請使用 0-1000 的整數 (normalized coordinate)。格式為 [ymin, xmin, ymax, xmax]。
-        - **非常重要**：請盡量「排除」標題文字、頁碼、與右側的 Bullet Points 文字。我只需要圖片/圖表本身。
-        - 如果整頁都是文字而沒有明顯的圖片，請回傳 null 或 []。
-        - 如果整頁都是圖 (如全版照片)，請回傳 [0, 0, 1000, 1000]。
-        
-        關於 "layout" 欄位，請從以下選擇最適合的一個：
-        - "split_left_image": 圖像包含重要細節 (如複雜圖表、架構圖)，需保留左側大圖。
-        - "full_width_text": 圖像僅為裝飾 (如插圖) 或文字量大，適合全寬文字排版。
-        - "comparison": 內容包含明顯的對比 (如 Before/After)，適合左右並列。
+        **background_color_hex**: Extract the dominant background color of the slide.
+        **text_color_hex**: Suggest readable text color (usually black or white).
         """
 
         for attempt in range(max_retries):
