@@ -385,7 +385,7 @@ def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
         raise ValueError(f"無法生成預覽: {str(e)}")
 
 
-async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None, remove_icon: bool = False) -> tuple:
+async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None, remove_icon: bool = False, progress_callback: Optional[callable] = None) -> tuple:
     """
     主要流程：PDF -> 圖片 -> Gemini 分析 -> 文字移除
     回傳 (analyses, cleaned_images)。
@@ -432,12 +432,13 @@ async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, se
                  "layout": "split_left_image"
              }, img)
 
-    for batch_start in range(0, len(images), BATCH_SIZE):
-        batch_end = min(batch_start + BATCH_SIZE, len(images))
+    total_images = len(images)
+    for batch_start in range(0, total_images, BATCH_SIZE):
+        batch_end = min(batch_start + BATCH_SIZE, total_images)
         batch = images[batch_start:batch_end]
         
         tasks = [
-            process_single_page(img, batch_start + i + 1, len(images))
+            process_single_page(img, batch_start + i + 1, total_images)
             for i, img in enumerate(batch)
         ]
         
@@ -455,6 +456,13 @@ async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, se
                 analyses.append(res[0])
                 cleaned_images.append(res[1])
         
+        # Report Progress
+        if progress_callback:
+            try:
+                await progress_callback(len(analyses), total_images)
+            except Exception as e:
+                logger.error(f"Progress callback failed: {e}")
+
         if batch_end < len(images):
             await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 

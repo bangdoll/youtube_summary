@@ -339,49 +339,78 @@ async def analyze_slides(
 ):
     """
     [Web Editor Step 1] 接收 PDF，進行分析與去字，但不生成 PPTX。
-    回傳: JSON 分析結果 (Title, Content) + 清理後的圖片 URL
+    回傳: Streaming NDJSON
+    {"progress": 1, "total": 10}
+    {"analyses": [...], "cleaned_images": [...]}
     """
     if not file.filename.lower().endswith(".pdf"):
         return JSONResponse(status_code=400, content={"error": "請上傳 PDF 檔案"})
 
+    # Read file content first
     try:
         pdf_bytes = await file.read()
-        
-        # 解析 selected_pages
-        selected_indices = None
-        if selected_pages:
-            try:
-                selected_indices = json.loads(selected_pages)
-                if not isinstance(selected_indices, list):
-                    selected_indices = None
-            except:
-                pass
-
-        # 1. 執行核心分析 (分析 + 去字)
-        analyses, cleaned_images = await slide_generator.analyze_presentation(
-            pdf_bytes, gemini_key, file.filename, selected_indices, remove_icon=remove_icon
-        )
-        
-        # 2. 儲存清理後的圖片供前端預覽
-        cleaned_image_urls = []
-        for i, img in enumerate(cleaned_images):
-            # 使用隨機檔名避免快取衝突
-            img_filename = f"clean_{secrets.token_hex(8)}.jpg"
-            img_path = os.path.join(TEMP_DIR, img_filename)
-            await asyncio.to_thread(img.save, img_path, "JPEG", quality=90)
-            
-            # 產生 URL (需配合 static mount)
-            cleaned_image_urls.append(f"/static/temp/{img_filename}")
-            
-        # 3. 回傳結構化資料
-        return JSONResponse({
-            "analyses": analyses,
-            "cleaned_images": cleaned_image_urls
-        })
-
     except Exception as e:
-        print(f"Analyze Slides Error: {e}")
-        return JSONResponse(status_code=500, content={"error": f"分析失敗: {str(e)}"})
+        return JSONResponse(status_code=500, content={"error": f"讀取檔案失敗: {e}"})
+
+    # Queue for streaming events
+    queue = asyncio.Queue()
+
+    async def run_analysis():
+        try:
+            # 解析 selected_pages
+            selected_indices = None
+            if selected_pages:
+                try:
+                    selected_indices = json.loads(selected_pages)
+                    if not isinstance(selected_indices, list):
+                        selected_indices = None
+                except:
+                    pass
+            
+            async def report_progress(current, total):
+                await queue.put({"progress": current, "total": total})
+
+            # 1. 執行核心分析
+            analyses, cleaned_images = await slide_generator.analyze_presentation(
+                pdf_bytes, gemini_key, file.filename, selected_indices, 
+                remove_icon=remove_icon,
+                progress_callback=report_progress
+            )
+            
+            # 2. 儲存圖片
+            cleaned_image_urls = []
+            loop = asyncio.get_running_loop()
+            
+            for img in cleaned_images:
+                img_filename = f"clean_{secrets.token_hex(8)}.jpg"
+                img_path = os.path.join(TEMP_DIR, img_filename)
+                # Run sync IO in thread
+                await loop.run_in_executor(None, img.save, img_path, "JPEG", 85)
+                cleaned_image_urls.append(f"/static/temp/{img_filename}")
+            
+            # Result
+            await queue.put({
+                "analyses": analyses,
+                "cleaned_images": cleaned_image_urls
+            })
+            
+        except Exception as e:
+            await queue.put({"error": str(e)})
+        finally:
+            await queue.put(None) # Signal end
+
+    # Start background task
+    asyncio.create_task(run_analysis())
+
+    async def event_generator():
+        while True:
+            data = await queue.get()
+            if data is None:
+                break
+            # NDJSON format
+            yield json.dumps(data) + "\n"
+
+    return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
 
 class GenerateSlidesRequest(pydantic.BaseModel):

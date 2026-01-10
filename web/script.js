@@ -100,7 +100,7 @@ window.generateSlides = async function (btnElement) {
     }
 
     try {
-        // Step 1: Call Analyze API
+        // Step 1: Call Analyze API (Streaming Response)
         const response = await fetch('/api/analyze-slides', {
             method: 'POST',
             body: formData
@@ -111,7 +111,55 @@ window.generateSlides = async function (btnElement) {
             throw new Error(err.error || '分析失敗');
         }
 
-        const result = await response.json();
+        // Reading the stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let finalResult = null;
+
+        // Reset Progress Bar
+        const pBar = document.getElementById('analysisProgressBar');
+        if (pBar) pBar.style.width = '0%';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // Keep the last incomplete line
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                    const data = JSON.parse(line);
+
+                    if (data.progress) {
+                        // Update UI
+                        const percent = Math.round((data.progress / data.total) * 100);
+                        const pText = document.getElementById('progressText');
+                        const pPct = document.getElementById('progressPercent');
+
+                        if (pBar) pBar.style.width = `${percent}%`;
+                        if (pText) pText.innerText = `正在分析第 ${data.progress} / ${data.total} 頁...`;
+                        if (pPct) pPct.innerText = `${percent}%`;
+
+                    } else if (data.analyses) {
+                        finalResult = data;
+                    } else if (data.error) {
+                        throw new Error(data.error);
+                    }
+                } catch (e) {
+                    console.warn("Stream parse error:", e);
+                }
+            }
+        }
+
+        if (!finalResult) {
+            throw new Error("伺服器未回傳分析結果");
+        }
+
+        const result = finalResult;
 
         // Initialize Editor State
         editorData.analyses = result.analyses;

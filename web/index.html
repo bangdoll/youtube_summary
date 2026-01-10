@@ -304,9 +304,18 @@
 
                 <!-- Loading Overlay for Analysis -->
                 <div id="analysisLoading" class="loading-overlay hidden">
-                    <div class="loader"></div>
+                    <div class="progress-ring-container">
+                        <!-- Progress Ring or Bar -->
+                        <div class="progress-container">
+                            <div class="progress-bar" id="analysisProgressBar" style="width: 0%"></div>
+                        </div>
+                        <div class="progress-stats">
+                            <span id="progressText">準備中...</span>
+                            <span id="progressPercent">0%</span>
+                        </div>
+                    </div>
                     <p>正在進行 AI 圖文分離與結構化分析...</p>
-                    <p class="sub-text">這可能需要 5-10 分鐘，請稍候</p>
+                    <p class="sub-text">這通常需要 2-5 分鐘，視頁數而定</p>
                 </div>
             </div>
 
