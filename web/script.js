@@ -125,11 +125,16 @@ window.generateSlides = async function (btnElement) {
         const a = document.createElement('a');
         a.href = downloadUrl;
 
+        // 從 Content-Disposition 標頭提取檔名
         const contentDisposition = response.headers.get('Content-Disposition');
-        let fileName = 'slides.pptx';
+        let fileName = selectedPdfFile ? selectedPdfFile.name.replace('.pdf', '.pptx') : 'slides.pptx';
+
         if (contentDisposition) {
-            const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-            if (filenameMatch.length === 2) fileName = filenameMatch[1];
+            // 嘗試匹配 filename="xxx" 或 filename=xxx
+            const filenameMatch = contentDisposition.match(/filename[^;=\n]*=(['"]?)([^'"\n]*)\1/);
+            if (filenameMatch && filenameMatch[2]) {
+                fileName = filenameMatch[2];
+            }
         }
 
         a.download = fileName;
