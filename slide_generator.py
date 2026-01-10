@@ -148,6 +148,80 @@ def hex_to_rgb(hex_color: str) -> RGBColor:
         return RGBColor(int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16))
     return RGBColor(0, 0, 0) # Fallback
 
+
+async def remove_text_from_image(image, api_key: str):
+    """
+    使用 Gemini 圖像編輯功能移除圖片上的文字。
+    回傳處理後的 PIL Image 物件，若失敗則回傳原圖。
+    """
+    try:
+        from PIL import Image
+        
+        client = genai.Client(api_key=api_key)
+        
+        # 準備圖片資料
+        def process_image():
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='JPEG', quality=95)
+            return img_byte_arr.getvalue()
+        
+        img_bytes = await asyncio.to_thread(process_image)
+        
+        # 使用 Gemini 圖像編輯提示
+        prompt = """
+        請移除這張圖片中的所有文字內容，包括：
+        - 標題文字
+        - 說明文字
+        - 數字、日期
+        - 任何可見的文字標籤
+        
+        保持圖片其他部分不變，只移除文字區域並用周圍的背景顏色/紋理自然填補。
+        輸出一張乾淨的、不含任何文字的圖片。
+        """
+        
+        logger.info("嘗試使用 Gemini 移除圖片文字...")
+        
+        try:
+            # 使用支援圖像生成的模型
+            response = await client.aio.models.generate_content(
+                model='gemini-2.0-flash-exp',  # 實驗性模型，支援圖像編輯
+                contents=[
+                    types.Part.from_text(text=prompt),
+                    types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
+                ],
+                config=types.GenerateContentConfig(
+                    response_modalities=['IMAGE', 'TEXT'],  # 要求回傳圖像
+                    temperature=0.1
+                )
+            )
+            
+            # 檢查回應中是否有圖像
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    # 解碼回傳的圖像
+                    edited_bytes = part.inline_data.data
+                    edited_image = Image.open(io.BytesIO(edited_bytes))
+                    logger.info("✅ 圖片文字移除成功！")
+                    return edited_image
+            
+            # 沒有找到圖像，回傳原圖
+            logger.warning("Gemini 未回傳圖像，使用原圖")
+            return image
+            
+        except Exception as e:
+            error_str = str(e)
+            # 如果模型不支援圖像輸出，嘗試備用方案
+            if 'response_modalities' in error_str or 'IMAGE' in error_str:
+                logger.warning(f"Gemini 圖像編輯不可用: {error_str}，使用原圖")
+            else:
+                logger.error(f"Gemini 圖像編輯錯誤: {error_str}")
+            return image
+            
+    except Exception as e:
+        logger.error(f"圖像處理外層錯誤: {e}")
+        return image
+
+
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
     根據分析結果與原始圖片生成 PPTX 檔案 (Split Layout: 左圖右文)。
@@ -349,7 +423,7 @@ import asyncio
 
 async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None) -> str:
     """
-    主要流程：PDF -> 圖片 -> Gemini 分析 -> PPTX
+    主要流程：PDF -> 圖片 -> Gemini 分析 -> 文字移除 -> PPTX
     回傳生成的 PPTX 檔案路徑。
     若有 selected_indices，只處理指定頁面 (0-based index)。
     """
@@ -379,27 +453,35 @@ async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, s
         logger.error(f"PDF 轉圖片失敗: {e}")
         raise ValueError("無法讀取 PDF 檔案，請確認格式是否正確 (需安裝 poppler)")
 
-    # 2. 逐頁分析
+    # 2. 逐頁分析 + 文字移除
     analyses = []
+    cleaned_images = []
+    
     for i, img in enumerate(images):
         logger.info(f"正在分析第 {i+1}/{len(images)} 頁...")
         
         # Use native async call (Non-blocking)
         result = await analyze_slide_with_gemini(img, api_key)
         analyses.append(result)
+        
+        # 3. 移除圖片上的文字 (新功能)
+        logger.info(f"正在移除第 {i+1}/{len(images)} 頁的文字...")
+        cleaned_img = await remove_text_from_image(img, api_key)
+        cleaned_images.append(cleaned_img)
 
-        # Throttling to avoid Rate Limit (Free Tier ~15 RPM)
+        # Throttling to avoid Rate Limit (Free Tier ~15 RPM, 加上文字移除共2次呼叫)
         if i < len(images) - 1:
-            await asyncio.sleep(2)
+            await asyncio.sleep(3)  # 增加間隔以適應雙倍 API 呼叫
 
-    # 3. 生成 PPTX
+    # 4. 生成 PPTX
     output_dir = "temp_slides"
     os.makedirs(output_dir, exist_ok=True)
     
     base_name = os.path.splitext(filename)[0]
     output_path = os.path.join(output_dir, f"{base_name}_converted.pptx")
     
-    # 傳入 images 進行圖文整合排版 (Blocking I/O)
-    await asyncio.to_thread(create_pptx_from_analysis, analyses, images, output_path)
+    # 傳入 cleaned_images (已移除文字的圖片) 進行圖文整合排版
+    await asyncio.to_thread(create_pptx_from_analysis, analyses, cleaned_images, output_path)
     
     return output_path
+
