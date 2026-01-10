@@ -55,7 +55,7 @@
     <!-- User Info Bar (shown when logged in) -->
     <!-- Top Navigation (Always Visible) -->
     <div id="topNav" class="user-bar">
-        <button id="settingsBtn" class="settings-btn" title="設定 API Key">
+        <button id="settingsBtn" class="settings-btn" title="設定 API Key" onclick="openSettings()">
             <i class="ri-key-2-line"></i>
             <span>設定 API Key</span>
         </button>
@@ -71,7 +71,8 @@
         <div class="modal-content settings-content">
             <div class="settings-header">
                 <h2><i class="ri-key-2-line"></i> 自訂 API 金鑰</h2>
-                <button id="closeSettingsBtn" class="close-btn"><i class="ri-close-line"></i></button>
+                <button id="closeSettingsBtn" class="close-btn" onclick="closeSettings()"><i
+                        class="ri-close-line"></i></button>
             </div>
             <p class="settings-desc">若您擁有自己的 API Key，請在此設定。系統將優先使用您的金鑰進行分析，這能確保您隨時有足夠的配額。</p>
 
@@ -91,7 +92,7 @@
                         class="ri-external-link-line"></i></a>
             </div>
 
-            <button id="saveSettingsBtn" class="save-btn">儲存設定</button>
+            <button id="saveSettingsBtn" class="save-btn" onclick="saveSettings()">儲存設定</button>
         </div>
     </div>
 
@@ -177,14 +178,17 @@
             <div id="slideMode" class="mode-content">
                 <!-- Step 1: Upload Area -->
                 <div id="uploadStep" class="step-container">
-                    <div class="upload-wrapper" id="dropZone">
+                    <div class="upload-wrapper" id="dropZone" onclick="triggerUpload()"
+                        ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
+                        ondrop="handleDrop(event)">
                         <i class="ri-file-ppt-2-line upload-icon"></i>
                         <h3>NotebookLM PDF 轉 PPTX</h3>
                         <p>將 NotebookLM 輸出的 PDF 拖曳至此，或點擊上傳</p>
-                        <input type="file" id="pdfInput" accept=".pdf" hidden>
+                        <input type="file" id="pdfInput" accept=".pdf" hidden onchange="handleFileChange(this)">
                         <div id="fileInfo" class="file-info hidden">
                             <span id="fileName">placeholder.pdf</span>
-                            <button id="removeFileBtn" class="remove-btn"><i class="ri-close-line"></i></button>
+                            <button id="removeFileBtn" class="remove-btn" onclick="removeFile(event)"><i
+                                    class="ri-close-line"></i></button>
                         </div>
                     </div>
                 </div>
@@ -198,26 +202,19 @@
                                     id="totalCount">0</span></span>
                         </div>
                         <div class="header-right">
-                            <button id="selectAllBtn" class="btn-text">全選</button>
-                            <button id="deselectAllBtn" class="btn-text">取消全選</button>
+                            <button id="selectAllBtn" class="btn-text" onclick="selectAll()">全選</button>
+                            <button id="deselectAllBtn" class="btn-text" onclick="deselectAll()">取消全選</button>
                         </div>
                     </div>
 
                     <!-- Grid Container -->
                     <div id="pageGrid" class="page-grid">
                         <!-- Grid Items will be injected here -->
-                        <!-- Example:
-                        <div class="grid-item selected">
-                            <img src="...">
-                            <div class="checkbox-overlay"><i class="ri-check-line"></i></div>
-                            <span class="page-number">1</span>
-                        </div>
-                        -->
                     </div>
 
                     <!-- Actions -->
                     <div class="preview-actions">
-                        <button id="cancelPreviewBtn" class="btn-secondary">
+                        <button id="cancelPreviewBtn" class="btn-secondary" onclick="cancelPreview()">
                             <i class="ri-arrow-left-line"></i> 重新上傳
                         </button>
                         <button id="generateSlideBtn" class="generate-btn" onmousedown="generateSlides()"

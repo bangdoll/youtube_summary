@@ -152,6 +152,47 @@ window.generateSlides = async function () {
             btn.innerHTML = originalBtnText;
         }
     }
+}
+};
+
+window.openSettings = function () {
+    console.log("Opening Settings Modal");
+    const modal = document.getElementById('settingsModal');
+    const geminiKeyInput = document.getElementById('geminiKeyInput');
+    const openaiKeyInput = document.getElementById('openaiKeyInput');
+
+    if (modal) {
+        modal.classList.remove('hidden');
+
+        // Load Settings
+        const geminiKey = localStorage.getItem('gemini_api_key');
+        const openaiKey = localStorage.getItem('openai_api_key');
+        if (geminiKey && geminiKeyInput) geminiKeyInput.value = geminiKey;
+        if (openaiKey && openaiKeyInput) openaiKeyInput.value = openaiKey;
+    }
+};
+
+window.closeSettings = function () {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.saveSettings = function () {
+    const geminiKeyInput = document.getElementById('geminiKeyInput');
+    const openaiKeyInput = document.getElementById('openaiKeyInput');
+    const modal = document.getElementById('settingsModal');
+
+    const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : "";
+    const openaiKey = openaiKeyInput ? openaiKeyInput.value.trim() : "";
+
+    if (geminiKey) localStorage.setItem('gemini_api_key', geminiKey);
+    else localStorage.removeItem('gemini_api_key');
+
+    if (openaiKey) localStorage.setItem('openai_api_key', openaiKey);
+    else localStorage.removeItem('openai_api_key');
+
+    alert('設定已儲存！將優先使用您的 API Key 進行分析。');
+    if (modal) modal.classList.add('hidden');
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -252,52 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Settings Modal Listeners
-    if (settingsBtn) {
-        settingsBtn.addEventListener('click', () => {
-            loadSettings(); // Reload just in case
-            settingsModal.classList.remove('hidden');
-        });
-    }
-
-    if (closeSettingsBtn) {
-        closeSettingsBtn.addEventListener('click', () => {
-            settingsModal.classList.add('hidden');
-        });
-    }
-
-    if (saveSettingsBtn) {
-        saveSettingsBtn.addEventListener('click', saveSettings);
-    }
-
-    // Close modal on outside click
-    window.addEventListener('click', (e) => {
-        if (e.target === settingsModal) {
-            settingsModal.classList.add('hidden');
-        }
-    });
-
-    function saveSettings() {
-        const geminiKey = geminiKeyInput.value.trim();
-        const openaiKey = openaiKeyInput.value.trim();
-
-        if (geminiKey) localStorage.setItem('gemini_api_key', geminiKey);
-        else localStorage.removeItem('gemini_api_key');
-
-        if (openaiKey) localStorage.setItem('openai_api_key', openaiKey);
-        else localStorage.removeItem('openai_api_key');
-
-        alert('設定已儲存！將優先使用您的 API Key 進行分析。');
-        settingsModal.classList.add('hidden');
-    }
-
-    function loadSettings() {
-        const geminiKey = localStorage.getItem('gemini_api_key');
-        const openaiKey = localStorage.getItem('openai_api_key');
-
-        if (geminiKey && geminiKeyInput) geminiKeyInput.value = geminiKey;
-        if (openaiKey && openaiKeyInput) openaiKeyInput.value = openaiKey;
-    }
+    // Use Global openSettings/closeSettings/saveSettings
+    // Settings Listeners removed to prevent race conditions
 
     downloadBtn.addEventListener('click', () => {
         const blob = new Blob([currentResult], { type: 'text/markdown' });
@@ -456,39 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // File Upload Handling
-    if (dropZone) {
-        dropZone.addEventListener('click', (e) => {
-            // 如果已選擇檔案，或點擊的是移除按鈕，則不再觸發檔案選擇
-            if (dropZone.classList.contains('has-file')) return;
-            if (e.target !== removeFileBtn && !removeFileBtn.contains(e.target)) {
-                pdfInput.click();
-            }
-        });
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length) {
-                handleFileSelect(e.dataTransfer.files[0]);
-            }
-        });
-
-        pdfInput.addEventListener('change', () => {
-            if (pdfInput.files.length) {
-                handleFileSelect(pdfInput.files[0]);
-            }
-        });
-    }
+    // File Upload Handling - REMOVED (Moved to Global)
+    // if (dropZone) { ... }
 
     // State for Preview
     // Use Global currentPreviewImages
@@ -506,7 +472,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelPreviewBtn = document.getElementById('cancelPreviewBtn');
 
 
-    async function handleFileSelect(file) {
+    // === GLOBAL PDF HANDLERS ===
+    window.triggerUpload = function () {
+        const pdfInput = document.getElementById('pdfInput');
+        const removeFileBtn = document.getElementById('removeFileBtn');
+
+        // Prevent double triggering if clicking remove button
+        // (Though inline onclick handles bubbling differently, this is safe)
+        if (pdfInput) pdfInput.click();
+    };
+
+    window.handleFileChange = function (input) {
+        if (input.files && input.files.length > 0) {
+            window.handleFileSelect(input.files[0]);
+        }
+    };
+
+    window.handleDragOver = function (e) {
+        e.preventDefault();
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) dropZone.classList.add('dragover');
+    };
+
+    window.handleDragLeave = function (e) {
+        e.preventDefault();
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) dropZone.classList.remove('dragover');
+    };
+
+    window.handleDrop = function (e) {
+        e.preventDefault();
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) dropZone.classList.remove('dragover');
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            window.handleFileSelect(e.dataTransfer.files[0]);
+        }
+    };
+
+    window.handleFileSelect = async function (file) {
         if (file.type !== 'application/pdf') {
             alert('請上傳 PDF 檔案');
             return;
@@ -514,9 +518,91 @@ document.addEventListener('DOMContentLoaded', () => {
 
         selectedPdfFile = file;
 
+        // Update File Info UI
+        const fileInfo = document.getElementById('fileInfo');
+        const fileNameDisplay = document.getElementById('fileName');
+        const dropZone = document.getElementById('dropZone');
+
+        if (fileNameDisplay) fileNameDisplay.textContent = file.name;
+        if (fileInfo) fileInfo.classList.remove('hidden');
+        if (dropZone) dropZone.classList.add('has-file');
+
         // Start Preview Flow
-        await startPreview(file);
-    }
+        await window.startPreview(file);
+    };
+
+    window.removeFile = function (e) {
+        if (e) e.stopPropagation();
+
+        const pdfInput = document.getElementById('pdfInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const dropZone = document.getElementById('dropZone');
+        const generateSlideBtn = document.getElementById('generateSlideBtn'); // Note: we kept original ID logic but using global var in generateSlides
+        // Wait, we renamed the ID in HTML to generateSlideBtnResult! 
+        // BUT there might be TWO buttons (one in preview, one in result?)
+        // Actually, let's just clear global state.
+
+        if (pdfInput) pdfInput.value = '';
+        selectedPdfFile = null;
+        currentPreviewImages = [];
+
+        if (fileInfo) fileInfo.classList.add('hidden');
+        if (dropZone) dropZone.classList.remove('has-file');
+
+        // Hide Preview
+        const uploadStep = document.getElementById('uploadStep');
+        const previewStep = document.getElementById('previewStep');
+        if (uploadStep) uploadStep.classList.remove('hidden');
+        if (previewStep) previewStep.classList.add('hidden');
+    };
+
+    window.startPreview = async function (file) {
+        const previewLoading = document.getElementById('previewLoading');
+        const uploadStep = document.getElementById('uploadStep');
+        const previewStep = document.getElementById('previewStep');
+        const generateSlideBtn = document.getElementById('generateSlideBtn');
+
+        // Show Loading
+        if (previewLoading) previewLoading.classList.remove('hidden');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/preview-pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) throw new Error('預覽生成失敗');
+
+            const data = await res.json();
+
+            // Init State
+            currentPreviewImages = data.images.map((url, index) => ({
+                url: url,
+                index: index,
+                selected: true // Default select all
+            }));
+
+            window.renderGrid();
+
+            // Switch UI
+            if (uploadStep) uploadStep.classList.add('hidden');
+            if (previewStep) previewStep.classList.remove('hidden');
+
+            // Enable Generate Button
+            if (generateSlideBtn) generateSlideBtn.disabled = false;
+
+        } catch (e) {
+            console.error(e);
+            alert('無法產生預覽，請確認 PDF 格式');
+            // Reset
+            selectedPdfFile = null;
+        } finally {
+            if (previewLoading) previewLoading.classList.add('hidden');
+        }
+    };
 
     async function startPreview(file) {
         // Show Loading
@@ -561,7 +647,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function renderGrid() {
+    // Global Render Grid
+    window.renderGrid = function () {
+        const pageGrid = document.getElementById('pageGrid');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const totalCountSpan = document.getElementById('totalCount');
+        const generateSlideBtn = document.getElementById('generateSlideBtn'); // This looks for the preview one?
+        // Note: The HTML has id="generateSlideBtn" for the one in preview step.
+        // The previous refactor renamed the one in RESULT section to generateSlideBtnResult.
+
         if (!pageGrid) return;
         pageGrid.innerHTML = '';
 
@@ -572,15 +666,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const div = document.createElement('div');
             div.className = `grid-item ${item.selected ? 'selected' : ''}`;
-            div.onclick = () => toggleSelection(item.index);
+            div.onclick = () => window.toggleSelection(item.index);
 
             div.innerHTML = `
-                <img src="${item.url}" loading="lazy">
-                <div class="checkbox-overlay">
-                    <i class="ri-check-line"></i>
-                </div>
-                <span class="page-number">${item.index + 1}</span>
-            `;
+            <img src="${item.url}" loading="lazy">
+            <div class="checkbox-overlay">
+                <i class="ri-check-line"></i>
+            </div>
+            <span class="page-number">${item.index + 1}</span>
+        `;
 
             pageGrid.appendChild(div);
         });
@@ -595,7 +689,48 @@ document.addEventListener('DOMContentLoaded', () => {
             const span = generateSlideBtn.querySelector('span');
             if (span) span.textContent = selectedCount === 0 ? '請選擇頁面' : `生成簡報 (${selectedCount} 頁)`;
         }
+    };
+
+    window.toggleSelection = function (index) {
+        if (currentPreviewImages[index]) {
+            currentPreviewImages[index].selected = !currentPreviewImages[index].selected;
+            window.renderGrid();
+        }
+    };
+
+    // Selection Actions
+    window.selectAll = function () {
+        currentPreviewImages.forEach(i => i.selected = true);
+        window.renderGrid();
+    };
+
+    window.deselectAll = function () {
+        currentPreviewImages.forEach(i => i.selected = false);
+        window.renderGrid();
+    };
+
+    window.cancelPreview = function () {
+        selectedPdfFile = null;
+        const uploadStep = document.getElementById('uploadStep');
+        const previewStep = document.getElementById('previewStep');
+        const pdfInput = document.getElementById('pdfInput');
+
+        if (uploadStep) uploadStep.classList.remove('hidden');
+        if (previewStep) previewStep.classList.add('hidden');
+        if (pdfInput) pdfInput.value = '';
+    };
+
+    // Update Counts
+    if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
+    if (totalCountSpan) totalCountSpan.textContent = currentPreviewImages.length;
+
+    // Update Generate Button State
+    if (generateSlideBtn) {
+        generateSlideBtn.disabled = selectedCount === 0;
+        const span = generateSlideBtn.querySelector('span');
+        if (span) span.textContent = selectedCount === 0 ? '請選擇頁面' : `生成簡報 (${selectedCount} 頁)`;
     }
+}
 
     function toggleSelection(index) {
         if (currentPreviewImages[index]) {
@@ -606,135 +741,135 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Preview Actions
     if (selectAllBtn) {
-        selectAllBtn.addEventListener('click', () => {
-            currentPreviewImages.forEach(i => i.selected = true);
-            renderGrid();
-        });
+    selectAllBtn.addEventListener('click', () => {
+        currentPreviewImages.forEach(i => i.selected = true);
+        renderGrid();
+    });
+}
+
+if (deselectAllBtn) {
+    deselectAllBtn.addEventListener('click', () => {
+        currentPreviewImages.forEach(i => i.selected = false);
+        renderGrid();
+    });
+}
+
+if (cancelPreviewBtn) {
+    cancelPreviewBtn.addEventListener('click', () => {
+        selectedPdfFile = null;
+        uploadStep.classList.remove('hidden');
+        previewStep.classList.add('hidden');
+        if (pdfInput) pdfInput.value = '';
+    });
+}
+
+
+if (removeFileBtn) {
+    removeFileBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Stop bubbling to dropZone
+        pdfInput.value = '';
+        selectedPdfFile = null; // 清空存儲的檔案
+        fileInfo.classList.add('hidden');
+        generateSlideBtn.disabled = true;
+        dropZone.classList.remove('has-file');
+    });
+}
+
+// Inner generateSlides removed (Moved to Global)
+
+// if (generateSlideBtn) {
+//    generateSlideBtn.disabled = true; // Initial state
+// }
+
+// === Demo Terminal Animation ===
+const demoBody = document.getElementById('demoTerminalBody');
+const typewriter = document.getElementById('typewriter');
+const replayBtn = document.getElementById('replayDemoBtn');
+
+if (demoBody && typewriter) {
+    // Sequence of events for the demo
+    const demoSequence = [
+        { text: "youtu-brain analyze https://youtu.be/demo123", type: "command" },
+        { text: "🔌 連線建立中...", type: "info", delay: 500 },
+        { text: "🚀 系統核心已啟動", type: "info", delay: 800 },
+        { text: "🔒 安全模組: ✅ 已啟用 (Google OAuth)", type: "info", delay: 1000 },
+        { text: "處理影片 ID: demo123 (Google DeepMind Dev Day)", type: "info", delay: 1500 },
+        { text: "嘗試使用 Gemini 直接分析影片...", type: "highlight", delay: 2000 },
+        { text: "正在使用 Gemini 3 Flash Preview (最新預覽版)...", type: "system", delay: 2500 },
+        { text: "影片 URL: https://www.youtube.com/watch?v=demo123", type: "info", delay: 2600 },
+        { text: "Gemini 分析中 (Understanding Visuals & Audio)...", type: "warn", delay: 3500 },
+        { text: "> [DeepMind]: Multimodal understanding achieved.", type: "info", delay: 5000 },
+        { text: "> [DeepMind]: Context window usage: 45K tokens.", type: "info", delay: 5500 },
+        { text: "生成結構化筆記 (Markdown)...", type: "highlight", delay: 7000 },
+        { text: "分析流程成功完成。", type: "success", delay: 8500 }
+    ];
+
+    let isAnimating = false;
+
+    async function runDemo() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        // Clear previous content except cursor line
+        const existingLogs = demoBody.querySelectorAll('.log-line');
+        existingLogs.forEach(el => el.remove());
+        replayBtn.classList.add('hidden');
+        typewriter.textContent = "";
+
+        // Step 1: Type the command
+        await typeCommand(demoSequence[0].text);
+
+        // Step 2: Process logs
+        for (let i = 1; i < demoSequence.length; i++) {
+            const item = demoSequence[i];
+            await new Promise(r => setTimeout(r, item.delay - (i > 1 ? demoSequence[i - 1].delay : 0)));
+            appendDemoLog(item.text, item.type);
+            // Scroll to bottom
+            demoBody.scrollTop = demoBody.scrollHeight;
+        }
+
+        isAnimating = false;
+        replayBtn.classList.remove('hidden');
     }
 
-    if (deselectAllBtn) {
-        deselectAllBtn.addEventListener('click', () => {
-            currentPreviewImages.forEach(i => i.selected = false);
-            renderGrid();
-        });
-    }
-
-    if (cancelPreviewBtn) {
-        cancelPreviewBtn.addEventListener('click', () => {
-            selectedPdfFile = null;
-            uploadStep.classList.remove('hidden');
-            previewStep.classList.add('hidden');
-            if (pdfInput) pdfInput.value = '';
-        });
-    }
-
-
-    if (removeFileBtn) {
-        removeFileBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Stop bubbling to dropZone
-            pdfInput.value = '';
-            selectedPdfFile = null; // 清空存儲的檔案
-            fileInfo.classList.add('hidden');
-            generateSlideBtn.disabled = true;
-            dropZone.classList.remove('has-file');
-        });
-    }
-
-    // Inner generateSlides removed (Moved to Global)
-
-    // if (generateSlideBtn) {
-    //    generateSlideBtn.disabled = true; // Initial state
-    // }
-
-    // === Demo Terminal Animation ===
-    const demoBody = document.getElementById('demoTerminalBody');
-    const typewriter = document.getElementById('typewriter');
-    const replayBtn = document.getElementById('replayDemoBtn');
-
-    if (demoBody && typewriter) {
-        // Sequence of events for the demo
-        const demoSequence = [
-            { text: "youtu-brain analyze https://youtu.be/demo123", type: "command" },
-            { text: "🔌 連線建立中...", type: "info", delay: 500 },
-            { text: "🚀 系統核心已啟動", type: "info", delay: 800 },
-            { text: "🔒 安全模組: ✅ 已啟用 (Google OAuth)", type: "info", delay: 1000 },
-            { text: "處理影片 ID: demo123 (Google DeepMind Dev Day)", type: "info", delay: 1500 },
-            { text: "嘗試使用 Gemini 直接分析影片...", type: "highlight", delay: 2000 },
-            { text: "正在使用 Gemini 3 Flash Preview (最新預覽版)...", type: "system", delay: 2500 },
-            { text: "影片 URL: https://www.youtube.com/watch?v=demo123", type: "info", delay: 2600 },
-            { text: "Gemini 分析中 (Understanding Visuals & Audio)...", type: "warn", delay: 3500 },
-            { text: "> [DeepMind]: Multimodal understanding achieved.", type: "info", delay: 5000 },
-            { text: "> [DeepMind]: Context window usage: 45K tokens.", type: "info", delay: 5500 },
-            { text: "生成結構化筆記 (Markdown)...", type: "highlight", delay: 7000 },
-            { text: "分析流程成功完成。", type: "success", delay: 8500 }
-        ];
-
-        let isAnimating = false;
-
-        async function runDemo() {
-            if (isAnimating) return;
-            isAnimating = true;
-
-            // Clear previous content except cursor line
-            const existingLogs = demoBody.querySelectorAll('.log-line');
-            existingLogs.forEach(el => el.remove());
-            replayBtn.classList.add('hidden');
+    function typeCommand(text) {
+        return new Promise(resolve => {
+            let charIndex = 0;
             typewriter.textContent = "";
-
-            // Step 1: Type the command
-            await typeCommand(demoSequence[0].text);
-
-            // Step 2: Process logs
-            for (let i = 1; i < demoSequence.length; i++) {
-                const item = demoSequence[i];
-                await new Promise(r => setTimeout(r, item.delay - (i > 1 ? demoSequence[i - 1].delay : 0)));
-                appendDemoLog(item.text, item.type);
-                // Scroll to bottom
-                demoBody.scrollTop = demoBody.scrollHeight;
-            }
-
-            isAnimating = false;
-            replayBtn.classList.remove('hidden');
-        }
-
-        function typeCommand(text) {
-            return new Promise(resolve => {
-                let charIndex = 0;
-                typewriter.textContent = "";
-                const interval = setInterval(() => {
-                    if (charIndex < text.length) {
-                        typewriter.textContent += text.charAt(charIndex);
-                        charIndex++;
-                    } else {
-                        clearInterval(interval);
-                        setTimeout(() => {
-                            // "Enter" key effect
-                            const cmdLine = document.createElement('div');
-                            cmdLine.className = 'cursor-line';
-                            cmdLine.innerHTML = `<span class="prompt">$</span> <span class="command-text">${text}</span>`;
-                            demoBody.insertBefore(cmdLine, demoBody.firstChild);
-                            typewriter.textContent = ""; // Clear for next input implication
-                            resolve();
-                        }, 500);
-                    }
-                }, 50); // Typing speed
-            });
-        }
-
-        function appendDemoLog(message, type) {
-            const div = document.createElement('div');
-            div.className = `log-entry log-line ${type}`;
-            div.textContent = `> ${message}`;
-            // Insert before the cursor line (which is always last)
-            const cursorLine = demoBody.querySelector('.cursor-line');
-            demoBody.insertBefore(div, cursorLine);
-        }
-
-        // Auto run on load
-        setTimeout(runDemo, 1000);
-
-        // Replay handler
-        replayBtn.addEventListener('click', runDemo);
+            const interval = setInterval(() => {
+                if (charIndex < text.length) {
+                    typewriter.textContent += text.charAt(charIndex);
+                    charIndex++;
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        // "Enter" key effect
+                        const cmdLine = document.createElement('div');
+                        cmdLine.className = 'cursor-line';
+                        cmdLine.innerHTML = `<span class="prompt">$</span> <span class="command-text">${text}</span>`;
+                        demoBody.insertBefore(cmdLine, demoBody.firstChild);
+                        typewriter.textContent = ""; // Clear for next input implication
+                        resolve();
+                    }, 500);
+                }
+            }, 50); // Typing speed
+        });
     }
+
+    function appendDemoLog(message, type) {
+        const div = document.createElement('div');
+        div.className = `log-entry log-line ${type}`;
+        div.textContent = `> ${message}`;
+        // Insert before the cursor line (which is always last)
+        const cursorLine = demoBody.querySelector('.cursor-line');
+        demoBody.insertBefore(div, cursorLine);
+    }
+
+    // Auto run on load
+    setTimeout(runDemo, 1000);
+
+    // Replay handler
+    replayBtn.addEventListener('click', runDemo);
+}
 
 });
