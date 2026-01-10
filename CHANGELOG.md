@@ -1,6 +1,33 @@
 # CHANGELOG
 
 
+## [2.6.1] - 2026-01-10
+
+### ⚡ 效能大幅優化 (Performance Optimization)
+
+#### 🚀 並行處理架構 (Parallel Processing)
+- **API 呼叫並行化**：每頁的「分析」與「文字移除」現在同時執行，處理時間減半。
+- **批次處理機制**：改為每 3 頁一批並行處理，大幅減少總處理時間。
+- **智慧節流**：批次間隔從每頁 3 秒改為每批次 2 秒，14 頁從 10+ 分鐘縮短至 **3-5 分鐘**。
+
+#### ⏱️ Cloud Run 調優
+- **Timeout 延長**：將 Cloud Run 服務 timeout 從 15 分鐘調高至 **30 分鐘**，支援更大量頁面的處理。
+
+### 🐛 重大錯誤修復 (Critical Bug Fixes)
+
+#### 🔘 生成簡報按鈕雙擊問題 (Double-Click Fix)
+- **根本原因**：瀏覽器的 `disabled` 屬性會完全阻止 `mousedown` 事件觸發，導致第一次點擊被吞掉。
+- **解決方案**：將 `btn.disabled` 改為 CSS class `btn-disabled`，確保事件永遠能觸發。
+- **影響範圍**：修改 `script.js` 中所有 disabled 狀態邏輯，新增 `styles.css` 中的 `.btn-disabled` 樣式。
+- **結果**：按鈕 100% 在第一次點擊就響應。
+
+#### 🎨 UI 區塊切換修復
+- **問題**：切換到簡報生成器時仍顯示 YouTube 功能特色。
+- **修復**：`switchTab()` 現在會正確切換 `youtubeFeatures`、`slideFeatures` 和 `youtubeComparison` 區塊的顯示狀態。
+- **結果**：簡報生成器顯示正確的 AI 圖片文字移除、OCR 精確定位等特色。
+
+---
+
 ## [2.6.0] - 2026-01-10
 
 ### 🎨 NoteSlide 像素級重建 (Pixel-Perfect Reconstruction)
