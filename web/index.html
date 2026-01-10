@@ -191,19 +191,22 @@
                                     class="ri-close-line"></i></button>
                         </div>
 
-                        <!-- Remove Icon Option -->
-                        <div class="checkbox-wrapper"
-                            style="margin-top: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.05); padding: 8px; border-radius: 8px;">
+                    </div>
+
+                    <!-- Options Row (Outside Dropzone) -->
+                    <div
+                        style="display: flex; justify-content: flex-end; margin-top: 0.5rem; margin-bottom: 0.5rem; padding: 0 4px;">
+                        <div class="checkbox-wrapper" style="display: flex; align-items: center; cursor: pointer;">
                             <input type="checkbox" id="removeIconCheckbox"
-                                style="margin-right: 8px; transform: scale(1.2); cursor: pointer;">
+                                style="margin-right: 8px; transform: scale(1.1); cursor: pointer;">
                             <label for="removeIconCheckbox"
-                                style="cursor: pointer; user-select: none; font-size: 0.9rem; color: #e2e8f0;">移除
+                                style="cursor: pointer; user-select: none; font-size: 0.9rem; color: #aaa;">移除
                                 NotebookLM 圖標</label>
                         </div>
-
                     </div>
+
                     <button id="startPreviewBtn" class="btn-primary hidden" onclick="triggerPreview(event)"
-                        style="margin-top: 1rem; width: 100%;">
+                        style="margin-top: 0.5rem; width: 100%; position: relative; z-index: 10;">
                         <span>下一步：解析頁面</span>
                         <i class="ri-arrow-right-line"></i>
                     </button>
