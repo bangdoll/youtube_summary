@@ -46,7 +46,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE_NAME }}
-          flags: '--allow-unauthenticated' # 允許公開存取 (因為我們有自己的 Auth 機制)
+          flags: '--allow-unauthenticated --memory 2Gi --cpu 2' # 公開存取 + 升級規格 (2GB RAM, 2 vCPU)
           env_vars: |
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
