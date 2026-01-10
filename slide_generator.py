@@ -367,19 +367,21 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
 
 def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
     try:
-        images = convert_from_bytes(pdf_bytes)
+        # Reduce memory usage: dpi=100, thread_count=1
+        images = convert_from_bytes(pdf_bytes, dpi=100, thread_count=1)
         logger.info(f"預覽生成: 轉換了 {len(images)} 張圖片")
         image_paths = []
         for i, img in enumerate(images):
             filename = f"preview_{secrets.token_hex(4)}_{i}.jpg"
             filepath = os.path.join(output_dir, filename)
-            img.thumbnail((800, 800))
+            # Resize small thumbnail
+            img.thumbnail((400, 400)) # Smaller thumbnail for preview grid
             img.save(filepath, "JPEG", quality=80)
             image_paths.append(f"/static/temp/{filename}")
         return image_paths
     except Exception as e:
-        logger.error(f"預覽生成失敗: {e}")
-        raise ValueError(f"無法生成預覽: {e}")
+        logger.error(f"預覽生成失敗 (Memory/Poppler): {e}")
+        raise ValueError(f"無法生成預覽: {str(e)}")
 
 
 async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None, remove_icon: bool = False) -> tuple:

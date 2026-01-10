@@ -441,7 +441,10 @@ window.startPreview = async function (file) {
             body: formData
         });
 
-        if (!res.ok) throw new Error('預覽生成失敗');
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || '預覽生成失敗');
+        }
 
         const data = await res.json();
 
