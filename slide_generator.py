@@ -50,69 +50,43 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         img_bytes = await asyncio.to_thread(process_image)
         
         prompt = """
-        You are an expert presentation analyst performing PIXEL-PERFECT slide reconstruction.
-        Analyze this slide image and extract EVERY element with precise positioning.
+        You are an expert presentation analyst optimizing content for RECONSTRUCTION.
+        Your goal is to extract the logical content structure, NOT the physical layout.
         
-        Return a JSON object with these fields:
+        Analyze this slide image and return a JSON object with:
         {
-            "title": "Main slide title",
-            "content": ["Point 1", "Point 2", "Point 3"],
-            "speaker_notes": "Speaker notes in Traditional Chinese",
-            "layout": "layout_type",
-            "main_image_bbox": [ymin, xmin, ymax, xmax],
+            "title": "Concise main title of the slide",
+            "content": [
+                "Key point 1",
+                "Key point 2 (condensed if long)",
+                "Key point 3"
+            ],
+            "speaker_notes": "Detailed speaker notes in Traditional Chinese",
             "background_color_hex": "#FFFFFF",
             "text_color_hex": "#000000",
-            "text_elements": [
-                {
-                    "text": "The actual text content",
-                    "bbox": [ymin, xmin, ymax, xmax],
-                    "font_size": 24,
-                    "is_bold": true,
-                    "color_hex": "#333333",
-                    "type": "title|subtitle|heading|body|label|caption",
-                    "alignment": "left|center|right"
-                }
-            ],
             "visual_elements": [
                 {
-                    "type": "photo|diagram|chart|icon|shape",
+                    "type": "photo|diagram|chart",
                     "bbox": [ymin, xmin, ymax, xmax],
-                    "description": "Brief description of the element"
+                    "description": "Description for alt text"
                 }
             ]
         }
 
-        **CRITICAL: Element Detection Rules**
-        
-        1. TEXT ELEMENTS (text_elements array):
-           - Detect EVERY visible text on the slide
-           - For each text, provide:
-             * bbox: [ymin, xmin, ymax, xmax] in 0-1000 normalized coordinates
-             * font_size: estimated point size (e.g., 12, 16, 24, 32, 48)
-             * is_bold: true if the text appears bold
-             * color_hex: the text color in hex
-             * type: classify as title/subtitle/heading/body/label/caption
-           - Be PRECISE with bounding boxes - tight fit around text
-        
-        2. VISUAL ELEMENTS (visual_elements array):
-           - Detect ALL visual elements (photos, diagrams, charts, icons, shapes)
-           - For each visual, provide bbox and type
-           - Pick the LARGEST visual for main_image_bbox
-        
-        3. MAIN IMAGE (main_image_bbox):
-           - This should be the bbox of the PRIMARY visual element
-           - Use 0-1000 normalized coordinates: [ymin, xmin, ymax, xmax]
-           - EXCLUDE all text from this box
-           - Return null if no significant visual exists
-        
-        4. LAYOUT selection:
-           - "split_left_image": Has significant visual element
-           - "full_width_text": Text-dominant slide
-           - "comparison": Side-by-side comparison content
+        **CRITICAL INSTRUCTIONS:**
+        1. **Content Extraction**:
+           - Extract the MAIN title.
+           - Extract the KEY points as a list of strings in `content`.
+           - Ignore page numbers, footers, and decorative text.
+           - Keep the language of the original slide (Traditional Chinese if present).
 
-        5. COLORS:
-           - background_color_hex: Dominant background color
-           - text_color_hex: Most common text color
+        2. **Visuals**:
+           - Identify significant visual elements (charts, photos).
+           - Provide `bbox` ONLY for visual elements that need to be preserved/cropped.
+           - NO `text_elements` with bboxes are needed. We will reconstruct the text layout programmatically.
+        
+        3. **Colors**:
+           - Detect dominant background and text colors.
         """
 
         for attempt in range(max_retries):

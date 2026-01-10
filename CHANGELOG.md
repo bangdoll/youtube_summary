@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## [2.9.0] - 2026-01-10
+
+### 🚀 品質核心優化：結構化版面重建 (Structured Layout Reconstruction)
+
+#### 📝 Gemini 提示全面升級 (Phase 3)
+- **結構化提取**：放棄 OCR 邊界框，改為提取 `title`、`content` (條列重點) 與 `visual_elements`。
+- **內容優先**：專注於提取投影片的邏輯內容，而非物理位置。
+
+#### 📐 乾淨分離版面實作 (Phase 2)
+- **Split Layout 2.0**：
+  - 左側：顯示 AI 自動去字的乾淨圖片。
+  - 右側：根據提取的結構化內容重新排版 (標題 + Bullet Points)。
+- **一致性**：確保所有投影片版面整潔統一，不再有文字散落問題。
+
+---
+
 ## [2.8.0] - 2026-01-10
 
 ### 🔧 品質優化：乾淨分離版面 (Clean Split Layout)
