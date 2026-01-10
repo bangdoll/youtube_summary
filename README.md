@@ -14,18 +14,17 @@
 ### 1.2 ✨ 來源回溯 (Source Attribution)
 自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
-### 1.3 📊 NoteSlide 簡報生成器 (NoteSlide Generator) v2.6.1
-類似 `codia.ai` 的像素級簡報重建引擎。
+### 1.3 📊 NoteSlide 簡報生成器 (NoteSlide Generator) v2.10.0
+獨家「圖文分離」與「線上編輯」引擎，解決傳統 PDF 轉 PPTX 的排版錯亂問題。
 
-- **⚡ 3 倍速效能優化**：並行處理架構，每頁分析與文字移除同時執行，14 頁只需 3-5 分鐘。
-- **AI 圖片文字移除**：使用 **Nano Banana Pro** (`gemini-3-pro-image-preview`) 智慧擦除圖片上的文字。
-- **OCR 精確定位**：偵測每個文字區塊的精確邊界框，保留字體大小、粗體、顏色等屬性。
-- **像素級 Shape 重建**：每個文字區塊使用 OCR 偵測位置建立獨立 PowerPoint Shape。
-- **Codia 風格網格預覽**：上傳 PDF 後可直觀預覽縮圖，自由選擇要轉換的頁面。
-- **動態版型引擎**：
-    - **Split Layout**：保留左側圖表（已移除文字），右側列出可編輯文字。
-    - **Full Width**：針對文字密集頁面，自動切換為全寬排版。
-- **一鍵轉換**：將靜態 PDF 轉化為完全可編輯的 PowerPoint (.pptx) 檔案。
+- **Web 簡報內容編輯器 (Web Slide Editor)**：
+    - **所見即所得**：上傳 PDF 後，先預覽分析結果，直接在網頁上修改標題與重點，確認無誤再生成檔案。
+    - **完全可控**：再也不用為了改一個錯字而重新生成整份簡報。
+- **乾淨分離版面 (Clean Split Layout)**：
+    - **AI 圖片去字**：整合 **Nano Banana Pro** 模型，自動擦除原始圖片上的文字，保留乾淨背景。
+    - **圖文不打架**：強制採用「左圖右文」工整排版，徹底杜絕文字重疊與 OCR 漂移問題。
+- **像素級 Shape 重建**：每個文字區塊都是獨立的 PowerPoint Shape，而非死圖。
+- **Codia 風格網格預覽**：直觀的頁面選擇介面，支援全選/取消全選。
 
 ### 2. 💰 智慧成本監控 (Smart Cost Control)
 - **Token 級追蹤**：精準計算 GPT-4o Input/Output Token 與 Whisper 分鐘數。
