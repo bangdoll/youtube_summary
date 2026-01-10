@@ -155,6 +155,17 @@ window.generateSlides = async function (btnElement) {
     }
 }
 
+window.loadSettings = function () {
+    const geminiKeyInput = document.getElementById('geminiKeyInput');
+    const openaiKeyInput = document.getElementById('openaiKeyInput');
+
+    const geminiKey = localStorage.getItem('gemini_api_key');
+    const openaiKey = localStorage.getItem('openai_api_key');
+
+    if (geminiKey && geminiKeyInput) geminiKeyInput.value = geminiKey;
+    if (openaiKey && openaiKeyInput) openaiKeyInput.value = openaiKey;
+};
+
 // ... empty space ...
 
 window.renderGrid = function () {
