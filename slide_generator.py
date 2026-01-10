@@ -167,16 +167,37 @@ async def remove_text_from_image(image, api_key: str):
         
         img_bytes = await asyncio.to_thread(process_image)
         
-        # 使用 Gemini 圖像編輯提示
+        # 使用 Gemini 圖像編輯提示 (使用英文以獲得更好的效果)
         prompt = """
-        請移除這張圖片中的所有文字內容，包括：
-        - 標題文字
-        - 說明文字
-        - 數字、日期
-        - 任何可見的文字標籤
+        You are an expert image editor. Your task is to COMPLETELY REMOVE ALL TEXT from this image.
+
+        **CRITICAL INSTRUCTIONS:**
+        1. Remove EVERY piece of visible text, including:
+           - Titles and headings
+           - Bullet points and descriptions
+           - Numbers, dates, percentages
+           - Watermarks and labels
+           - Chinese/Japanese/Korean characters
+           - Any alphanumeric characters
         
-        保持圖片其他部分不變，只移除文字區域並用周圍的背景顏色/紋理自然填補。
-        輸出一張乾淨的、不含任何文字的圖片。
+        2. For each text region you remove:
+           - Fill the area with the surrounding background color/texture
+           - Use content-aware fill/inpainting to make it seamless
+           - Ensure no ghosting or artifacts remain
+        
+        3. PRESERVE everything that is NOT text:
+           - Diagrams, charts, and graphs (only remove text labels)
+           - Icons and shapes
+           - Images and photos
+           - Lines and arrows
+        
+        4. The output image MUST:
+           - Have the EXACT same dimensions as the input
+           - Contain ZERO readable text
+           - Look natural and clean
+        
+        DO NOT add any new elements. Only REMOVE text.
+        Output the cleaned image directly.
         """
         
         logger.info("嘗試使用 Gemini 移除圖片文字...")
