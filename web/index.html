@@ -217,7 +217,8 @@
                         <button id="cancelPreviewBtn" class="btn-secondary" onclick="cancelPreview()">
                             <i class="ri-arrow-left-line"></i> 重新上傳
                         </button>
-                        <button id="generateSlideBtn" class="generate-btn" onclick="generateSlides(this)"
+                        <button id="generateSlideBtn" class="generate-btn"
+                            onmousedown="generateSlides(this); event.preventDefault();"
                             style="pointer-events: auto !important; position: relative; z-index: 9999;">
                             <span>生成簡報</span>
                             <i class="ri-magic-line"></i>
