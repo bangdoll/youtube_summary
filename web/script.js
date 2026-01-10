@@ -1,4 +1,159 @@
 // v2.1.0 - Google OAuth 2026-01-06
+
+// === GLOBAL STATE (Nuclear Reliability) ===
+let selectedPdfFile = null;
+let currentPreviewImages = [];
+
+// === GLOBAL FUNCTIONS ===
+window.switchTab = function (targetMode) {
+    console.log("Switching to tab:", targetMode);
+
+    // 1. Update Buttons
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        const btnTarget = btn.getAttribute('data-target') || (btn.getAttribute('onclick') ? btn.getAttribute('onclick').match(/'([^']+)'/)[1] : null);
+        if (btnTarget === targetMode) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // 2. Update Content
+    const modeContents = document.querySelectorAll('.mode-content');
+    modeContents.forEach(content => {
+        if (content.id === targetMode) {
+            content.classList.add('active');
+        } else {
+            content.classList.remove('active');
+        }
+    });
+
+    // 3. Update Text/Features
+    const appSubtitle = document.getElementById('appSubtitle');
+    if (appSubtitle) {
+        if (targetMode === 'slideMode') {
+            appSubtitle.textContent = "上傳 NotebookLM 匯出的 PDF，AI 自動為您生成圖文並茂的 PowerPoint 簡報。";
+        } else {
+            appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
+        }
+    }
+};
+
+window.generateSlides = async function () {
+    const btn = document.getElementById('generateSlideBtn');
+    const settingsModal = document.getElementById('settingsModal');
+
+    if (!btn) return;
+
+    console.log(">>> Generate Slide Button Clicked (Global Function) <<<");
+    console.log("Button Disabled State:", btn.disabled);
+    console.log("Selected PDF:", selectedPdfFile);
+
+    // Immediate Feedback
+    const originalText = btn.innerHTML;
+
+    // Safety Check
+    if (btn.disabled) {
+        console.warn("Click ignored: Button is disabled");
+        if (selectedPdfFile && currentPreviewImages.some(i => i.selected)) {
+            console.warn("Button was disabled but valid state detected. Re-enabling and proceeding...");
+            btn.disabled = false;
+        } else {
+            return;
+        }
+    }
+
+    const file = selectedPdfFile;
+    if (!file) {
+        console.error("No file selected");
+        alert("未偵測到檔案 (Internal State Missing)");
+        return;
+    }
+
+    const geminiKey = localStorage.getItem('gemini_api_key');
+    if (!geminiKey) {
+        console.log("Missing API Key");
+        alert('請先在設定中輸入 Google Gemini API Key (BYOK)');
+        if (settingsModal) settingsModal.classList.remove('hidden');
+        return;
+    }
+
+    // Get Selected Indices
+    const selectedIndices = currentPreviewImages
+        .filter(i => i.selected)
+        .map(i => i.index);
+
+    if (selectedIndices.length === 0) {
+        alert("請至少選擇一頁");
+        return;
+    }
+
+    console.log(`Generating slides for ${selectedIndices.length} pages...`);
+
+    // UI Loading State
+    btn.disabled = true;
+    const originalBtnText = btn.innerHTML;
+    btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('gemini_key', geminiKey);
+    formData.append('selected_pages', JSON.stringify(selectedIndices));
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 900000);
+
+        const response = await fetch('/api/generate-slides', {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || '生成失敗');
+        }
+
+        console.log("Generation success, downloading...");
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let fileName = 'slides.pptx';
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+            if (filenameMatch.length === 2) fileName = filenameMatch[1];
+        }
+
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+
+        alert('簡報生成成功！下載即將開始。');
+
+    } catch (error) {
+        console.error("Slide Gen Error:", error);
+        if (error.name === 'AbortError') {
+            alert('請求超時 (15分鐘)，請嘗試減少頁數再試。');
+        } else {
+            alert(`錯誤: ${error.message}`);
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalBtnText;
+        }
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('urlInput');
     const submitBtn = document.getElementById('submitBtn');
@@ -286,44 +441,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeFileBtn = document.getElementById('removeFileBtn');
     const generateSlideBtn = document.getElementById('generateSlideBtn');
 
-    // 用於存儲拖曳上傳或點擊上傳的檔案
-    let selectedPdfFile = null;
+    // Use Global selectedPdfFile (defined at top)
+    // let selectedPdfFile = null;
 
-    // === Global Tab Switching (Nuclear Option) ===
-    window.switchTab = function (targetMode) {
-        console.log("Switching to tab:", targetMode);
-
-        // 1. Update Buttons
-        const tabBtns = document.querySelectorAll('.tab-btn');
-        tabBtns.forEach(btn => {
-            const btnTarget = btn.getAttribute('data-target') || btn.getAttribute('onclick').match(/'([^']+)'/)[1];
-            if (btnTarget === targetMode) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-
-        // 2. Update Content
-        const modeContents = document.querySelectorAll('.mode-content');
-        modeContents.forEach(content => {
-            if (content.id === targetMode) {
-                content.classList.add('active');
-            } else {
-                content.classList.remove('active');
-            }
-        });
-
-        // 3. Update Text/Features
-        const appSubtitle = document.getElementById('appSubtitle');
-        if (appSubtitle) {
-            if (targetMode === 'slideMode') {
-                appSubtitle.textContent = "上傳 NotebookLM 匯出的 PDF，AI 自動為您生成圖文並茂的 PowerPoint 簡報。";
-            } else {
-                appSubtitle.textContent = "不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。";
-            }
-        }
-    };
+    // Inner switchTab removed (Moved to Global)
 
     // Keep existing listeners as backup, but inline onclick in HTML will take precedence
     // Keep existing listeners as backup
@@ -370,7 +491,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // State for Preview
-    let currentPreviewImages = [];
+    // Use Global currentPreviewImages
+    // let currentPreviewImages = [];
 
     // DOM Elements for Preview
     const uploadStep = document.getElementById('uploadStep');
@@ -518,128 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // === Global Generation Function (Bulletproof for click handling) ===
-    // === Global Generation Function (Bulletproof for click handling) ===
-    window.generateSlides = async function () {
-        const btn = document.getElementById('generateSlideBtn');
-        if (!btn) return;
-
-        console.log(">>> Generate Slide Button Clicked (Global Function) <<<");
-        console.log("Button Disabled State:", btn.disabled);
-        console.log("Selected PDF:", selectedPdfFile);
-
-        // Immediate Feedback to prove click reception
-        const originalText = btn.innerHTML;
-        // Don't change text yet if disabled, just log
-
-        // Safety Check
-        if (btn.disabled) {
-            console.warn("Click ignored: Button is disabled");
-            // FORCE ENABLE if it was disabled by mistake? 
-            // This is a "Heal" strategy.
-            // If user clicks and it's disabled, maybe we should check if we can enable it?
-            // Re-run validation:
-            if (selectedPdfFile && currentPreviewImages.some(i => i.selected)) {
-                console.warn("Button was disabled but valid state detected. Re-enabling and proceeding...");
-                btn.disabled = false;
-                // Continues...
-            } else {
-                return;
-            }
-        }
-
-        const file = selectedPdfFile;
-        if (!file) {
-            console.error("No file selected");
-            alert("未偵測到檔案 (Internal State Missing)");
-            return;
-        }
-
-        const geminiKey = localStorage.getItem('gemini_api_key');
-        if (!geminiKey) {
-            console.log("Missing API Key");
-            alert('請先在設定中輸入 Google Gemini API Key (BYOK)');
-            settingsModal.classList.remove('hidden');
-            return;
-        }
-
-        // Get Selected Indices
-        const selectedIndices = currentPreviewImages
-            .filter(i => i.selected)
-            .map(i => i.index);
-
-        if (selectedIndices.length === 0) {
-            alert("請至少選擇一頁");
-            return;
-        }
-
-        console.log(`Generating slides for ${selectedIndices.length} pages...`);
-
-        // UI Loading State
-        btn.disabled = true;
-        const originalBtnText = btn.innerHTML;
-        btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('gemini_key', geminiKey);
-        formData.append('selected_pages', JSON.stringify(selectedIndices));
-
-        try {
-            // Use local timeout logic just in case connection hangs
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 min timeout (matching Cloud Run)
-
-            const response = await fetch('/api/generate-slides', {
-                method: 'POST',
-                body: formData,
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || '生成失敗');
-            }
-
-            console.log("Generation success, downloading...");
-
-            // Handle file download
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-
-            // Get filename from header or default
-            const contentDisposition = response.headers.get('Content-Disposition');
-            let fileName = 'slides.pptx';
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch.length === 2) fileName = filenameMatch[1];
-            }
-
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(downloadUrl);
-
-            alert('簡報生成成功！下載即將開始。');
-
-        } catch (error) {
-            console.error("Slide Gen Error:", error);
-            if (error.name === 'AbortError') {
-                alert('請求超時 (15分鐘)，請嘗試減少頁數再試。');
-            } else {
-                alert(`錯誤: ${error.message}`);
-            }
-        } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = originalBtnText;
-            }
-        }
-    };
+    // Inner generateSlides removed (Moved to Global)
 
     // if (generateSlideBtn) {
     //    generateSlideBtn.disabled = true; // Initial state
