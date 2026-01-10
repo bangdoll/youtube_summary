@@ -41,7 +41,7 @@ window.switchTab = function (targetMode) {
 };
 
 window.generateSlides = async function (btnElement) {
-    // Fallback if no button passed (legacy calls)
+    // 兼容性處理：如果未傳入按鈕，則嘗試獲取預設 ID (支援舊版調用)
     const btn = btnElement || document.getElementById('generateSlideBtn') || document.getElementById('generateSlideBtnResult');
     const settingsModal = document.getElementById('settingsModal');
 
@@ -51,13 +51,13 @@ window.generateSlides = async function (btnElement) {
     console.log("Button Disabled State:", btn.disabled);
     console.log("Selected PDF:", selectedPdfFile);
 
-    // Immediate Feedback
+    // 提供即時反饋
     const originalText = btn.innerHTML;
 
-    // Safety Check
+    // 安全檢查
     if (btn.disabled) {
         console.warn("Click ignored: Button is disabled");
-        // Self-healing: If we have files selected but button is disabled, re-enable it
+        // 自我修復機制：如果已選擇檔案但按鈕仍被禁用，則強制啟用並繼續執行
         if (selectedPdfFile && currentPreviewImages.some(i => i.selected)) {
             console.warn("Button was disabled but valid state detected. Re-enabling and proceeding...");
             btn.disabled = false;
@@ -81,7 +81,7 @@ window.generateSlides = async function (btnElement) {
         return;
     }
 
-    // Get Selected Indices
+    // 取得已選頁面的索引
     const selectedIndices = currentPreviewImages
         .filter(i => i.selected)
         .map(i => i.index);
@@ -93,7 +93,7 @@ window.generateSlides = async function (btnElement) {
 
     console.log(`Generating slides for ${selectedIndices.length} pages...`);
 
-    // UI Loading State
+    // UI 載入狀態
     btn.disabled = true;
     btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
 
@@ -150,7 +150,7 @@ window.generateSlides = async function (btnElement) {
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = originalText; // Restore original text/icon
+            btn.innerHTML = originalText; // 恢復原始文字/圖標
         }
     }
 }
@@ -162,7 +162,7 @@ window.renderGrid = function () {
     const selectedCountSpan = document.getElementById('selectedCount');
     const totalCountSpan = document.getElementById('totalCount');
 
-    // Update ALL generate buttons
+    // 更新所有生成按鈕
     const resultBtn = document.getElementById('generateSlideBtnResult');
     const previewBtn = document.getElementById('generateSlideBtn');
     const generateButtons = [previewBtn, resultBtn].filter(b => b !== null);
@@ -190,11 +190,11 @@ window.renderGrid = function () {
         pageGrid.appendChild(div);
     });
 
-    // Update Counts
+    // 更新計數
     if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
     if (totalCountSpan) totalCountSpan.textContent = currentPreviewImages.length;
 
-    // Update Generate Button State
+    // 更新生成按鈕狀態
     generateButtons.forEach(btn => {
         btn.disabled = selectedCount === 0;
         const span = btn.querySelector('span');
