@@ -381,7 +381,12 @@ window.handleFileSelect = async function (file) {
     if (startPreviewBtn) startPreviewBtn.classList.remove('hidden');
 };
 
-window.triggerPreview = async function () {
+window.triggerPreview = async function (event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
     if (selectedPdfFile) {
         await window.startPreview(selectedPdfFile);
     } else {

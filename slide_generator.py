@@ -502,10 +502,10 @@ import asyncio
 # ... (Previous imports should be preserved, but I need to add asyncio at top ideally, but I can add here or assume added).
 # Actually better to add import at top. But for this tool I'll focus on the function body.
 
-async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None) -> str:
+async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None) -> tuple:
     """
-    主要流程：PDF -> 圖片 -> Gemini 分析 -> 文字移除 -> PPTX
-    回傳生成的 PPTX 檔案路徑。
+    主要流程：PDF -> 圖片 -> Gemini 分析 -> 文字移除
+    回傳 (analyses, cleaned_images)。
     若有 selected_indices，只處理指定頁面 (0-based index)。
     """
     logger.info(f"開始處理 PDF: {filename}")
