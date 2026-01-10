@@ -166,6 +166,46 @@ window.loadSettings = function () {
     if (openaiKey && openaiKeyInput) openaiKeyInput.value = openaiKey;
 };
 
+window.openSettings = function () {
+    console.log("Opening Settings Modal");
+    const modal = document.getElementById('settingsModal');
+    const geminiKeyInput = document.getElementById('geminiKeyInput');
+    const openaiKeyInput = document.getElementById('openaiKeyInput');
+
+    if (modal) {
+        modal.classList.remove('hidden');
+
+        // Load Settings
+        const geminiKey = localStorage.getItem('gemini_api_key');
+        const openaiKey = localStorage.getItem('openai_api_key');
+        if (geminiKey && geminiKeyInput) geminiKeyInput.value = geminiKey;
+        if (openaiKey && openaiKeyInput) openaiKeyInput.value = openaiKey;
+    }
+};
+
+window.closeSettings = function () {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.saveSettings = function () {
+    const geminiKeyInput = document.getElementById('geminiKeyInput');
+    const openaiKeyInput = document.getElementById('openaiKeyInput');
+    const modal = document.getElementById('settingsModal');
+
+    const geminiKey = geminiKeyInput ? geminiKeyInput.value.trim() : "";
+    const openaiKey = openaiKeyInput ? openaiKeyInput.value.trim() : "";
+
+    if (geminiKey) localStorage.setItem('gemini_api_key', geminiKey);
+    else localStorage.removeItem('gemini_api_key');
+
+    if (openaiKey) localStorage.setItem('openai_api_key', openaiKey);
+    else localStorage.removeItem('openai_api_key');
+
+    alert('設定已儲存！將優先使用您的 API Key 進行分析。');
+    if (modal) modal.classList.add('hidden');
+};
+
 // ... empty space ...
 
 window.renderGrid = function () {
