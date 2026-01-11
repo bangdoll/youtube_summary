@@ -237,7 +237,13 @@ window.generateSlides = async function (btnElement) {
 
         // Switch to Editor Step
         if (analysisLoading) analysisLoading.classList.add('hidden');
-        if (editorStep) editorStep.classList.remove('hidden');
+        if (editorStep) {
+            editorStep.classList.remove('hidden');
+            // UX Improvement: Auto scroll to editor so user knows it's ready
+            setTimeout(() => {
+                editorStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
 
     } catch (error) {
         console.error("Analysis Error:", error);
