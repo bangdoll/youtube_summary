@@ -12,8 +12,14 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
-from google import genai
-from google.genai import types
+try:
+    from google import genai
+    from google.genai import types
+except ImportError as e:
+    print(f"CRITICAL ERROR: Failed to import google.genai: {e}")
+    # Define placeholder to allow app startup, will fail at runtime if used
+    genai = None
+    types = None
 import re
 import secrets
 import time
