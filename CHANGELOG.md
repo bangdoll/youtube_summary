@@ -1,3 +1,9 @@
+## [v2.10.20] - 2026-01-11
+
+### 🛠️ 穩定性與 UX 修復 (Stability & UX)
+- **Fix 0% Stall**: 修復了後端 `slide_generator.py` 中因遺漏 `PIL.Image` 導入，導致在發生 Timeout 時引發 Crash 而非正常回報錯誤的問題。這確保了即使部分頁面超時，整體進度也不會卡死。
+- **UI Tweaks**: 應使用者要求，將「移除 NotebookLM 圖標」選項預設為**勾選**狀態。
+
 ## [v2.10.17] - 2026-01-11
 
 ### ⚡ 極速優化 (Ultimate Performance)

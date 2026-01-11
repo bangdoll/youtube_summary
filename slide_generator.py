@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 from typing import List, Optional
+from PIL import Image
 from pdf2image import convert_from_bytes, pdfinfo_from_bytes
 from pptx import Presentation
 from pptx.util import Inches, Pt

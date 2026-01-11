@@ -1,0 +1,39 @@
+/Users/bangdoll/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+python-dotenv could not parse statement starting at line 6
+python-dotenv could not parse statement starting at line 7
+python-dotenv could not parse statement starting at line 8
+python-dotenv could not parse statement starting at line 9
+python-dotenv could not parse statement starting at line 10
+python-dotenv could not parse statement starting at line 11
+python-dotenv could not parse statement starting at line 12
+python-dotenv could not parse statement starting at line 13
+python-dotenv could not parse statement starting at line 14
+python-dotenv could not parse statement starting at line 15
+python-dotenv could not parse statement starting at line 16
+INFO:     Started server process [59449]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:52720 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52720 - "GET /static/script.js?v=2.10.2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:52720 - "GET /api/check-auth HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52729 - "GET /api/user HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52944 - "GET /script.js HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52967 - "GET /index.html HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52996 - "GET /Docs/Awakening_Blueprint.pdf HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53011 - "GET /web/script.js HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53046 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53046 - "GET /static/script.js?v=2.10.2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:53046 - "GET /api/check-auth HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53046 - "GET /api/user HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53078 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53104 - "GET /static/script.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53141 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53141 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53162 - "GET /test.pdf HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53175 - "GET /static/Docs/Awakening_Blueprint.pdf HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53215 - "POST /api/preview-pdf HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53215 - "GET /static/temp/preview_6a557064_0.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53340 - "POST /api/analyze-slides HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:53406 - "GET /static/script.js?v=2.10.2 HTTP/1.1" 304 Not Modified
