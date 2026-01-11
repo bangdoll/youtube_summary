@@ -3,6 +3,7 @@
 ### 🐛 錯誤修復 (Bug Fixes)
 - **Fix Progress Bar**: 補回 CSS 變數 `--neon-cyan` 與 `--neon-purple`，修復進度條無法顯示的問題。
 - **Fix RGBA Image**: 後端新增圖片格式檢測，針對 RGBA/P 模式圖片自動轉為 RGB，解決因 NotebookLM 圖標移除後的透明背景導致存檔流程崩潰的問題。
+- **Fix Cloud Run Images**: 改用 Base64 Stateless 傳輸，徹底解決 Cloud Run 圖片 404 問題。
 - **More Logs**: 新增去字圖片數量的日誌輸出，便於除錯。
 
 ### ⚡ 模型升級 (Model Upgrade)

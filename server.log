@@ -37,3 +37,63 @@ INFO:     127.0.0.1:53215 - "POST /api/preview-pdf HTTP/1.1" 200 OK
 INFO:     127.0.0.1:53215 - "GET /static/temp/preview_6a557064_0.jpg HTTP/1.1" 200 OK
 INFO:     127.0.0.1:53340 - "POST /api/analyze-slides HTTP/1.1" 422 Unprocessable Entity
 INFO:     127.0.0.1:53406 - "GET /static/script.js?v=2.10.2 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57031 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57031 - "GET /static/script.js?v=2.10.4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57032 - "GET /static/styles.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57031 - "GET /api/check-auth HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57031 - "GET /api/user HTTP/1.1" 200 OK
+ERROR:slide_generator:預覽生成失敗 (Memory/Poppler): Unable to get page count.
+Syntax Error: Couldn't find trailer dictionary
+Syntax Error: Couldn't find trailer dictionary
+Syntax Error: Couldn't read xref table
+
+Preview PDF Error: 無法生成預覽: Unable to get page count.
+Syntax Error: Couldn't find trailer dictionary
+Syntax Error: Couldn't find trailer dictionary
+Syntax Error: Couldn't read xref table
+
+INFO:     127.0.0.1:57153 - "POST /api/preview-pdf HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57227 - "POST /api/preview-pdf HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57227 - "GET /static/temp/preview_62b41d97_0.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57447 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57447 - "GET /static/script.js?v=2.10.4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57447 - "GET /api/check-auth HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57447 - "GET /api/user HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57520 - "GET /script.js HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57612 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57612 - "GET /static/script.js?v=2.10.4 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57612 - "GET /api/check-auth HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57622 - "GET /api/user HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57687 - "GET /Docs/Awakening_Blueprint.pdf HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57831 - "POST /api/preview-pdf HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57831 - "GET /static/temp/preview_2a5bc654_0.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57838 - "GET /static/temp/preview_239f6d71_1.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57840 - "GET /static/temp/preview_5b3e2f51_2.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57843 - "GET /static/temp/preview_600abf5c_4.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57841 - "GET /static/temp/preview_961515bd_3.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57844 - "GET /static/temp/preview_39cc2c2b_5.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57838 - "GET /static/temp/preview_e0c03cdc_6.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57843 - "GET /static/temp/preview_0e145abc_9.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57831 - "GET /static/temp/preview_ec82f4df_7.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57840 - "GET /static/temp/preview_d18576da_8.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57841 - "GET /static/temp/preview_a3519e52_10.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57844 - "GET /static/temp/preview_856c493f_11.jpg HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [59449]
+/Users/bangdoll/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+python-dotenv could not parse statement starting at line 6
+python-dotenv could not parse statement starting at line 7
+python-dotenv could not parse statement starting at line 8
+python-dotenv could not parse statement starting at line 9
+python-dotenv could not parse statement starting at line 10
+python-dotenv could not parse statement starting at line 11
+python-dotenv could not parse statement starting at line 12
+python-dotenv could not parse statement starting at line 13
+python-dotenv could not parse statement starting at line 14
+python-dotenv could not parse statement starting at line 15
+python-dotenv could not parse statement starting at line 16
+INFO:     Will watch for changes in these directories: ['/Users/bangdoll/Library/Mobile Documents/iCloud~md~obsidian/Documents/AI筆記/youtube_summary']
+ERROR:    [Errno 48] Address already in use

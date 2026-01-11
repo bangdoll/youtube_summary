@@ -4,6 +4,8 @@ import json
 import asyncio
 import logging
 import secrets
+import base64
+import io
 import pydantic
 from typing import List
 from PIL import Image
@@ -410,27 +412,36 @@ async def analyze_slides(
                 remove_icon=remove_icon,
                 progress_callback=report_progress
             )
-            # 2. 儲存圖片
-            await log(f"視覺分析完成，共產出 {len(cleaned_images)} 張圖片，正在處理儲存...")
+            # 2. 轉為 Base64 (Stateless)
+            await log(f"視覺分析完成，共產出 {len(cleaned_images)} 張圖片，正在轉碼傳輸...")
             cleaned_image_urls = []
             loop = asyncio.get_running_loop()
             
             for i, img in enumerate(cleaned_images):
                 try:
-                    img_filename = f"clean_{secrets.token_hex(8)}.jpg"
-                    img_path = os.path.join(TEMP_DIR, img_filename)
-                    
-                    # Ensure RGB for JPEG
-                    if img.mode in ('RGBA', 'P'):
+                    # Handle Transparency (RGBA/P) -> RGB with White Background
+                    if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+                        background = Image.new('RGB', img.size, (255, 255, 255))
+                        if img.mode == 'P':
+                            img = img.convert('RGBA')
+                        background.paste(img, mask=img.split()[-1])
+                        img = background
+                    elif img.mode != 'RGB':
                         img = img.convert('RGB')
                         
-                    # Run sync IO in thread
-                    await loop.run_in_executor(None, img.save, img_path, "JPEG", 85)
-                    cleaned_image_urls.append(f"/static/temp/{img_filename}")
+                    # Convert to Base64
+                    def image_to_base64(pil_img):
+                        buffered = io.BytesIO()
+                        pil_img.save(buffered, format="JPEG", quality=85)
+                        return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+                    b64_str = await loop.run_in_executor(None, image_to_base64, img)
+                    cleaned_image_urls.append(f"data:image/jpeg;base64,{b64_str}")
+                    
                 except Exception as img_err:
-                    print(f"Image {i} save failed: {img_err}")
-                    # Use a placeholder or skip?
-                    # Skip effectively
+                    print(f"Image {i} encode failed: {img_err}")
+                    # Error Placeholder (Red X)
+                    cleaned_image_urls.append("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZWFZWEiIC8+PHBhdGggZD0iTTEwIDEwTDkwIDkwTTEwIDkwTDkwIDEwIiBzdHJva2U9InJlZCIgc3Ryb2tlLXdpZHRoPSI1IiAvPjwvc3ZnPg==")
             
             await log("圖片處理完成，正在回傳結果...")
 
@@ -483,23 +494,31 @@ async def generate_slides_data(
     [Web Editor Step 2] 接收前端編輯後的 JSON 資料與圖片路徑，生成 PPTX。
     """
     try:
-        # 1. 還原圖片物件 (從 URL 路徑讀取 temp 檔案)
-        # URL 格式: /static/temp/filename.jpg
-        # 實體路徑: WEB_DIR/temp/filename.jpg
-        
+        # 1. 還原圖片物件 (從 Base64 讀取)
         pil_images = []
-        for url in data.cleaned_images:
-            # 去除 /static/temp/ 前綴，或是直接取檔名
-            filename = os.path.basename(url)
-            file_path = os.path.join(TEMP_DIR, filename)
-            
-            if os.path.exists(file_path):
-                img = Image.open(file_path)
-                pil_images.append(img)
-            else:
-                # 若找不到暫存檔 (可能過期)，這會是個問題
-                # 簡單解法：前端需確保圖片時效，或重新上傳
-                # 這裡補一個全白圖避免崩潰
+        for img_str in data.cleaned_images:
+            try:
+                if img_str.startswith("data:image"):
+                    # Parse Base64: data:image/jpeg;base64,.....
+                    header, encoded = img_str.split(",", 1)
+                    img_bytes = base64.b64decode(encoded)
+                    img = Image.open(io.BytesIO(img_bytes))
+                    pil_images.append(img)
+                else:
+                    # Legacy or Error Placeholder
+                    # 若是 URL 路徑 (舊版相容)，嘗試讀取 (但在 Cloud Run 上可能已過期)
+                    if img_str.startswith("/static/temp/"):
+                        filename = os.path.basename(img_str)
+                        file_path = os.path.join(TEMP_DIR, filename)
+                        if os.path.exists(file_path):
+                            pil_images.append(Image.open(file_path))
+                        else:
+                             # 找不到檔案，給白圖
+                             pil_images.append(Image.new('RGB', (1024, 768), 'white'))
+                    else:
+                        pil_images.append(Image.new('RGB', (1024, 768), 'white'))
+            except Exception as e:
+                print(f"Image decode failed: {e}")
                 pil_images.append(Image.new('RGB', (1024, 768), 'white'))
 
         # 2. 生成 PPTX
