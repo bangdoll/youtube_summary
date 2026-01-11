@@ -371,6 +371,7 @@ async def analyze_slides(
 
     async def run_analysis():
         try:
+            print(f"[{file.filename}] Starting analysis task...")
             # 解析 selected_pages
             selected_indices = None
             if selected_pages:
@@ -388,14 +389,17 @@ async def analyze_slides(
                 await queue.put(data)
 
             # Send initial feedback
+            print(f"[{file.filename}] Queueing initial message...")
             await queue.put({"message": "正在讀取 PDF 結構與初始化分析...", "progress": 0, "total": 0})
 
             # 1. 執行核心分析
+            print(f"[{file.filename}] Calling analyze_presentation...")
             analyses, cleaned_images = await slide_generator.analyze_presentation(
                 temp_pdf_path, gemini_key, file.filename, selected_indices, 
                 remove_icon=remove_icon,
                 progress_callback=report_progress
             )
+            print(f"[{file.filename}] Analysis complete. Saving images...")
             
             # 2. 儲存圖片
             cleaned_image_urls = []
@@ -415,8 +419,12 @@ async def analyze_slides(
             })
             
         except Exception as e:
-            await queue.put({"error": str(e)})
+            import traceback
+            error_msg = f"分析流程嚴重錯誤: {str(e)}\n{traceback.format_exc()}"
+            print(error_msg)
+            await queue.put({"error": str(e)}) # Send concise error to UI
         finally:
+            print(f"[{file.filename}] Task finished. Cleaning up.")
             await queue.put(None) # Signal end
             # Cleanup PDF
             try:
