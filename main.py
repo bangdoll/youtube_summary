@@ -65,10 +65,14 @@ if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
 # Ensure web directory exists
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 os.makedirs(WEB_DIR, exist_ok=True)
-TEMP_DIR = os.path.join(WEB_DIR, "temp")
+
+# Use /tmp for Cloud Run compatibility (in-memory filesystem)
+TEMP_DIR = "/tmp/youtube_summary_temp"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Mount static files
+# Note: Mount specific path /static/temp FIRST to take precedence
+app.mount("/static/temp", StaticFiles(directory=TEMP_DIR), name="static_temp")
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 # Lock for single-threaded execution
