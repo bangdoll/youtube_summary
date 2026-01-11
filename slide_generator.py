@@ -385,24 +385,30 @@ def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
         raise ValueError(f"無法生成預覽: {str(e)}")
 
 
-from pdf2image import convert_from_path, pdfinfo_from_path
+from pdf2image import convert_from_path
+from pypdf import PdfReader
 
 async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selected_indices: Optional[List[int]] = None, remove_icon: bool = False, progress_callback: Optional[callable] = None) -> tuple:
     """
     主要流程：PDF (File) -> 圖片 -> Gemini 分析 -> 文字移除
-    優化：採用 Streaming / Chunked Processing + File Based IO，按需轉換圖片。
-    回傳 (analyses, cleaned_images)。
+    優化 (v2.10.17): pypdf 秒讀頁數 + 首頁優先策略 (Priority First Page) + 強制超時保護。
     """
     logger.info(f"開始處理 PDF: {filename} (Path: {pdf_path})")
     
     try:
-        # 1. 快速獲取 PDF 資訊
-        info = await asyncio.to_thread(pdfinfo_from_path, pdf_path)
-        total_pdf_pages = info["Pages"]
+        # 1. 快速獲取 PDF 資訊 (使用 pypdf，不依賴 poppler info)
+        # Run in thread because pypdf file reading is sync IO
+        def get_pdf_count():
+            with open(pdf_path, 'rb') as f:
+                reader = PdfReader(f)
+                return len(reader.pages)
+        
+        total_pdf_pages = await asyncio.to_thread(get_pdf_count)
         logger.info(f"PDF 總頁數: {total_pdf_pages}")
+        
     except Exception as e:
         logger.error(f"無法讀取 PDF 資訊: {e}")
-        raise ValueError(f"無法讀取 PDF 檔案: {str(e)}")
+        raise ValueError(f"無法讀取 PDF 結構: {str(e)}")
 
     # 決定要處理的頁面索引 (0-based)
     target_indices = selected_indices if selected_indices else list(range(total_pdf_pages))
@@ -415,9 +421,10 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
     analyses = []
     cleaned_images = []
     
-    # Optimized for 2GB RAM Cloud Run
+    # 策略配置
     BATCH_SIZE = 3
-    DELAY_BETWEEN_BATCHES = 2  
+    DELAY_BETWEEN_BATCHES = 1
+    TIMEOUT_PER_BATCH = 45 # seconds
     
     async def process_single_page(img, page_num, total):
         logger.info(f"處理第 {page_num}/{total} 頁...")
@@ -435,69 +442,79 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
 
     total_target = len(target_indices)
     
-    # Loop through batches of indices
-    for i in range(0, total_target, BATCH_SIZE):
-        batch_indices = target_indices[i : i + BATCH_SIZE]
+    # Custom Loop for "Priority First Page"
+    # We construct batches manually to ensure Batch 1 is SINGLE page (for speed)
+    batches = []
+    remaining_indices = target_indices.copy()
+    
+    # Setup First Batch (Priority)
+    if remaining_indices:
+        # First batch has only 1 page to ensure instant feedback
+        batches.append([remaining_indices.pop(0)])
+    
+    # Setup subsequent batches
+    while remaining_indices:
+        chunk = remaining_indices[:BATCH_SIZE]
+        batches.append(chunk)
+        remaining_indices = remaining_indices[BATCH_SIZE:]
+
+    # Execute Batches
+    processed_count = 0
+    
+    for batch_indices in batches:
         current_batch_size = len(batch_indices)
         
-        # Notify progress: Converting (Start)
+        # Notify progress: Converting
         if progress_callback:
             start_p = batch_indices[0] + 1
             end_p = batch_indices[-1] + 1
-            msg = f"正在讀取圖片... (第 {start_p}-{end_p} 頁)"
-            # Send message without changing progress number yet (or update it partial?)
-            # Let's keep distinct message.
+            msg = f"正在處理第 {start_p}-{end_p} 頁..."
             try:
-                # We can call with kwarg if main.py supports it. 
-                # Our main.py queue logic supports dict.
-                # But callback signature is (current, total).
-                # We need to update main.py to handle kwargs or change signature?
-                # Python allows kwargs if we pass them.
-                # Let's rely on main.py wrapper to use *args, **kwargs?
-                # No, main.py defines `async def report_progress(current, total):`.
-                # I must update `slide_generator.py` to call it. 
-                # But signatures must match. 
-                # Dynamic approach: `await progress_callback(len(analyses), total_target, message=msg)`
-                await progress_callback(len(analyses), total_target, message=msg)
+                await progress_callback(processed_count, total_target, message=msg)
             except Exception as e:
                 logger.warning(f"Callback msg failed: {e}")
 
-        # 2. On-Demand Image Conversion
-        is_consecutive = (batch_indices[-1] - batch_indices[0] == current_batch_size - 1)
-        
+        # 2. On-Demand Image Conversion (Protected by Timeout)
         batch_images = []
         try:
-            if is_consecutive:
-                # Convert range (1-based)
-                start_page = batch_indices[0] + 1
-                end_page = batch_indices[-1] + 1
-                batch_images = await asyncio.to_thread(
-                    convert_from_path, pdf_path, dpi=100, 
-                    first_page=start_page, last_page=end_page, thread_count=1
-                )
-            else:
-                # Convert individually
-                for idx in batch_indices:
-                    page_num = idx + 1
-                    imgs = await asyncio.to_thread(
+            # Check for consecutiveness to optimize
+            is_consecutive = (len(batch_indices) > 1 and 
+                             batch_indices[-1] - batch_indices[0] == len(batch_indices) - 1)
+            
+            async def run_conversion():
+                if is_consecutive:
+                    # distinct args for range conversion
+                    s = batch_indices[0] + 1
+                    e = batch_indices[-1] + 1
+                    return await asyncio.to_thread(
                         convert_from_path, pdf_path, dpi=100, 
-                        first_page=page_num, last_page=page_num, thread_count=1
+                        first_page=s, last_page=e, thread_count=1
                     )
-                    if imgs:
-                        batch_images.extend(imgs)
+                else:
+                    imgs = []
+                    for idx in batch_indices:
+                        p = idx + 1
+                        res = await asyncio.to_thread(
+                           convert_from_path, pdf_path, dpi=100,
+                           first_page=p, last_page=p, thread_count=1
+                        )
+                        if res: imgs.extend(res)
+                    return imgs
+
+            # TIMEOUT WRAPPER
+            batch_images = await asyncio.wait_for(run_conversion(), timeout=TIMEOUT_PER_BATCH)
+            
+        except asyncio.TimeoutError:
+            logger.error(f"Batch conversion timed out after {TIMEOUT_PER_BATCH}s")
+            batch_images = [Image.new('RGB', (800, 600), color='white') for _ in batch_indices]
         except Exception as e:
             logger.error(f"Batch conversion failed: {e}")
             batch_images = [Image.new('RGB', (800, 600), color='white') for _ in batch_indices]
 
-
-        # Ensure image count matches (fail-safe)
-        if len(batch_images) != current_batch_size:
-             logger.warning(f"Image count mismatch. Expected {current_batch_size}, got {len(batch_images)}")
-             # Adjust or pad?
-             # Simple truncation or padding
-             while len(batch_images) < current_batch_size:
-                 batch_images.append(Image.new('RGB', (800, 600), color='white'))
-             batch_images = batch_images[:current_batch_size]
+        # Fail-safe padding
+        while len(batch_images) < current_batch_size:
+             batch_images.append(Image.new('RGB', (800, 600), color='white'))
+        batch_images = batch_images[:current_batch_size]
 
         # 3. Analyze Batch
         tasks = [
@@ -516,18 +533,19 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
                 analyses.append(res[0])
                 cleaned_images.append(res[1])
         
-        # Report Progress
+        processed_count += current_batch_size
+        
+        # Report Result Progress
         if progress_callback:
             try:
-                # Calculate overall progress
-                await progress_callback(len(analyses), total_target)
-            except Exception as e:
-                logger.error(f"Progress callback failed: {e}")
+                await progress_callback(processed_count, total_target)
+            except:
+                pass
 
-        # Free memory
+        # Cleanup
         del batch_images
         
-        if i + BATCH_SIZE < total_target:
+        if processed_count < total_target:
             await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
     return analyses, cleaned_images
