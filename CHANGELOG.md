@@ -8,6 +8,7 @@
 - **Enhance Text Removal**: 採用 **200 DPI** 掃描搭配 **Smart Resize (1600px)** 以及修復型 Prompt (Inpaint)，解決去字失敗與破圖問題。
 - **UX Improvement**: 優化自動捲動體驗，無論是「PDF 預覽生成」或「投影片分析完成」，視窗皆會自動捲動至操作區域，減少使用者手動尋找的時間。
 - **Fail-Safe Processing**: 強制執行 **Sequential Processing** 與 **P-Mode Fallback**，徹底解決「生成失敗」錯誤。即使單張圖片有問題，系統也會自動替換為佔位圖並繼續生成剩餘投影片 (Partial Success)。
+- **Fix Duplicate Logs**: 修正進度日誌重複顯示的問題 (e.g., "正在處理第 X 頁..." 出現兩次)。
 - **Smart Resize v2**: 針對不同任務採用不同縮放策略：**分析用 1024px** (加速)，**修圖用 1600px** (保質)。
 - **Payload Optimization**: 實作 Base64 圖片壓縮 (Max 1600px, JPEG 80%)，解決高解析度圖片導致傳輸失敗的問題。
 - **More Logs**: 新增去字圖片數量的日誌輸出，便於除錯。

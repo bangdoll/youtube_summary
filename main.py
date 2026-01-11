@@ -399,7 +399,7 @@ async def analyze_slides(
                 if message:
                     data["message"] = message
                     # Also emit log for message
-                    await queue.put({"type": "log", "data": message})
+                    # await queue.put({"type": "log", "data": message}) # Fixed: Duplicated in frontend
                 await queue.put(data)
 
             # Send initial feedback
