@@ -38,3 +38,15 @@
 - [x] 修復：`generateSlides` 函數變數未定義錯誤 (file/geminiKey/selectedIndices)
 - [x] 驗證：完整 PDF 上傳流程測試（已由用戶確認：顯示正確）
 - [x] 研究：分析外部參考程式碼以供未來功能整合
+
+## v2.10.21 (Current)
+- [x] 修復：進度條樣式缺失 (CSS Variable)
+- [x] 修復：Cloud Run 圖片 404 (實作 Base64 Stateless 傳輸)
+- [x] 優化：提升圖片去字品質 (DPI 200 + Prompt 強化)
+- [x] 優化：Payload 傳輸壓縮 (Max 1600px + JPEG 80%)
+- [x] 修復：UI 按鈕點擊判定 (onmousedown -> onclick)
+
+## v2.10.22 (Stability)
+- [x] 優化：Smart Resize (Back to 1600px) 解決 Timeout
+- [x] 優化：Prompt Tuning (修復型) 解決 Artifacts
+- [x] 優化：Timeout Extension (90s)

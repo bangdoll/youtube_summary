@@ -240,7 +240,7 @@
                 </div>
 
                 <button id="startPreviewBtn" class="btn-primary hidden" type="button"
-                    onmousedown="window.triggerPreview(event)"
+                    onclick="window.triggerPreview(event)"
                     style="margin-top: 0.5rem; width: 100%; position: relative; z-index: 10; cursor: pointer;">
                     <span>下一步：解析頁面</span>
                     <i class="ri-arrow-right-line"></i>
@@ -272,7 +272,7 @@
                         <i class="ri-arrow-left-line"></i> 重新上傳
                     </button>
                     <button id="generateSlideBtn" class="generate-btn"
-                        onmousedown="generateSlides(this); event.preventDefault();"
+                        onclick="generateSlides(this); event.preventDefault();"
                         style="pointer-events: auto !important; position: relative; z-index: 9999;">
                         <span>生成簡報</span>
                         <i class="ri-magic-line"></i>

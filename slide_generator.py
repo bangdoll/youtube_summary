@@ -170,17 +170,22 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False)
         
         # 準備圖片資料
         def process_image():
+            # Resize optimization: Downscale to 1600px max dimension to prevent timeouts/artifacts
+            # while preserving enough detail from the 200 DPI source.
+            img_resized = image.copy()
+            img_resized.thumbnail((1600, 1600))
+            
             img_byte_arr = io.BytesIO()
-            image.save(img_byte_arr, format='JPEG', quality=95)
+            img_resized.save(img_byte_arr, format='JPEG', quality=90, optimize=True)
             return img_byte_arr.getvalue()
         
         img_bytes = await asyncio.to_thread(process_image)
         
-        # 使用 Gemini 圖像編輯提示
-        base_prompt = "Aggressively remove ALL text, captions, and watermarks from this slide image. Reconstruct the background seamlessly to match the surrounding texture and gradient. The result must be a clean, text-free background image."
+        # 使用 Gemini 圖像編輯提示 (Balanced)
+        base_prompt = "Detect and remove ALL text blocks, captions, and watermarks. Inpaint the background to seamlessly match the surrounding texture and gradient. Keep diagrams and charts intact, only remove the text overlays."
         
         if remove_icon:
-            base_prompt += " ALSO remove the 'NotebookLM' logo, branding icon, and any footer/page numbers at the bottom."
+            base_prompt += " ALSO remove the 'NotebookLM' logo/icon and footer numbers."
 
         prompt = base_prompt
         
@@ -456,7 +461,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
     BATCH_SIZE = 3
     DELAY_BETWEEN_BATCHES = 1
     TIMEOUT_PER_BATCH = 45 # seconds (Image Conversion)
-    TIMEOUT_PER_PAGE_ANALYSIS = 60 # seconds (Gemini API)
+    TIMEOUT_PER_PAGE_ANALYSIS = 90 # seconds (Extended for high-res)
     
     async def process_single_page(img, page_num, total):
         logger.info(f"處理第 {page_num}/{total} 頁...")

@@ -2,9 +2,11 @@
 
 ### 🐛 錯誤修復 (Bug Fixes)
 - **Fix Progress Bar**: 補回 CSS 變數 `--neon-cyan` 與 `--neon-purple`，修復進度條無法顯示的問題。
+- **Fix Button Click**: 修正「下一步：解析頁面」與「生成簡報」按鈕需點擊兩次的問題 (將 `onmousedown` 改為標準 `onclick`)。
 - **Fix RGBA Image**: 後端新增圖片格式檢測，針對 RGBA/P 模式圖片自動轉為 RGB，解決因 NotebookLM 圖標移除後的透明背景導致存檔流程崩潰的問題。
 - **Fix Cloud Run Images**: 改用 Base64 Stateless 傳輸，徹底解決 Cloud Run 圖片 404 問題。
-- **Enhance Text Removal**: 提升 PDF 轉換解析度至 **200 DPI**，並強化去字 Prompt 與放寬安全設定，顯著降低去字失敗率。
+- **Enhance Text Removal**: 採用 **200 DPI** 掃描搭配 **Smart Resize (1600px)** 以及修復型 Prompt (Inpaint)，解決去字失敗與破圖問題。
+- **Stability Fixes**: 將單頁分析 Timeout 延長至 **90秒**，避免因高畫質圖片處理過久導致任務失敗。
 - **Payload Optimization**: 實作 Base64 圖片壓縮 (Max 1600px, JPEG 80%)，解決高解析度圖片導致傳輸失敗的問題。
 - **More Logs**: 新增去字圖片數量的日誌輸出，便於除錯。
 
