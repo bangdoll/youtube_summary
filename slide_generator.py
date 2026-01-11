@@ -385,17 +385,19 @@ def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
         raise ValueError(f"無法生成預覽: {str(e)}")
 
 
-async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None, remove_icon: bool = False, progress_callback: Optional[callable] = None) -> tuple:
+from pdf2image import convert_from_path, pdfinfo_from_path
+
+async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selected_indices: Optional[List[int]] = None, remove_icon: bool = False, progress_callback: Optional[callable] = None) -> tuple:
     """
-    主要流程：PDF -> 圖片 -> Gemini 分析 -> 文字移除
-    優化：採用 Streaming / Chunked Processing，按需轉換圖片，避免 OOM 與長等待。
+    主要流程：PDF (File) -> 圖片 -> Gemini 分析 -> 文字移除
+    優化：採用 Streaming / Chunked Processing + File Based IO，按需轉換圖片。
     回傳 (analyses, cleaned_images)。
     """
-    logger.info(f"開始處理 PDF: {filename} (Remove Icon: {remove_icon})")
+    logger.info(f"開始處理 PDF: {filename} (Path: {pdf_path})")
     
     try:
-        # 1. 快速獲取 PDF 資訊 (不轉換圖片)
-        info = await asyncio.to_thread(pdfinfo_from_bytes, pdf_bytes)
+        # 1. 快速獲取 PDF 資訊
+        info = await asyncio.to_thread(pdfinfo_from_path, pdf_path)
         total_pdf_pages = info["Pages"]
         logger.info(f"PDF 總頁數: {total_pdf_pages}")
     except Exception as e:
@@ -438,8 +440,29 @@ async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, se
         batch_indices = target_indices[i : i + BATCH_SIZE]
         current_batch_size = len(batch_indices)
         
+        # Notify progress: Converting (Start)
+        if progress_callback:
+            start_p = batch_indices[0] + 1
+            end_p = batch_indices[-1] + 1
+            msg = f"正在讀取圖片... (第 {start_p}-{end_p} 頁)"
+            # Send message without changing progress number yet (or update it partial?)
+            # Let's keep distinct message.
+            try:
+                # We can call with kwarg if main.py supports it. 
+                # Our main.py queue logic supports dict.
+                # But callback signature is (current, total).
+                # We need to update main.py to handle kwargs or change signature?
+                # Python allows kwargs if we pass them.
+                # Let's rely on main.py wrapper to use *args, **kwargs?
+                # No, main.py defines `async def report_progress(current, total):`.
+                # I must update `slide_generator.py` to call it. 
+                # But signatures must match. 
+                # Dynamic approach: `await progress_callback(len(analyses), total_target, message=msg)`
+                await progress_callback(len(analyses), total_target, message=msg)
+            except Exception as e:
+                logger.warning(f"Callback msg failed: {e}")
+
         # 2. On-Demand Image Conversion
-        # Determine if consecutive
         is_consecutive = (batch_indices[-1] - batch_indices[0] == current_batch_size - 1)
         
         batch_images = []
@@ -449,7 +472,7 @@ async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, se
                 start_page = batch_indices[0] + 1
                 end_page = batch_indices[-1] + 1
                 batch_images = await asyncio.to_thread(
-                    convert_from_bytes, pdf_bytes, dpi=100, 
+                    convert_from_path, pdf_path, dpi=100, 
                     first_page=start_page, last_page=end_page, thread_count=1
                 )
             else:
@@ -457,16 +480,15 @@ async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, se
                 for idx in batch_indices:
                     page_num = idx + 1
                     imgs = await asyncio.to_thread(
-                        convert_from_bytes, pdf_bytes, dpi=100, 
+                        convert_from_path, pdf_path, dpi=100, 
                         first_page=page_num, last_page=page_num, thread_count=1
                     )
                     if imgs:
                         batch_images.extend(imgs)
         except Exception as e:
             logger.error(f"Batch conversion failed: {e}")
-            # Skip this batch or fill with placeholders?
-            # Creating dummy image to prevent crash
             batch_images = [Image.new('RGB', (800, 600), color='white') for _ in batch_indices]
+
 
         # Ensure image count matches (fail-safe)
         if len(batch_images) != current_batch_size:

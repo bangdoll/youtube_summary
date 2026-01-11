@@ -355,6 +355,17 @@ async def analyze_slides(
     # Queue for streaming events
     queue = asyncio.Queue()
 
+    # Save Uploaded File to Temp
+    temp_pdf_filename = f"upload_{secrets.token_hex(8)}.pdf"
+    temp_pdf_path = os.path.join(TEMP_DIR, temp_pdf_filename)
+    
+    try:
+        with open(temp_pdf_path, "wb") as f:
+            while content := await file.read(1024 * 1024):  # 1MB chunks
+                f.write(content)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"儲存暫存檔案失敗: {e}"})
+
     async def run_analysis():
         try:
             # 解析 selected_pages
@@ -367,21 +378,49 @@ async def analyze_slides(
                 except:
                     pass
             
-            async def report_progress(current, total):
-                await queue.put({"progress": current, "total": total})
+            async def report_progress(current, total, message=None):
+                data = {"progress": current, "total": total}
+                if message:
+                    data["message"] = message
+                await queue.put(data)
 
             # Send initial feedback
             await queue.put({"message": "正在讀取 PDF 結構與初始化分析...", "progress": 0, "total": 0})
 
             # 1. 執行核心分析
-
             analyses, cleaned_images = await slide_generator.analyze_presentation(
-                pdf_bytes, gemini_key, file.filename, selected_indices, 
+                temp_pdf_path, gemini_key, file.filename, selected_indices, 
                 remove_icon=remove_icon,
                 progress_callback=report_progress
             )
             
             # 2. 儲存圖片
+            cleaned_image_urls = []
+            loop = asyncio.get_running_loop()
+            
+            for img in cleaned_images:
+                img_filename = f"clean_{secrets.token_hex(8)}.jpg"
+                img_path = os.path.join(TEMP_DIR, img_filename)
+                # Run sync IO in thread
+                await loop.run_in_executor(None, img.save, img_path, "JPEG", 85)
+                cleaned_image_urls.append(f"/static/temp/{img_filename}")
+            
+            # Result
+            await queue.put({
+                "analyses": analyses,
+                "cleaned_images": cleaned_image_urls
+            })
+            
+        except Exception as e:
+            await queue.put({"error": str(e)})
+        finally:
+            await queue.put(None) # Signal end
+            # Cleanup PDF
+            try:
+                if os.path.exists(temp_pdf_path):
+                    os.remove(temp_pdf_path)
+            except:
+                pass
             cleaned_image_urls = []
             loop = asyncio.get_running_loop()
             
