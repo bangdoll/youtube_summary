@@ -338,17 +338,29 @@ window.generatePresentations = async function () {
     btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
 
     try {
+        // Fix Schema Mismatch: Backend expects snake_case for Pydantic
+        const payload = {
+            analyses: editorData.analyses,
+            cleaned_images: editorData.cleanedImages,
+            filename: editorData.filename
+        };
+
         const response = await fetch('/api/generate-slides-data', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(editorData)
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
             const err = await response.json();
-            throw new Error(err.error || '生成失敗');
+            // Handle Pydantic 422 Validation Errors
+            let errorMsg = err.error || '生成失敗';
+            if (!err.error && err.detail) {
+                errorMsg = `資料格式錯 (422): ${JSON.stringify(err.detail)}`;
+            }
+            throw new Error(errorMsg);
         }
 
         // Download logic
