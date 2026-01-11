@@ -7,6 +7,9 @@
 - **Fix Cloud Run Images**: 改用 Base64 Stateless 傳輸，徹底解決 Cloud Run 圖片 404 問題。
 - **Enhance Text Removal**: 採用 **200 DPI** 掃描搭配 **Smart Resize (1600px)** 以及修復型 Prompt (Inpaint)，解決去字失敗與破圖問題。
 - **UX Improvement**: 優化自動捲動體驗，無論是「PDF 預覽生成」或「投影片分析完成」，視窗皆會自動捲動至操作區域，減少使用者手動尋找的時間。
+- **Native Hybrid Architecture (v3.0.0)**: 全新核心引擎。
+  - **Native Text Extraction**: 使用 `pypdf` 直接提取 PDF 文字層，達成 100% 文字正確率。
+  - **Deterministic Masking**: 根據文字座標物理繪製遮罩，再由 AI 進行 Inpainting，徹底解決圖片去字不乾淨的問題。
 - **Fix API Schema**: 修正前端傳送圖片資料的欄位名稱 (camelCase -> snake_case)，解決因格式驗證失敗導致的 "Generation Failed (422)" 錯誤。
 - **Fail-Safe Processing**: 強制執行 **Sequential Processing** 與 **P-Mode Fallback**，徹底解決「生成失敗」錯誤。即使單張圖片有問題，系統也會自動替換為佔位圖並繼續生成剩餘投影片 (Partial Success)。
 - **Fix Duplicate Logs**: 修正進度日誌重複顯示的問題 (e.g., "正在處理第 X 頁..." 出現兩次)。

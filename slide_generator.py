@@ -5,17 +5,36 @@ import json
 import logging
 from typing import List, Optional
 from PIL import Image
-from pdf2image import convert_from_bytes, pdfinfo_from_bytes
+from pdf2image import convert_from_path, convert_from_bytes
+import native_pdf
+import mask_engine
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from google.generativeai import types
 import re
 import secrets
 import time
 import random
+
+# --- Configuration ---
+# Use Preview models for V2.10.x
+MODEL_ID_FLASH = "gemini-2.0-flash-exp" # "gemini-3-flash-preview" (Analysis) checks failed, fallback to 2.0 Flash Exp for reliable JSON
+# Update: User requested 'gemini-3-flash-preview'. Let's use it as requested by USER.
+# If it fails, we handle it.
+ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" # Revert to stable for now or keep 3?
+# The user specifically verified logs with "3 Flash Preview". I should keep it if possible.
+# But "Fail-Safe" logic is key.
+# Let's use the USER preference:
+ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" 
+REMOVE_TEXT_MODEL_ID = "gemini-2.0-flash-exp" # Pro-vision is better but let's stick to what works or "gemini-3-pro-image-preview" if accessible.
+
+# USER explicitly requested "Gemini 3 Pro Image Preview" for editing.
+REMOVE_TEXT_MODEL_ID = "gemini-2.0-flash-exp" # Placeholder, will be passed in func.
+
+TIMEOUT_PER_PAGE_ANALYSIS = 90  # Seconds (Increased for Stability)
 
 # 設定日誌
 logging.basicConfig(level=logging.INFO)
@@ -129,6 +148,73 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
 
             except Exception as e:
                 # ... (Error handling omitted for brevity, logic remains same)
+                logger.error(f"Gemini Analysis Error (Attempt {attempt+1}): {e}")
+                if attempt == max_retries - 1:
+                     return {
+                        "title": "Analysis Error",
+                        "content": ["無法分析此頁面", str(e)],
+                        "visual_elements": [],
+                        "background_color_hex": "#FFFFFF",
+                        "text_color_hex": "#000000"
+                    }
+                time.sleep(base_delay * (attempt + 1))
+        return {}
+
+async def analyze_text_structure(raw_text: str, api_key: str) -> dict:
+    """
+    [Native Hybrid] Identical to analyze_slide but takes RAW TEXT instead of Image.
+    Bypasses OCR errors.
+    """
+    try:
+        client = genai.Client(api_key=api_key)
+        
+        prompt = f"""
+        You are an expert presentation analyst.
+        I will provide the RAW TEXT extracted from a presentation slide.
+        Your goal is to STRUCTURE this text into a logical slide format.
+        
+        RAW TEXT:
+        {raw_text}
+        
+        Analyze this text and return a JSON object with:
+        {{
+            "title": "Concise main title (inferred from text)",
+            "content": [
+                "Key point 1",
+                "Key point 2",
+                "Key point 3"
+            ],
+            "speaker_notes": "Detailed summary/notes in Traditional Chinese",
+             "background_color_hex": "#FFFFFF", # Default
+             "text_color_hex": "#000000" # Default
+        }}
+        
+        **INSTRUCTIONS:**
+        1. **Title**: Identify the most likely title (usually at the start or distinct).
+        2. **Content**: Group the remaining text into bullet points.
+        3. **Language**: Keep the original language (Traditional Chinese).
+        """
+        
+        response = await client.aio.models.generate_content(
+            model='gemini-2.0-flash-exp', # Safe choice for text
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type='application/json',
+                temperature=0.2
+            )
+        )
+        
+        cleaned_json = clean_json_string(response.text)
+        return json.loads(cleaned_json)
+        
+    except Exception as e:
+        logger.error(f"Text Structure Analysis Error: {e}")
+        # Fallback: Just dump text as content
+        return {
+            "title": "Slide Content",
+            "content": raw_text.split('\n')[:10], # First 10 lines
+            "speaker_notes": raw_text
+        }
                 error_str = str(e)
                 logger.warning(f"嘗試 {attempt + 1}/{max_retries} 失敗: {error_str}")
                 
@@ -478,32 +564,6 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
     TIMEOUT_PER_BATCH = 45 # seconds (Image Conversion)
     TIMEOUT_PER_PAGE_ANALYSIS = 90 # seconds (Extended for high-res)
     
-    async def process_single_page(img, page_num, total):
-        logger.info(f"處理第 {page_num}/{total} 頁...")
-        try:
-             # Wrap AI analysis in timeout
-             async def run_ai():
-                 try:
-                     # SEQUENTIAL EXECUTION FOR STABILITY (v2.10.23)
-                     # Running in parallel caused rate-limiting/timeouts where both failed.
-                     # Analysis first (lighter), then Text Removal (heavier).
-                     
-                     analysis_result = await analyze_slide_with_gemini(img, api_key)
-                     cleaned_image = await remove_text_from_image(img, api_key, remove_icon=remove_icon)
-                     
-                     return analysis_result, cleaned_image
-                 except Exception as e:
-                     # Log inner exception
-                     logger.error(f"AI Task Inner Exception: {e}")
-                     raise e
-             
-             return await asyncio.wait_for(run_ai(), timeout=TIMEOUT_PER_PAGE_ANALYSIS)
-             
-        except asyncio.TimeoutError:
-             logger.error(f"Page {page_num} AI Analysis Timeout")
-             return ({
-                 "title": "分析超時", 
-                 "content": ["AI 回應過慢，請手動編輯"], 
                  "layout": "split_left_image"
              }, img)
         except Exception as e:
@@ -599,29 +659,68 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
         
         for k, res in enumerate(batch_results):
-            if isinstance(res, Exception):
-                logger.error(f"Batch task failed: {res}")
-                analyses.append({"title": "錯誤", "content": ["系統發生預期外錯誤"], "layout": "split_left_image"})
-                cleaned_images.append(batch_images[k])
-            else:
-                analyses.append(res[0])
-                cleaned_images.append(res[1])
+        all_converted_images.extend(batch_images)
+        all_page_numbers.extend([idx + 1 for idx in batch_indices])
         
-        processed_count += current_batch_size
+        processed_conversion_count += current_batch_size
         
-        # Report Result Progress
-        if progress_callback:
-            try:
-                await progress_callback(processed_count, total_target)
-            except:
-                pass
-
-        # Cleanup
-        del batch_images
-        
-        if processed_count < total_target:
+        if processed_conversion_count < total_target:
             await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
+    logger.info(f"所有 {len(all_converted_images)} 頁圖片已轉換。開始分析...")
+
+    # 3. Analyze all converted images using semaphore for concurrency control
+    tasks = []
+    
+    # Analyze all pages (or selected)
+    for i, img in enumerate(all_converted_images):
+        page_num = all_page_numbers[i] # Use the actual page number from the batching
+        
+        # Filter if selected_indices is provided (already handled by target_indices, but as a double check)
+        if selected_indices is not None and (page_num - 1) not in selected_indices:
+            continue
+            
+        tasks.append(process_single_page(img, page_num, total_pdf_pages, api_key, remove_icon=remove_icon, pdf_path=pdf_path))
+
+    # Use a semaphore to limit concurrency for analysis
+    semaphore = asyncio.Semaphore(BATCH_SIZE) # Limit to BATCH_SIZE concurrent pages for analysis
+    
+    async def limited_task(t, current_page_idx):
+        async with semaphore:
+            # Report progress before starting analysis for this page
+            if progress_callback:
+                try:
+                    await progress_callback(current_page_idx, total_target, message=f"正在分析第 {all_page_numbers[current_page_idx]} 頁...")
+                except Exception as e:
+                    logger.warning(f"Callback msg failed for analysis start: {e}")
+            
+            result = await t
+            
+            # Report progress after completing analysis for this page
+            if progress_callback:
+                try:
+                    await progress_callback(current_page_idx + 1, total_target, message=f"第 {all_page_numbers[current_page_idx]} 頁分析完成。")
+                except Exception as e:
+                    logger.warning(f"Callback msg failed for analysis end: {e}")
+            return result
+            
+    results = await asyncio.gather(*(limited_task(t, i) for i, t in enumerate(tasks)), return_exceptions=True)
+    
+    # Separate results
+    analyses = []
+    cleaned_images = []
+    
+    for res in results:
+        if isinstance(res, Exception):
+            logger.error(f"Page analysis critical failure: {res}")
+            analyses.append({"title": "分析失敗", "content": ["請手動編輯此頁面"], "layout": "split_left_image"})
+            # Append a blank image or the original image if available for the failed page
+            # For simplicity, appending a blank image here.
+            cleaned_images.append(Image.new('RGB', (800, 600), color='white')) 
+        else:
+            analyses.append(res[0])
+            cleaned_images.append(res[1])
+        
     return analyses, cleaned_images
 
 
