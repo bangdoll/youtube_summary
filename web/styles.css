@@ -979,17 +979,21 @@ button#submitBtn:disabled {
 .settings-btn {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
+    border-radius: 9999px;
+    /* Perfect Pill Shape */
     color: var(--text-primary);
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 0.85rem;
+    padding: 8px 16px;
+    /* Balanced Padding */
     cursor: pointer;
-    padding: 6px 16px;
-    margin-right: 8px;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
+    justify-content: center;
+    /* Ensure content is centered */
     gap: 8px;
+    line-height: 1;
+    /* Reset line-height alignment */
 }
 
 .settings-btn:hover {
