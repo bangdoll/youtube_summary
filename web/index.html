@@ -177,146 +177,142 @@
             <!-- Slide Generator Mode -->
             <div id="slideMode" class="mode-content">
                 <!-- Step 1: Upload Area -->
-                <div id="uploadStep" class="step-container">
-                    <div class="upload-wrapper" id="dropZone" onclick="triggerUpload()"
-                        ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)"
-                        ondrop="handleDrop(event)">
-                        <i class="ri-file-ppt-2-line upload-icon"></i>
-                        <h3>NotebookLM PDF 轉 PPTX</h3>
-                        <p>將 NotebookLM 輸出的 PDF 拖曳至此，或點擊上傳</p>
-                        <input type="file" id="pdfInput" accept=".pdf" hidden onchange="handleFileChange(this)">
-                        <div id="fileInfo" class="file-info hidden">
-                            <span id="fileName">placeholder.pdf</span>
-                            <button id="removeFileBtn" class="remove-btn" onclick="removeFile(event)"><i
-                                    class="ri-close-line"></i></button>
-                        </div>
-
+                <!-- Options Row (Above Dropzone) -->
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem; padding: 0 4px;">
+                    <div class="checkbox-wrapper" style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="removeIconCheckbox"
+                            style="margin-right: 8px; transform: scale(1.1); cursor: pointer;">
+                        <label for="removeIconCheckbox"
+                            style="cursor: pointer; user-select: none; font-size: 0.9rem; color: #aaa;">移除
+                            NotebookLM 圖標</label>
                     </div>
+                </div>
 
-                    <!-- Options Row (Outside Dropzone) -->
-                    <div
-                        style="display: flex; justify-content: flex-end; margin-top: 0.5rem; margin-bottom: 0.5rem; padding: 0 4px;">
-                        <div class="checkbox-wrapper" style="display: flex; align-items: center; cursor: pointer;">
-                            <input type="checkbox" id="removeIconCheckbox"
-                                style="margin-right: 8px; transform: scale(1.1); cursor: pointer;">
-                            <label for="removeIconCheckbox"
-                                style="cursor: pointer; user-select: none; font-size: 0.9rem; color: #aaa;">移除
-                                NotebookLM 圖標</label>
-                        </div>
+                <div class="upload-wrapper" id="dropZone" onclick="triggerUpload()" ondragover="handleDragOver(event)"
+                    ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                    <i class="ri-file-ppt-2-line upload-icon"></i>
+                    <h3>NotebookLM PDF 轉 PPTX</h3>
+                    <p>將 NotebookLM 輸出的 PDF 拖曳至此，或點擊上傳</p>
+                    <input type="file" id="pdfInput" accept=".pdf" hidden onchange="handleFileChange(this)">
+                    <div id="fileInfo" class="file-info hidden">
+                        <span id="fileName">placeholder.pdf</span>
+                        <button id="removeFileBtn" class="remove-btn" onclick="removeFile(event)"><i
+                                class="ri-close-line"></i></button>
                     </div>
+                </div>
 
-                    <button id="startPreviewBtn" class="btn-primary hidden" onclick="triggerPreview(event)"
-                        style="margin-top: 0.5rem; width: 100%; position: relative; z-index: 10;">
-                        <span>下一步：解析頁面</span>
-                        <i class="ri-arrow-right-line"></i>
+                <button id="startPreviewBtn" class="btn-primary hidden" onclick="triggerPreview(event)"
+                    style="margin-top: 0.5rem; width: 100%; position: relative; z-index: 10;">
+                    <span>下一步：解析頁面</span>
+                    <i class="ri-arrow-right-line"></i>
+                </button>
+            </div>
+
+            <!-- Step 2: Preview & Selection (Hidden by default) -->
+            <div id="previewStep" class="step-container hidden">
+                <div class="preview-header">
+                    <div class="header-left">
+                        <h3>選擇要轉換的頁面</h3>
+                        <span class="count-badge">已選 <strong id="selectedCount">0</strong> / <span
+                                id="totalCount">0</span></span>
+                    </div>
+                    <div class="header-right">
+                        <button id="selectAllBtn" class="btn-text" onclick="selectAll()">全選</button>
+                        <button id="deselectAllBtn" class="btn-text" onclick="deselectAll()">取消全選</button>
+                    </div>
+                </div>
+
+                <!-- Grid Container -->
+                <div id="pageGrid" class="page-grid">
+                    <!-- Grid Items will be injected here -->
+                </div>
+
+                <!-- Actions -->
+                <div class="preview-actions">
+                    <button id="cancelPreviewBtn" class="btn-secondary" onclick="cancelPreview()">
+                        <i class="ri-arrow-left-line"></i> 重新上傳
+                    </button>
+                    <button id="generateSlideBtn" class="generate-btn"
+                        onmousedown="generateSlides(this); event.preventDefault();"
+                        style="pointer-events: auto !important; position: relative; z-index: 9999;">
+                        <span>生成簡報</span>
+                        <i class="ri-magic-line"></i>
                     </button>
                 </div>
+            </div>
 
-                <!-- Step 2: Preview & Selection (Hidden by default) -->
-                <div id="previewStep" class="step-container hidden">
-                    <div class="preview-header">
-                        <div class="header-left">
-                            <h3>選擇要轉換的頁面</h3>
-                            <span class="count-badge">已選 <strong id="selectedCount">0</strong> / <span
-                                    id="totalCount">0</span></span>
-                        </div>
-                        <div class="header-right">
-                            <button id="selectAllBtn" class="btn-text" onclick="selectAll()">全選</button>
-                            <button id="deselectAllBtn" class="btn-text" onclick="deselectAll()">取消全選</button>
-                        </div>
-                    </div>
-
-                    <!-- Grid Container -->
-                    <div id="pageGrid" class="page-grid">
-                        <!-- Grid Items will be injected here -->
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="preview-actions">
-                        <button id="cancelPreviewBtn" class="btn-secondary" onclick="cancelPreview()">
-                            <i class="ri-arrow-left-line"></i> 重新上傳
+            <!-- Step 3: Web Editor (Hidden by default) -->
+            <div id="editorStep" class="step-container hidden">
+                <div class="editor-header">
+                    <div class="header-left">
+                        <button id="backToPreviewBtn" class="btn-text" onclick="backToPreview()">
+                            <i class="ri-arrow-left-line"></i> 返回選擇
                         </button>
-                        <button id="generateSlideBtn" class="generate-btn"
-                            onmousedown="generateSlides(this); event.preventDefault();"
-                            style="pointer-events: auto !important; position: relative; z-index: 9999;">
-                            <span>生成簡報</span>
-                            <i class="ri-magic-line"></i>
+                        <h3>編輯簡報內容</h3>
+                        <span class="count-badge">第 <strong id="currentEditPage">1</strong> / <span
+                                id="totalEditPages">0</span> 頁</span>
+                    </div>
+                    <div class="header-right">
+                        <button id="prevSlideBtn" class="btn-secondary" onclick="prevEditSlide()">
+                            <i class="ri-arrow-left-s-line"></i> 上一頁
+                        </button>
+                        <button id="nextSlideBtn" class="btn-secondary" onclick="nextEditSlide()">
+                            下一頁 <i class="ri-arrow-right-s-line"></i>
+                        </button>
+                        <button id="finalGenerateBtn" class="generate-btn" onclick="generatePresentations()">
+                            <span>產生 PPTX</span>
+                            <i class="ri-download-cloud-2-line"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- Step 3: Web Editor (Hidden by default) -->
-                <div id="editorStep" class="step-container hidden">
-                    <div class="editor-header">
-                        <div class="header-left">
-                            <button id="backToPreviewBtn" class="btn-text" onclick="backToPreview()">
-                                <i class="ri-arrow-left-line"></i> 返回選擇
-                            </button>
-                            <h3>編輯簡報內容</h3>
-                            <span class="count-badge">第 <strong id="currentEditPage">1</strong> / <span
-                                    id="totalEditPages">0</span> 頁</span>
-                        </div>
-                        <div class="header-right">
-                            <button id="prevSlideBtn" class="btn-secondary" onclick="prevEditSlide()">
-                                <i class="ri-arrow-left-s-line"></i> 上一頁
-                            </button>
-                            <button id="nextSlideBtn" class="btn-secondary" onclick="nextEditSlide()">
-                                下一頁 <i class="ri-arrow-right-s-line"></i>
-                            </button>
-                            <button id="finalGenerateBtn" class="generate-btn" onclick="generatePresentations()">
-                                <span>產生 PPTX</span>
-                                <i class="ri-download-cloud-2-line"></i>
-                            </button>
+                <div class="editor-workspace">
+                    <!-- Left: Clean Image Preview -->
+                    <div class="editor-preview">
+                        <div class="preview-card">
+                            <img id="editorImage" src="" alt="Slide Preview">
+                            <span class="badge-overlay">原始版面 (去字)</span>
                         </div>
                     </div>
 
-                    <div class="editor-workspace">
-                        <!-- Left: Clean Image Preview -->
-                        <div class="editor-preview">
-                            <div class="preview-card">
-                                <img id="editorImage" src="" alt="Slide Preview">
-                                <span class="badge-overlay">原始版面 (去字)</span>
-                            </div>
+                    <!-- Right: Content Form -->
+                    <div class="editor-form">
+                        <div class="form-group">
+                            <label><i class="ri-text"></i> page title 標題</label>
+                            <textarea id="editTitle" rows="2" placeholder="輸入標題..."></textarea>
                         </div>
 
-                        <!-- Right: Content Form -->
-                        <div class="editor-form">
-                            <div class="form-group">
-                                <label><i class="ri-text"></i> page title 標題</label>
-                                <textarea id="editTitle" rows="2" placeholder="輸入標題..."></textarea>
-                            </div>
-
-                            <div class="form-group">
-                                <label><i class="ri-list-check"></i> bullet points 重點內容</label>
-                                <textarea id="editContent" rows="10" placeholder="輸入重點 (每行一點)..."></textarea>
-                                <small>提示：每一行將會轉為一個條列項目</small>
-                            </div>
+                        <div class="form-group">
+                            <label><i class="ri-list-check"></i> bullet points 重點內容</label>
+                            <textarea id="editContent" rows="10" placeholder="輸入重點 (每行一點)..."></textarea>
+                            <small>提示：每一行將會轉為一個條列項目</small>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Loading Overlay for Preview -->
-                <div id="previewLoading" class="loading-overlay hidden">
-                    <div class="loader"></div>
-                    <p>正在讀取 PDF 並產生預覽...</p>
-                    <p class="sub-text">這通常只需幾秒鐘</p>
-                </div>
+            <!-- Loading Overlay for Preview -->
+            <div id="previewLoading" class="loading-overlay hidden">
+                <div class="loader"></div>
+                <p>正在讀取 PDF 並產生預覽...</p>
+                <p class="sub-text">這通常只需幾秒鐘</p>
+            </div>
 
-                <!-- Loading Overlay for Analysis -->
-                <div id="analysisLoading" class="loading-overlay hidden">
-                    <div class="progress-ring-container">
-                        <!-- Progress Ring or Bar -->
-                        <div class="progress-container">
-                            <div class="progress-bar" id="analysisProgressBar" style="width: 0%"></div>
-                        </div>
-                        <div class="progress-stats">
-                            <span id="progressText">準備中...</span>
-                            <span id="progressPercent">0%</span>
-                        </div>
+            <!-- Loading Overlay for Analysis -->
+            <div id="analysisLoading" class="loading-overlay hidden">
+                <div class="progress-ring-container">
+                    <!-- Progress Ring or Bar -->
+                    <div class="progress-container">
+                        <div class="progress-bar" id="analysisProgressBar" style="width: 0%"></div>
                     </div>
-                    <p>正在進行 AI 圖文分離與結構化分析...</p>
-                    <p class="sub-text">這通常需要 2-5 分鐘，視頁數而定</p>
+                    <div class="progress-stats">
+                        <span id="progressText">準備中...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
                 </div>
+                <p>正在進行 AI 圖文分離與結構化分析...</p>
+                <p class="sub-text">這通常需要 2-5 分鐘，視頁數而定</p>
+            </div>
             </div>
 
         </section>
