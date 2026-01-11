@@ -425,26 +425,6 @@ async def analyze_slides(
                     os.remove(temp_pdf_path)
             except:
                 pass
-            cleaned_image_urls = []
-            loop = asyncio.get_running_loop()
-            
-            for img in cleaned_images:
-                img_filename = f"clean_{secrets.token_hex(8)}.jpg"
-                img_path = os.path.join(TEMP_DIR, img_filename)
-                # Run sync IO in thread
-                await loop.run_in_executor(None, img.save, img_path, "JPEG", 85)
-                cleaned_image_urls.append(f"/static/temp/{img_filename}")
-            
-            # Result
-            await queue.put({
-                "analyses": analyses,
-                "cleaned_images": cleaned_image_urls
-            })
-            
-        except Exception as e:
-            await queue.put({"error": str(e)})
-        finally:
-            await queue.put(None) # Signal end
 
     # Start background task
     asyncio.create_task(run_analysis())
