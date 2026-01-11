@@ -4,6 +4,8 @@
 - **Fix Progress Bar**: 補回 CSS 變數 `--neon-cyan` 與 `--neon-purple`，修復進度條無法顯示的問題。
 - **Fix RGBA Image**: 後端新增圖片格式檢測，針對 RGBA/P 模式圖片自動轉為 RGB，解決因 NotebookLM 圖標移除後的透明背景導致存檔流程崩潰的問題。
 - **Fix Cloud Run Images**: 改用 Base64 Stateless 傳輸，徹底解決 Cloud Run 圖片 404 問題。
+- **Enhance Text Removal**: 提升 PDF 轉換解析度至 **200 DPI**，並強化去字 Prompt 與放寬安全設定，顯著降低去字失敗率。
+- **Payload Optimization**: 實作 Base64 圖片壓縮 (Max 1600px, JPEG 80%)，解決高解析度圖片導致傳輸失敗的問題。
 - **More Logs**: 新增去字圖片數量的日誌輸出，便於除錯。
 
 ### ⚡ 模型升級 (Model Upgrade)

@@ -177,15 +177,12 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False)
         img_bytes = await asyncio.to_thread(process_image)
         
         # 使用 Gemini 圖像編輯提示
-        base_prompt = "Remove all text from this image and fill the background seamlessly. Do not change anything else."
+        base_prompt = "Aggressively remove ALL text, captions, and watermarks from this slide image. Reconstruct the background seamlessly to match the surrounding texture and gradient. The result must be a clean, text-free background image."
         
         if remove_icon:
-            base_prompt += " ALSO remove the 'NotebookLM' logo, icon, and any footer/page numbers at the bottom."
+            base_prompt += " ALSO remove the 'NotebookLM' logo, branding icon, and any footer/page numbers at the bottom."
 
         prompt = base_prompt
-        
-        # logger.info("嘗試使用 Gemini 移除圖片文字...") 
-        # (Reduce log noise)
         
         try:
             # 使用支援圖像生成的模型
@@ -197,7 +194,25 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False)
                 ],
                 config=types.GenerateContentConfig(
                     response_modalities=['IMAGE', 'TEXT'],
-                    temperature=0.1
+                    temperature=0.1,
+                    safety_settings=[
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE
+                        )
+                    ]
                 )
             )
             
@@ -369,8 +384,8 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
 
 def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
     try:
-        # Reduce memory usage: dpi=100, thread_count=1
-        images = convert_from_bytes(pdf_bytes, dpi=100, thread_count=1)
+        # Reduce memory usage: dpi=200 (balanced), thread_count=1
+        images = convert_from_bytes(pdf_bytes, dpi=200, thread_count=1)
         logger.info(f"預覽生成: 轉換了 {len(images)} 張圖片")
         image_paths = []
         for i, img in enumerate(images):
@@ -521,7 +536,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
                     s = batch_indices[0] + 1
                     e = batch_indices[-1] + 1
                     return await asyncio.to_thread(
-                        convert_from_path, pdf_path, dpi=100, 
+                        convert_from_path, pdf_path, dpi=200, 
                         first_page=s, last_page=e, thread_count=1
                     )
                 else:
@@ -529,7 +544,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
                     for idx in batch_indices:
                         p = idx + 1
                         res = await asyncio.to_thread(
-                           convert_from_path, pdf_path, dpi=100,
+                           convert_from_path, pdf_path, dpi=200,
                            first_page=p, last_page=p, thread_count=1
                         )
                         if res: imgs.extend(res)
