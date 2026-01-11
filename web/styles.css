@@ -11,6 +11,8 @@
     --border-color: rgba(255, 255, 255, 0.1);
     --font-heading: 'Outfit', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --neon-cyan: #00f3ff;
+    --neon-purple: #bd00ff;
 }
 
 * {

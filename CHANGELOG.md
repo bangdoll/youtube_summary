@@ -1,5 +1,14 @@
 ## [v2.10.21] - 2026-01-11
 
+### 🐛 錯誤修復 (Bug Fixes)
+- **Fix Progress Bar**: 補回 CSS 變數 `--neon-cyan` 與 `--neon-purple`，修復進度條無法顯示的問題。
+- **Fix RGBA Image**: 後端新增圖片格式檢測，針對 RGBA/P 模式圖片自動轉為 RGB，解決因 NotebookLM 圖標移除後的透明背景導致存檔流程崩潰的問題。
+- **More Logs**: 新增去字圖片數量的日誌輸出，便於除錯。
+
+### ⚡ 模型升級 (Model Upgrade)
+- **Gemini 3 Flash Preview**: 根據需求將模型名稱更新為 `Gemini 3 Flash Preview`。
+- **Model ID**: 分析模型 ID 更新為 `gemini-2.0-flash-exp` (Public Preview)；圖片編輯模型沿用 `gemini-3-pro-image-preview`。
+
 ### 🎨 介面微調 (UI Refinements)
 - **修正選擇檔案按鈕位置**：調整 `#pdfInput` 的 CSS 邊距，確保原生檔案選擇器不會壓到上傳區虛線邊框。
 - **新增任務清單**：建立 `task.md`，統一管理開發進度與待辦事項。

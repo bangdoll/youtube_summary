@@ -105,6 +105,19 @@ window.generateSlides = async function (btnElement) {
         return;
     }
 
+    // API Key 檢查警告 (前端提示，後端有備援機制)
+    if (!geminiKey) {
+        const proceed = confirm('您尚未設定 Gemini API Key。\n\n如果伺服器有設定環境變數，將自動使用伺服器金鑰。\n否則分析將會失敗。\n\n是否繼續？\n（建議先點擊右上角「設定 API Key」按鈕設定您的金鑰）');
+        if (!proceed) {
+            if (analysisLoading) analysisLoading.classList.add('hidden');
+            if (previewStep) previewStep.classList.remove('hidden');
+            btn.classList.remove('btn-disabled');
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+            return;
+        }
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('gemini_key', geminiKey);

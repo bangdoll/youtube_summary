@@ -337,10 +337,12 @@ async def preview_pdf(file: UploadFile = File(...)):
 async def analyze_slides(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    gemini_key: str = Form(...),
+    gemini_key: str = Form(None),  # 改為選填，允許使用伺服器端金鑰
     selected_pages: str = Form(None),
     remove_icon: bool = Form(False)
 ):
+    # 如果前端沒傳 gemini_key，使用環境變數
+    effective_gemini_key = gemini_key or os.getenv("GOOGLE_API_KEY", "")
     """
     [Web Editor Step 1] 接收 PDF，進行分析與去字，但不生成 PPTX。
     回傳: Streaming NDJSON
@@ -402,25 +404,36 @@ async def analyze_slides(
             await log("正在讀取 PDF 結構與初始化分析...")
 
             # 1. 執行核心分析
-            await log("正在呼叫 Gemini 3.5 Flash 進行視覺分析...")
+            await log("正在呼叫 Gemini 3 Flash Preview 進行視覺分析...")
             analyses, cleaned_images = await slide_generator.analyze_presentation(
-                temp_pdf_path, gemini_key, file.filename, selected_indices, 
+                temp_pdf_path, effective_gemini_key, file.filename, selected_indices, 
                 remove_icon=remove_icon,
                 progress_callback=report_progress
             )
-            await log("視覺分析完成，正在處理圖片資源...")
-            
             # 2. 儲存圖片
+            await log(f"視覺分析完成，共產出 {len(cleaned_images)} 張圖片，正在處理儲存...")
             cleaned_image_urls = []
             loop = asyncio.get_running_loop()
             
-            for img in cleaned_images:
-                img_filename = f"clean_{secrets.token_hex(8)}.jpg"
-                img_path = os.path.join(TEMP_DIR, img_filename)
-                # Run sync IO in thread
-                await loop.run_in_executor(None, img.save, img_path, "JPEG", 85)
-                cleaned_image_urls.append(f"/static/temp/{img_filename}")
+            for i, img in enumerate(cleaned_images):
+                try:
+                    img_filename = f"clean_{secrets.token_hex(8)}.jpg"
+                    img_path = os.path.join(TEMP_DIR, img_filename)
+                    
+                    # Ensure RGB for JPEG
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
+                        
+                    # Run sync IO in thread
+                    await loop.run_in_executor(None, img.save, img_path, "JPEG", 85)
+                    cleaned_image_urls.append(f"/static/temp/{img_filename}")
+                except Exception as img_err:
+                    print(f"Image {i} save failed: {img_err}")
+                    # Use a placeholder or skip?
+                    # Skip effectively
             
+            await log("圖片處理完成，正在回傳結果...")
+
             # Result
             await queue.put({
                 "analyses": analyses,
