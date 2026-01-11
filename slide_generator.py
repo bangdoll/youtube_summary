@@ -12,8 +12,8 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
-import google.generativeai as genai
-from google.generativeai import types
+from google import genai
+from google.genai import types
 import re
 import secrets
 import time
