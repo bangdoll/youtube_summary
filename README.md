@@ -14,7 +14,7 @@
 ### 1.2 ✨ 來源回溯 (Source Attribution)
 自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
-### 1.3 📊 NoteSlide 簡報生成器 (NoteSlide Generator) v2.10.9
+### 1.3 📊 NoteSlide 簡報生成器 (NoteSlide Generator) v2.10.21
 獨家「圖文分離」與「線上編輯」引擎，解決傳統 PDF 轉 PPTX 的排版錯亂問題。
 
 - **Web 簡報內容編輯器 (Web Slide Editor)**：
@@ -22,7 +22,7 @@
     - **即時進度條 (Real-time Progress)**：全新串流技術，即時顯示 AI 分析進度與百分比，告別漫長等待的黑盒子。
     - **完全可控**：再也不用為了改一個錯字而重新生成整份簡報。
 - **乾淨分離版面 (Clean Split Layout)**：
-    - **AI 圖片去字**：整合 **Nano Banana Pro** 模型，自動擦除原始圖片上的文字，保留乾淨背景。
+    - **AI 圖片去字**：整合 **Gemini 3 Pro Image Preview** 模型，自動擦除原始圖片上的文字，保留乾淨背景。
     - **移除 NotebookLM 圖標**：新增一鍵移除頁面底部 NotebookLM Logo 與頁碼的功能，讓簡報看起來更專業。
     - **圖文不打架**：強制採用「左圖右文」工整排版，徹底杜絕文字重疊與 OCR 漂移問題。
 - **像素級 Shape 重建**：每個文字區塊都是獨立的 PowerPoint Shape，而非死圖。
