@@ -370,7 +370,11 @@ async def analyze_slides(
             async def report_progress(current, total):
                 await queue.put({"progress": current, "total": total})
 
+            # Send initial feedback
+            await queue.put({"message": "正在轉換 PDF 頁面中 (處理圖片)...", "progress": 0, "total": 0})
+
             # 1. 執行核心分析
+
             analyses, cleaned_images = await slide_generator.analyze_presentation(
                 pdf_bytes, gemini_key, file.filename, selected_indices, 
                 remove_icon=remove_icon,

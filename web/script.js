@@ -134,15 +134,24 @@ window.generateSlides = async function (btnElement) {
                 try {
                     const data = JSON.parse(line);
 
-                    if (data.progress) {
+                    if (data.message) {
+                        // 處理純訊息通知 (例如: 正在轉換 PDF...)
+                        const pText = document.getElementById('progressText');
+                        if (pText) pText.innerText = data.message;
+                    }
+
+                    if (data.progress !== undefined) {
                         // Update UI
-                        const percent = Math.round((data.progress / data.total) * 100);
+                        const total = data.total || 1; // Prevent div by zero
+                        const percent = Math.round((data.progress / total) * 100);
                         const pText = document.getElementById('progressText');
                         const pPct = document.getElementById('progressPercent');
 
                         if (pBar) pBar.style.width = `${percent}%`;
-                        if (pText) pText.innerText = `正在分析第 ${data.progress} / ${data.total} 頁...`;
+                        if (pText && !data.message) pText.innerText = `正在分析第 ${data.progress} / ${total} 頁...`;
                         if (pPct) pPct.innerText = `${percent}%`;
+
+                    } else if (data.analyses) {
 
                     } else if (data.analyses) {
                         finalResult = data;
