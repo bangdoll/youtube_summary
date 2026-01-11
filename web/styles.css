@@ -1155,7 +1155,7 @@ button#submitBtn:disabled {
     background: rgba(20, 20, 24, 0.6);
     border: 2px dashed rgba(255, 255, 255, 0.2);
     border-radius: 16px;
-    padding: 4rem 2rem;
+    padding: 2.5rem 2rem;
     text-align: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
@@ -1198,7 +1198,7 @@ button#submitBtn:disabled {
 
 .upload-wrapper p {
     color: var(--text-secondary);
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
     font-size: 1rem;
     line-height: 1.6;
 }

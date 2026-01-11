@@ -1,3 +1,15 @@
+## [v2.10.11] - 2026-01-11
+
+### 🚀 核心效能重構 (Core Performance Refactor)
+- **Streaming Image Conversion**: 徹底改寫 PDF 處理邏輯，捨棄一次性載入所有圖片的舊模式，改為「按需轉換 (On-demand Chunked Conversion)」。
+- **秒級啟動**: 即使是數百頁的大型 PDF，也能在 1 秒內開始分析流程，完全消除了之前的「0% 卡死」等待時間。
+- **記憶體防護**: 透過分批轉換與即時釋放，進一步降低 Peak Memory Usage，讓系統更穩定。
+
+## [v2.10.10] - 2026-01-11
+
+### 🚑 緊急修正 (Hotfix)
+- **Granular Status Feedback**: 修復進度顯示邏輯，在 PDF 轉檔階段即時回報 `正在讀取 PDF 結構與初始化分析...`，避免使用者誤以為系統當機。
+
 ## [v2.10.9] - 2026-01-11
 
 ### ✨ 重大更新：即時進度顯示 (Real-time Progress)
