@@ -88,6 +88,23 @@ window.generateSlides = async function (btnElement) {
     if (analysisLoading) analysisLoading.classList.remove('hidden');
     if (previewStep) previewStep.classList.add('hidden');
 
+    // 取得必要變數 (來自全域狀態)
+    const file = selectedPdfFile;
+    const geminiKey = localStorage.getItem('gemini_api_key') || '';
+    const selectedIndices = currentPreviewImages
+        .filter(item => item.selected)
+        .map(item => item.index);
+
+    if (!file) {
+        alert('請先上傳 PDF 檔案');
+        if (analysisLoading) analysisLoading.classList.add('hidden');
+        if (previewStep) previewStep.classList.remove('hidden');
+        btn.classList.remove('btn-disabled');
+        btn.style.opacity = '';
+        btn.style.cursor = '';
+        return;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('gemini_key', geminiKey);
