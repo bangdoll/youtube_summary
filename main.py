@@ -351,10 +351,9 @@ async def analyze_slides(
         return JSONResponse(status_code=400, content={"error": "請上傳 PDF 檔案"})
 
     # Read file content first
-    try:
-        pdf_bytes = await file.read()
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": f"讀取檔案失敗: {e}"})
+    # Remove redundant read that consumes the stream
+    # pdf_bytes = await file.read() was causing the file pointer to be at the end
+
 
     # Queue for streaming events
     queue = asyncio.Queue()

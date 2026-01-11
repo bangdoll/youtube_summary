@@ -3,6 +3,8 @@
 ### 🛠️ 穩定性與 UX 修復 (Stability & UX)
 - **Fix 0% Stall**: 修復了後端 `slide_generator.py` 中因遺漏 `PIL.Image` 導入，導致在發生 Timeout 時引發 Crash 而非正常回報錯誤的問題。這確保了即使部分頁面超時，整體進度也不會卡死。
 - **UI Tweaks**: 應使用者要求，將「移除 NotebookLM 圖標」選項預設為**勾選**狀態。
+- **Fix Double Click**: 修正「下一步：解析頁面」按鈕需點擊兩次的問題。將事件觸發改為 `onmousedown` 以確保立即響應。
+- **Fix 0-Byte PDF Bug**: 修正後端在讀取上傳檔案時的邏輯錯誤 (Double Read)，解決了導致分析流程接收到空白檔案而卡死在 0% 的問題。
 
 ## [v2.10.17] - 2026-01-11
 

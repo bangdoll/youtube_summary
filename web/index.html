@@ -202,7 +202,8 @@
                 </div>
 
                 <button id="startPreviewBtn" class="btn-primary hidden" type="button"
-                    style="margin-top: 0.5rem; width: 100%; position: relative; z-index: 10;">
+                    onmousedown="window.triggerPreview(event)"
+                    style="margin-top: 0.5rem; width: 100%; position: relative; z-index: 10; cursor: pointer;">
                     <span>下一步：解析頁面</span>
                     <i class="ri-arrow-right-line"></i>
                 </button>
@@ -455,7 +456,7 @@
         </section>
     </main>
 
-    <script src="/static/script.js?v=2.10.2"></script>
+    <script src="/static/script.js?v=2.10.4"></script>
 </body>
 
 </html>

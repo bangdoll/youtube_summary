@@ -1002,16 +1002,8 @@ document.addEventListener('DOMContentLoaded', () => {
         replayBtn.addEventListener('click', runDemo);
     }
 
-    // [Fix] Manually bind Start Preview Button to prevent double-click issue
-    const startPreviewBtn = document.getElementById('startPreviewBtn');
-    if (startPreviewBtn) {
-        startPreviewBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!startPreviewBtn.classList.contains('btn-disabled')) {
-                window.triggerPreview(e);
-            }
-        });
-    }
+
+    // [Fix] Start Preview Button uses onmousedown in HTML to prevent double-click
+    // No JS listener needed here.
 
 });
