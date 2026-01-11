@@ -507,6 +507,9 @@ async def generate_slides_data(
                     header, encoded = img_str.split(",", 1)
                     img_bytes = base64.b64decode(encoded)
                     img = Image.open(io.BytesIO(img_bytes))
+                    # FORCE RGB: PPTX/JPEG saving fails with RGBA/P modes
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
                     pil_images.append(img)
                 else:
                     # Legacy or Error Placeholder
@@ -515,7 +518,9 @@ async def generate_slides_data(
                         filename = os.path.basename(img_str)
                         file_path = os.path.join(TEMP_DIR, filename)
                         if os.path.exists(file_path):
-                            pil_images.append(Image.open(file_path))
+                            img = Image.open(file_path)
+                            if img.mode != 'RGB': img = img.convert('RGB')
+                            pil_images.append(img)
                         else:
                              # 找不到檔案，給白圖
                              pil_images.append(Image.new('RGB', (1024, 768), 'white'))

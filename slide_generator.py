@@ -45,8 +45,13 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         
         # 準備內容 (Image processing is CPU bound, run in thread)
         def process_image():
+            # Optimize for Analysis Speed: 1024px is enough for text/layout extraction
+            # This prevents "Analysis Timeout" on Flash model
+            img_resized = image.copy()
+            img_resized.thumbnail((1024, 1024))
+            
             img_byte_arr = io.BytesIO()
-            image.save(img_byte_arr, format='JPEG')
+            img_resized.save(img_byte_arr, format='JPEG', quality=85, optimize=True)
             return img_byte_arr.getvalue()
             
         img_bytes = await asyncio.to_thread(process_image)
@@ -308,6 +313,16 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         img_byte_arr = buf
                     except Exception as e:
                         logger.error(f"Slide {i}: Image processing failed: {e}")
+                        # FALLBACK: Use a placeholder or skip image
+                        # Create a gray placeholder to indicate error but keep slide
+                        try:
+                            fallback = Image.new('RGB', (1024, 768), color='#e4e4e7')
+                            buf = io.BytesIO()
+                            fallback.save(buf, format='JPEG')
+                            buf.seek(0)
+                            img_byte_arr = buf
+                        except:
+                            img_byte_arr = None
 
             # --- Layout Implementation ---
             if layout_type == 'full_width_text':
@@ -469,9 +484,14 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
              # Wrap AI analysis in timeout
              async def run_ai():
                  try:
-                     analysis_task = analyze_slide_with_gemini(img, api_key)
-                     text_removal_task = remove_text_from_image(img, api_key, remove_icon=remove_icon)
-                     return await asyncio.gather(analysis_task, text_removal_task)
+                     # SEQUENTIAL EXECUTION FOR STABILITY (v2.10.23)
+                     # Running in parallel caused rate-limiting/timeouts where both failed.
+                     # Analysis first (lighter), then Text Removal (heavier).
+                     
+                     analysis_result = await analyze_slide_with_gemini(img, api_key)
+                     cleaned_image = await remove_text_from_image(img, api_key, remove_icon=remove_icon)
+                     
+                     return analysis_result, cleaned_image
                  except Exception as e:
                      # Log inner exception
                      logger.error(f"AI Task Inner Exception: {e}")

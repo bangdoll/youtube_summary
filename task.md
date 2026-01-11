@@ -47,7 +47,7 @@
 - [x] 修復：UI 按鈕點擊判定 (onmousedown -> onclick)
 
 ## v2.10.22 (Stability)
-- [x] 優化：Smart Resize (Back to 1600px) 解決 Timeout
-- [x] 優化：Prompt Tuning (修復型) 解決 Artifacts
-- [x] 優化：Timeout Extension (90s)
+- [x] 優化：Sequential Processing (先分析後修圖) 解決 Rate Limit
+- [x] 優化：Smart Resize v2 (1024px Analysis / 1600px Edit)
+- [x] 修復：Fail-Safe PPTX Generation (容許單頁失敗，保證產出)
 - [x] UX：分析完成與預覽生成後自動捲動 (Auto Scroll All)
