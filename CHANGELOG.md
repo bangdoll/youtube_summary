@@ -6,8 +6,8 @@
 - **More Logs**: 新增去字圖片數量的日誌輸出，便於除錯。
 
 ### ⚡ 模型升級 (Model Upgrade)
-- **Gemini 3 Flash Preview**: 根據需求將模型名稱更新為 `Gemini 3 Flash Preview`。
-- **Model ID**: 分析模型 ID 更新為 `gemini-2.0-flash-exp` (Public Preview)；圖片編輯模型沿用 `gemini-3-pro-image-preview`。
+- **Gemini 3 Flash Preview**: 分析模型更新為 `gemini-3-flash-preview`。
+- **Gemini 3 Pro Image Preview**: 圖片編輯模型確認使用 `gemini-3-pro-image-preview`。
 
 ### 🎨 介面微調 (UI Refinements)
 - **修正選擇檔案按鈕位置**：調整 `#pdfInput` 的 CSS 邊距，確保原生檔案選擇器不會壓到上傳區虛線邊框。
