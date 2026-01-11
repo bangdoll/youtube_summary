@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 from typing import List, Optional
-from pdf2image import convert_from_bytes
+from pdf2image import convert_from_bytes, pdfinfo_from_bytes
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
@@ -388,82 +388,124 @@ def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
 async def analyze_presentation(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None, remove_icon: bool = False, progress_callback: Optional[callable] = None) -> tuple:
     """
     主要流程：PDF -> 圖片 -> Gemini 分析 -> 文字移除
+    優化：採用 Streaming / Chunked Processing，按需轉換圖片，避免 OOM 與長等待。
     回傳 (analyses, cleaned_images)。
-    若有 selected_indices，只處理指定頁面 (0-based index)。
     """
     logger.info(f"開始處理 PDF: {filename} (Remove Icon: {remove_icon})")
     
-    # 1. PDF 轉圖片
     try:
-        # Memory Optimization: dpi=100 (sufficient for AI), single thread
-        images = await asyncio.to_thread(convert_from_bytes, pdf_bytes, dpi=100, thread_count=1)
-        logger.info(f"成功將 PDF 轉換為 {len(images)} 張圖片")
-        
-        if selected_indices:
-            valid_indices = [i for i in selected_indices if 0 <= i < len(images)]
-            if valid_indices:
-                valid_indices.sort()
-                images = [images[i] for i in valid_indices]
-                logger.info(f"篩選後剩餘 {len(images)} 頁")
+        # 1. 快速獲取 PDF 資訊 (不轉換圖片)
+        info = await asyncio.to_thread(pdfinfo_from_bytes, pdf_bytes)
+        total_pdf_pages = info["Pages"]
+        logger.info(f"PDF 總頁數: {total_pdf_pages}")
     except Exception as e:
-        logger.error(f"PDF 轉圖片失敗: {e}")
+        logger.error(f"無法讀取 PDF 資訊: {e}")
         raise ValueError(f"無法讀取 PDF 檔案: {str(e)}")
 
-    # 2. 逐頁分析
+    # 決定要處理的頁面索引 (0-based)
+    target_indices = selected_indices if selected_indices else list(range(total_pdf_pages))
+    target_indices = [i for i in target_indices if 0 <= i < total_pdf_pages]
+    target_indices.sort()
+    
+    if not target_indices:
+        return [], []
+
     analyses = []
     cleaned_images = []
     
     # Optimized for 2GB RAM Cloud Run
     BATCH_SIZE = 3
     DELAY_BETWEEN_BATCHES = 2  
+    
     async def process_single_page(img, page_num, total):
         logger.info(f"處理第 {page_num}/{total} 頁...")
-        # Fail-safe execution
         try:
              analysis_task = analyze_slide_with_gemini(img, api_key)
              text_removal_task = remove_text_from_image(img, api_key, remove_icon=remove_icon)
              return await asyncio.gather(analysis_task, text_removal_task)
         except Exception as e:
              logger.error(f"Page {page_num} critical failure: {e}")
-             # Return valid fallback structure
              return ({
                  "title": "分析失敗", 
                  "content": ["請手動編輯此頁面"], 
                  "layout": "split_left_image"
              }, img)
 
-    total_images = len(images)
-    for batch_start in range(0, total_images, BATCH_SIZE):
-        batch_end = min(batch_start + BATCH_SIZE, total_images)
-        batch = images[batch_start:batch_end]
+    total_target = len(target_indices)
+    
+    # Loop through batches of indices
+    for i in range(0, total_target, BATCH_SIZE):
+        batch_indices = target_indices[i : i + BATCH_SIZE]
+        current_batch_size = len(batch_indices)
         
+        # 2. On-Demand Image Conversion
+        # Determine if consecutive
+        is_consecutive = (batch_indices[-1] - batch_indices[0] == current_batch_size - 1)
+        
+        batch_images = []
+        try:
+            if is_consecutive:
+                # Convert range (1-based)
+                start_page = batch_indices[0] + 1
+                end_page = batch_indices[-1] + 1
+                batch_images = await asyncio.to_thread(
+                    convert_from_bytes, pdf_bytes, dpi=100, 
+                    first_page=start_page, last_page=end_page, thread_count=1
+                )
+            else:
+                # Convert individually
+                for idx in batch_indices:
+                    page_num = idx + 1
+                    imgs = await asyncio.to_thread(
+                        convert_from_bytes, pdf_bytes, dpi=100, 
+                        first_page=page_num, last_page=page_num, thread_count=1
+                    )
+                    if imgs:
+                        batch_images.extend(imgs)
+        except Exception as e:
+            logger.error(f"Batch conversion failed: {e}")
+            # Skip this batch or fill with placeholders?
+            # Creating dummy image to prevent crash
+            batch_images = [Image.new('RGB', (800, 600), color='white') for _ in batch_indices]
+
+        # Ensure image count matches (fail-safe)
+        if len(batch_images) != current_batch_size:
+             logger.warning(f"Image count mismatch. Expected {current_batch_size}, got {len(batch_images)}")
+             # Adjust or pad?
+             # Simple truncation or padding
+             while len(batch_images) < current_batch_size:
+                 batch_images.append(Image.new('RGB', (800, 600), color='white'))
+             batch_images = batch_images[:current_batch_size]
+
+        # 3. Analyze Batch
         tasks = [
-            process_single_page(img, batch_start + i + 1, total_images)
-            for i, img in enumerate(batch)
+            process_single_page(img, batch_indices[j] + 1, total_pdf_pages)
+            for j, img in enumerate(batch_images)
         ]
         
-        # return_exceptions=True prevents one crash from stopping others
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        for i, res in enumerate(batch_results):
+        for k, res in enumerate(batch_results):
             if isinstance(res, Exception):
                 logger.error(f"Batch task failed: {res}")
-                # Fallback
                 analyses.append({"title": "錯誤", "content": ["系統發生預期外錯誤"], "layout": "split_left_image"})
-                cleaned_images.append(batch[i]) # Use original image
+                cleaned_images.append(batch_images[k])
             else:
-                # res is (analysis_dict, cleaned_image)
                 analyses.append(res[0])
                 cleaned_images.append(res[1])
         
         # Report Progress
         if progress_callback:
             try:
-                await progress_callback(len(analyses), total_images)
+                # Calculate overall progress
+                await progress_callback(len(analyses), total_target)
             except Exception as e:
                 logger.error(f"Progress callback failed: {e}")
 
-        if batch_end < len(images):
+        # Free memory
+        del batch_images
+        
+        if i + BATCH_SIZE < total_target:
             await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
     return analyses, cleaned_images

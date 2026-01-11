@@ -371,7 +371,7 @@ async def analyze_slides(
                 await queue.put({"progress": current, "total": total})
 
             # Send initial feedback
-            await queue.put({"message": "正在轉換 PDF 頁面中 (處理圖片)...", "progress": 0, "total": 0})
+            await queue.put({"message": "正在讀取 PDF 結構與初始化分析...", "progress": 0, "total": 0})
 
             # 1. 執行核心分析
 
