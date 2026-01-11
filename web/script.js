@@ -117,9 +117,28 @@ window.generateSlides = async function (btnElement) {
         let buffer = '';
         let finalResult = null;
 
-        // Reset Progress Bar
+        // Reset Progress Bar & Log
         const pBar = document.getElementById('analysisProgressBar');
+        const analysisLog = document.getElementById('analysisLog');
         if (pBar) pBar.style.width = '0%';
+        if (analysisLog) {
+            analysisLog.innerHTML = '<div class="log-entry latest">> 系統初始化...</div>';
+        }
+
+        function appendAnalysisLog(msg, type = "info") {
+            if (!analysisLog) return;
+            const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+            // Remove 'latest' from previous
+            const prev = analysisLog.querySelector('.latest');
+            if (prev) prev.classList.remove('latest');
+
+            const div = document.createElement('div');
+            div.className = `log-entry latest ${type}`;
+            div.innerText = `[${now}] ${msg}`;
+            analysisLog.appendChild(div);
+            analysisLog.scrollTop = analysisLog.scrollHeight;
+        }
 
         while (true) {
             const { done, value } = await reader.read();
@@ -134,10 +153,17 @@ window.generateSlides = async function (btnElement) {
                 try {
                     const data = JSON.parse(line);
 
+                    // 1. Log Messages (Real-time Feedback)
+                    if (data.type === 'log') {
+                        appendAnalysisLog(data.data);
+                        continue;
+                    }
+
                     if (data.message) {
                         // 處理純訊息通知 (例如: 正在轉換 PDF...)
                         const pText = document.getElementById('progressText');
                         if (pText) pText.innerText = data.message;
+                        appendAnalysisLog(data.message);
                     }
 
                     if (data.progress !== undefined) {
@@ -152,10 +178,10 @@ window.generateSlides = async function (btnElement) {
                         if (pPct) pPct.innerText = `${percent}%`;
 
                     } else if (data.analyses) {
-
-                    } else if (data.analyses) {
                         finalResult = data;
+                        appendAnalysisLog("分析完成，正在準備編輯器...", "success");
                     } else if (data.error) {
+                        appendAnalysisLog(`錯誤: ${data.error}`, "error");
                         throw new Error(data.error);
                     }
                 } catch (e) {

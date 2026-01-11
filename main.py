@@ -371,7 +371,13 @@ async def analyze_slides(
 
     async def run_analysis():
         try:
-            print(f"[{file.filename}] Starting analysis task...")
+            # Helper for logging to frontend
+            async def log(msg):
+                print(f"[{file.filename}] {msg}")
+                await queue.put({"type": "log", "data": msg})
+
+            await log("正在初始化分析引擎...")
+
             # 解析 selected_pages
             selected_indices = None
             if selected_pages:
@@ -379,6 +385,8 @@ async def analyze_slides(
                     selected_indices = json.loads(selected_pages)
                     if not isinstance(selected_indices, list):
                         selected_indices = None
+                    else:
+                        await log(f"使用者指定分析頁面: {selected_indices}")
                 except:
                     pass
             
@@ -386,20 +394,21 @@ async def analyze_slides(
                 data = {"progress": current, "total": total}
                 if message:
                     data["message"] = message
+                    # Also emit log for message
+                    await queue.put({"type": "log", "data": message})
                 await queue.put(data)
 
             # Send initial feedback
-            print(f"[{file.filename}] Queueing initial message...")
-            await queue.put({"message": "正在讀取 PDF 結構與初始化分析...", "progress": 0, "total": 0})
+            await log("正在讀取 PDF 結構與初始化分析...")
 
             # 1. 執行核心分析
-            print(f"[{file.filename}] Calling analyze_presentation...")
+            await log("正在呼叫 Gemini 3.5 Flash 進行視覺分析...")
             analyses, cleaned_images = await slide_generator.analyze_presentation(
                 temp_pdf_path, gemini_key, file.filename, selected_indices, 
                 remove_icon=remove_icon,
                 progress_callback=report_progress
             )
-            print(f"[{file.filename}] Analysis complete. Saving images...")
+            await log("視覺分析完成，正在處理圖片資源...")
             
             # 2. 儲存圖片
             cleaned_image_urls = []

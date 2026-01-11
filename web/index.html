@@ -28,6 +28,44 @@
 
     <!-- Styles -->
     <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        /* Terminal Log Window */
+        #analysisLog {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            width: 100%;
+            max-width: 600px;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        #analysisLog .log-entry {
+            line-height: 1.4;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        #analysisLog .log-entry.latest {
+            opacity: 1;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+        }
+
+        #analysisLog .log-entry.error {
+            color: #ff4444;
+        }
+    </style>
 </head>
 
 <body>
@@ -313,6 +351,12 @@
                 </div>
                 <p>正在進行 AI 圖文分離與結構化分析...</p>
                 <p class="sub-text">這通常需要 2-5 分鐘，視頁數而定</p>
+
+                <!-- Terminal Log Window -->
+                <div id="analysisLog">
+                    <!-- Logs will be injected here -->
+                    <div class="log-entry latest">> 系統就緒...</div>
+                </div>
             </div>
             </div>
 
