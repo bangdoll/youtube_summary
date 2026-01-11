@@ -395,16 +395,31 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
     """
     logger.info(f"開始處理 PDF: {filename} (Path: {pdf_path})")
     
+    # [Optimization] Notify Start Immediately to update UI from "Preparing"
+    if progress_callback:
+        try:
+             await progress_callback(0, 0, message="正在讀取 PDF 檔案結構...")
+        except:
+             pass
+
     try:
-        # 1. 快速獲取 PDF 資訊 (使用 pypdf，不依賴 poppler info)
+        # 1. 快速獲取 PDF 資訊 (使用 pypdf) - 強制 10s Timeout
         # Run in thread because pypdf file reading is sync IO
         def get_pdf_count():
             with open(pdf_path, 'rb') as f:
                 reader = PdfReader(f)
                 return len(reader.pages)
         
-        total_pdf_pages = await asyncio.to_thread(get_pdf_count)
+        # TIMEOUT PROTECTION for PDF Reading (10s)
+        total_pdf_pages = await asyncio.wait_for(
+            asyncio.to_thread(get_pdf_count), 
+            timeout=10
+        )
         logger.info(f"PDF 總頁數: {total_pdf_pages}")
+        
+    except asyncio.TimeoutError:
+        logger.error("PDF 讀取超時 (pypdf)")
+        raise ValueError("PDF 檔案讀取超時，請檢查檔案是否損毀或過大")
         
     except Exception as e:
         logger.error(f"無法讀取 PDF 資訊: {e}")
@@ -424,14 +439,32 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
     # 策略配置
     BATCH_SIZE = 3
     DELAY_BETWEEN_BATCHES = 1
-    TIMEOUT_PER_BATCH = 45 # seconds
+    TIMEOUT_PER_BATCH = 45 # seconds (Image Conversion)
+    TIMEOUT_PER_PAGE_ANALYSIS = 60 # seconds (Gemini API)
     
     async def process_single_page(img, page_num, total):
         logger.info(f"處理第 {page_num}/{total} 頁...")
         try:
-             analysis_task = analyze_slide_with_gemini(img, api_key)
-             text_removal_task = remove_text_from_image(img, api_key, remove_icon=remove_icon)
-             return await asyncio.gather(analysis_task, text_removal_task)
+             # Wrap AI analysis in timeout
+             async def run_ai():
+                 try:
+                     analysis_task = analyze_slide_with_gemini(img, api_key)
+                     text_removal_task = remove_text_from_image(img, api_key, remove_icon=remove_icon)
+                     return await asyncio.gather(analysis_task, text_removal_task)
+                 except Exception as e:
+                     # Log inner exception
+                     logger.error(f"AI Task Inner Exception: {e}")
+                     raise e
+             
+             return await asyncio.wait_for(run_ai(), timeout=TIMEOUT_PER_PAGE_ANALYSIS)
+             
+        except asyncio.TimeoutError:
+             logger.error(f"Page {page_num} AI Analysis Timeout")
+             return ({
+                 "title": "分析超時", 
+                 "content": ["AI 回應過慢，請手動編輯"], 
+                 "layout": "split_left_image"
+             }, img)
         except Exception as e:
              logger.error(f"Page {page_num} critical failure: {e}")
              return ({
