@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 python-multipart
+setuptools # Required for namespace packages in some envs
 python-dotenv
 youtube-transcript-api
 openai
