@@ -357,6 +357,93 @@ def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height
         return None
 
 
+async def process_single_page(image: Image.Image, page_num: int, total_pages: int, api_key: str, remove_icon: bool = False, pdf_path: str = None) -> tuple:
+    """
+    [Native Hybrid 3.0] Single Page Processing Pipeline:
+    1. Try Native Text Extraction (pypdf)
+    2. If Text Found:
+       - Generate Determinist Mask (Physical masking)
+       - Inpaint Background (Gemini Image Model)
+       - Analyze Structure (Gemini Text Model)
+    3. If No Text (Scan):
+       - Fallback to Vision Analysis (Gemini Vision)
+       - Remove Text (Gemini Image Model)
+    """
+    logger.info(f"Processing Page {page_num}/{total_pages} (Native Hybrid: {bool(pdf_path)})")
+    
+    native_text_data = []
+    page_width_pts = 0
+    page_height_pts = 0
+    
+    # 1. Native Extraction (if PDF path available)
+    if pdf_path:
+        try:
+            # page_num is 1-based, pypdf is 0-based
+            native_text_data = await asyncio.to_thread(
+                native_pdf.extract_text_and_coordinates, 
+                pdf_path, 
+                page_num - 1
+            )
+            
+            w, h = await asyncio.to_thread(native_pdf.get_page_size, pdf_path, page_num - 1)
+            page_width_pts = w
+            page_height_pts = h
+            
+            if native_text_data:
+                logger.info(f"Page {page_num}: Found {len(native_text_data)} text blocks natively.")
+        except Exception as e:
+            logger.warning(f"Page {page_num}: Native extraction failed ({e}), falling back to Vision.")
+    
+    # 2. Hybrid Decision
+    if native_text_data and page_width_pts > 0:
+        # [Path A] Native Hybrid Mode
+        try:
+            # 2a. Create Masked Image (Complete Text Removal)
+            masked_image = await asyncio.to_thread(
+                mask_engine.create_masked_image,
+                image,
+                native_text_data,
+                page_width_pts,
+                page_height_pts
+            )
+            
+            # 2b. Inpaint Background using Masked Image
+            # We send the MASKED image to Gemini, asking it to "fill in the magenta areas" or strict inpainting
+            # Ideally, we used 'remove_text_from_image' but now we pass the pre-masked image.
+            # Actually, standard remove_text prompt works well on masked images too if we say "restore background".
+            
+            cleaned_image = await remove_text_from_image(masked_image, api_key, remove_icon=remove_icon)
+            
+            # 2c. Structure Analysis from Native Text (No OCR needed)
+            # Combine all text blocks
+            full_text = "\\n".join([item['text'] for item in native_text_data])
+            analysis_result = await analyze_text_structure(full_text, api_key)
+            
+            return (analysis_result, cleaned_image)
+            
+        except Exception as e:
+            logger.error(f"Page {page_num}: Hybrid pipeline error: {e}. Fallback to Vision.")
+            # Fall through to Vision
+    
+    # 3. [Path B] Global Fallback: Vision V2 (Scanned PDF or Native Fail)
+    try:
+        # Parallel Analysis & Cleaning
+        analysis_task = analyze_slide_with_gemini(image, api_key)
+        cleaning_task = remove_text_from_image(image, api_key, remove_icon)
+        
+        analysis_result, cleaned_image = await asyncio.gather(analysis_task, cleaning_task)
+        return (analysis_result, cleaned_image)
+        
+    except Exception as e:
+        logger.error(f"Page {page_num}: Vision fallback failed: {e}")
+        return ({
+            "title": "處理失敗",
+            "content": ["無法分析此頁面"],
+            "layout": "split_left_image"
+        }, image)
+
+
+
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
     根據分析結果與原始圖片生成 PPTX 檔案 (Split Layout: 左圖右文)。
