@@ -494,7 +494,7 @@ async def generate_slides_data(
                 pil_images.append(Image.new('RGB', (1024, 768), 'white'))
 
         # 2. 生成 PPTX
-        output_dir = "temp_slides"
+        output_dir = os.path.join(TEMP_DIR, "slides")
         os.makedirs(output_dir, exist_ok=True)
         
         output_filename = f"{os.path.splitext(data.filename)[0]}_edited.pptx"
