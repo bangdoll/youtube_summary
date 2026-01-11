@@ -50,4 +50,4 @@
 - [x] 優化：Smart Resize (Back to 1600px) 解決 Timeout
 - [x] 優化：Prompt Tuning (修復型) 解決 Artifacts
 - [x] 優化：Timeout Extension (90s)
-- [x] UX：分析完成後自動捲動 (Auto Scroll)
+- [x] UX：分析完成與預覽生成後自動捲動 (Auto Scroll All)

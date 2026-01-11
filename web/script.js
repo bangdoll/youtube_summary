@@ -585,6 +585,13 @@ window.startPreview = async function (file) {
             startPreviewBtn.style.cursor = 'pointer';
             startPreviewBtn.innerHTML = '<span>下一步：解析頁面</span><i class="ri-arrow-right-line"></i>';
         }
+
+        // UX Improvement: Auto scroll to preview step
+        if (previewStep && !previewStep.classList.contains('hidden')) {
+            setTimeout(() => {
+                previewStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
     }
 };
 
