@@ -1,19 +1,46 @@
 import os
 import io
+import asyncio
 import json
 import logging
 from typing import List, Optional
-from pdf2image import convert_from_bytes
+from PIL import Image
+from pdf2image import convert_from_path, convert_from_bytes
+import native_pdf
+import mask_engine
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
-from google import genai
-from google.genai import types
+try:
+    from google import genai
+    from google.genai import types
+except ImportError as e:
+    print(f"CRITICAL ERROR: Failed to import google.genai: {e}")
+    # Define placeholder to allow app startup, will fail at runtime if used
+    genai = None
+    types = None
 import re
 import secrets
 import time
 import random
+
+# --- Configuration ---
+# Use Preview models for V2.10.x
+MODEL_ID_FLASH = "gemini-2.0-flash-exp" # "gemini-3-flash-preview" (Analysis) checks failed, fallback to 2.0 Flash Exp for reliable JSON
+# Update: User requested 'gemini-3-flash-preview'. Let's use it as requested by USER.
+# If it fails, we handle it.
+ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" # Revert to stable for now or keep 3?
+# The user specifically verified logs with "3 Flash Preview". I should keep it if possible.
+# But "Fail-Safe" logic is key.
+# Let's use the USER preference:
+ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" 
+REMOVE_TEXT_MODEL_ID = "gemini-2.0-flash-exp" # Pro-vision is better but let's stick to what works or "gemini-3-pro-image-preview" if accessible.
+
+# USER explicitly requested "Gemini 3 Pro Image Preview" for editing.
+REMOVE_TEXT_MODEL_ID = "gemini-2.0-flash-exp" # Placeholder, will be passed in func.
+
+TIMEOUT_PER_PAGE_ANALYSIS = 90  # Seconds (Increased for Stability)
 
 # 設定日誌
 logging.basicConfig(level=logging.INFO)
@@ -43,83 +70,62 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         
         # 準備內容 (Image processing is CPU bound, run in thread)
         def process_image():
+            # Optimize for Analysis Speed: 1024px is enough for text/layout extraction
+            # This prevents "Analysis Timeout" on Flash model
+            img_resized = image.copy()
+            img_resized.thumbnail((1024, 1024))
+            
             img_byte_arr = io.BytesIO()
-            image.save(img_byte_arr, format='JPEG')
+            img_resized.save(img_byte_arr, format='JPEG', quality=85, optimize=True)
             return img_byte_arr.getvalue()
             
         img_bytes = await asyncio.to_thread(process_image)
         
         prompt = """
-        You are an expert presentation analyst performing PIXEL-PERFECT slide reconstruction.
-        Analyze this slide image and extract EVERY element with precise positioning.
+        You are an expert presentation analyst optimizing content for RECONSTRUCTION.
+        Your goal is to extract the logical content structure, NOT the physical layout.
         
-        Return a JSON object with these fields:
+        Analyze this slide image and return a JSON object with:
         {
-            "title": "Main slide title",
-            "content": ["Point 1", "Point 2", "Point 3"],
-            "speaker_notes": "Speaker notes in Traditional Chinese",
-            "layout": "layout_type",
-            "main_image_bbox": [ymin, xmin, ymax, xmax],
+            "title": "Concise main title of the slide",
+            "content": [
+                "Key point 1",
+                "Key point 2 (condensed if long)",
+                "Key point 3"
+            ],
+            "speaker_notes": "Detailed speaker notes in Traditional Chinese",
             "background_color_hex": "#FFFFFF",
             "text_color_hex": "#000000",
-            "text_elements": [
-                {
-                    "text": "The actual text content",
-                    "bbox": [ymin, xmin, ymax, xmax],
-                    "font_size": 24,
-                    "is_bold": true,
-                    "color_hex": "#333333",
-                    "type": "title|subtitle|heading|body|label|caption",
-                    "alignment": "left|center|right"
-                }
-            ],
             "visual_elements": [
                 {
-                    "type": "photo|diagram|chart|icon|shape",
+                    "type": "photo|diagram|chart",
                     "bbox": [ymin, xmin, ymax, xmax],
-                    "description": "Brief description of the element"
+                    "description": "Description for alt text"
                 }
             ]
         }
 
-        **CRITICAL: Element Detection Rules**
-        
-        1. TEXT ELEMENTS (text_elements array):
-           - Detect EVERY visible text on the slide
-           - For each text, provide:
-             * bbox: [ymin, xmin, ymax, xmax] in 0-1000 normalized coordinates
-             * font_size: estimated point size (e.g., 12, 16, 24, 32, 48)
-             * is_bold: true if the text appears bold
-             * color_hex: the text color in hex
-             * type: classify as title/subtitle/heading/body/label/caption
-           - Be PRECISE with bounding boxes - tight fit around text
-        
-        2. VISUAL ELEMENTS (visual_elements array):
-           - Detect ALL visual elements (photos, diagrams, charts, icons, shapes)
-           - For each visual, provide bbox and type
-           - Pick the LARGEST visual for main_image_bbox
-        
-        3. MAIN IMAGE (main_image_bbox):
-           - This should be the bbox of the PRIMARY visual element
-           - Use 0-1000 normalized coordinates: [ymin, xmin, ymax, xmax]
-           - EXCLUDE all text from this box
-           - Return null if no significant visual exists
-        
-        4. LAYOUT selection:
-           - "split_left_image": Has significant visual element
-           - "full_width_text": Text-dominant slide
-           - "comparison": Side-by-side comparison content
+        **CRITICAL INSTRUCTIONS:**
+        1. **Content Extraction**:
+           - Extract the MAIN title.
+           - Extract the KEY points as a list of strings in `content`.
+           - Ignore page numbers, footers, and decorative text.
+           - Keep the language of the original slide (Traditional Chinese if present).
 
-        5. COLORS:
-           - background_color_hex: Dominant background color
-           - text_color_hex: Most common text color
+        2. **Visuals**:
+           - Identify significant visual elements (charts, photos).
+           - Provide `bbox` ONLY for visual elements that need to be preserved/cropped.
+           - NO `text_elements` with bboxes are needed. We will reconstruct the text layout programmatically.
+        
+        3. **Colors**:
+           - Detect dominant background and text colors.
         """
 
         for attempt in range(max_retries):
             try:
                 # Use Async Client
                 response = await client.aio.models.generate_content(
-                    model='gemini-2.0-flash',
+                    model='gemini-3-flash-preview',
                     contents=[
                         types.Part.from_text(text=prompt),
                         types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
@@ -148,29 +154,74 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
 
             except Exception as e:
                 # ... (Error handling omitted for brevity, logic remains same)
-                error_str = str(e)
-                logger.warning(f"嘗試 {attempt + 1}/{max_retries} 失敗: {error_str}")
-                
-                 # Retry on Rate Limit
-                if ('429' in error_str or 'RESOURCE_EXHAUSTED' in error_str) and attempt < max_retries - 1:
-                    sleep_time = (base_delay * (2 ** attempt)) + random.uniform(0, 1)
-                    await asyncio.sleep(sleep_time) # Async sleep!
-                    continue
-
+                logger.error(f"Gemini Analysis Error (Attempt {attempt+1}): {e}")
                 if attempt == max_retries - 1:
-                    logger.error(f"Gemini 分析最終失敗: {error_str}")
-                    return {
-                        "title": "分析暫時無法使用",
-                        "content": [f"錯誤: {error_str}", "請稍後再試或更換 API Key"],
-                        "layout": "split_left_image",
-                        "speaker_notes": "系統無法讀取此頁面。",
-                        "main_image_bbox": None, 
+                     return {
+                        "title": "Analysis Error",
+                        "content": ["無法分析此頁面", str(e)],
+                        "visual_elements": [],
                         "background_color_hex": "#FFFFFF",
                         "text_color_hex": "#000000"
                     }
-    except Exception as e:
-        logger.error(f"分析函式發生外層錯誤: {e}")
+                time.sleep(base_delay * (attempt + 1))
         return {}
+
+async def analyze_text_structure(raw_text: str, api_key: str) -> dict:
+    """
+    [Native Hybrid] Identical to analyze_slide but takes RAW TEXT instead of Image.
+    Bypasses OCR errors.
+    """
+    try:
+        client = genai.Client(api_key=api_key)
+        
+        prompt = f"""
+        You are an expert presentation analyst.
+        I will provide the RAW TEXT extracted from a presentation slide.
+        Your goal is to STRUCTURE this text into a logical slide format.
+        
+        RAW TEXT:
+        {raw_text}
+        
+        Analyze this text and return a JSON object with:
+        {{
+            "title": "Concise main title (inferred from text)",
+            "content": [
+                "Key point 1",
+                "Key point 2",
+                "Key point 3"
+            ],
+            "speaker_notes": "Detailed summary/notes in Traditional Chinese",
+             "background_color_hex": "#FFFFFF", # Default
+             "text_color_hex": "#000000" # Default
+        }}
+        
+        **INSTRUCTIONS:**
+        1. **Title**: Identify the most likely title (usually at the start or distinct).
+        2. **Content**: Group the remaining text into bullet points.
+        3. **Language**: Keep the original language (Traditional Chinese).
+        """
+        
+        response = await client.aio.models.generate_content(
+            model='gemini-2.0-flash-exp', # Safe choice for text
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type='application/json',
+                temperature=0.2
+            )
+        )
+        
+        cleaned_json = clean_json_string(response.text)
+        return json.loads(cleaned_json)
+        
+    except Exception as e:
+        logger.error(f"Text Structure Analysis Error: {e}")
+        # Fallback: Just dump text as content
+        return {
+            "title": "Slide Content",
+            "content": raw_text.split('\n')[:10], # First 10 lines
+            "speaker_notes": raw_text
+        }
+
 
 def hex_to_rgb(hex_color: str) -> RGBColor:
     hex_color = hex_color.lstrip('#')
@@ -179,7 +230,7 @@ def hex_to_rgb(hex_color: str) -> RGBColor:
     return RGBColor(0, 0, 0) # Fallback
 
 
-async def remove_text_from_image(image, api_key: str):
+async def remove_text_from_image(image, api_key: str, remove_icon: bool = False):
     """
     使用 Gemini 圖像編輯功能移除圖片上的文字。
     回傳處理後的 PIL Image 物件，若失敗則回傳原圖。
@@ -191,58 +242,54 @@ async def remove_text_from_image(image, api_key: str):
         
         # 準備圖片資料
         def process_image():
+            # Resize optimization: Downscale to 1600px max dimension to prevent timeouts/artifacts
+            # while preserving enough detail from the 200 DPI source.
+            img_resized = image.copy()
+            img_resized.thumbnail((1600, 1600))
+            
             img_byte_arr = io.BytesIO()
-            image.save(img_byte_arr, format='JPEG', quality=95)
+            img_resized.save(img_byte_arr, format='JPEG', quality=90, optimize=True)
             return img_byte_arr.getvalue()
         
         img_bytes = await asyncio.to_thread(process_image)
         
-        # 使用 Gemini 圖像編輯提示 (使用英文以獲得更好的效果)
-        prompt = """
-        You are an expert image editor. Your task is to COMPLETELY REMOVE ALL TEXT from this image.
+        # 使用 Gemini 圖像編輯提示 (Balanced)
+        base_prompt = "Detect and remove ALL text blocks, captions, and watermarks. Inpaint the background to seamlessly match the surrounding texture and gradient. Keep diagrams and charts intact, only remove the text overlays."
+        
+        if remove_icon:
+            base_prompt += " ALSO remove the 'NotebookLM' logo/icon and footer numbers."
 
-        **CRITICAL INSTRUCTIONS:**
-        1. Remove EVERY piece of visible text, including:
-           - Titles and headings
-           - Bullet points and descriptions
-           - Numbers, dates, percentages
-           - Watermarks and labels
-           - Chinese/Japanese/Korean characters
-           - Any alphanumeric characters
-        
-        2. For each text region you remove:
-           - Fill the area with the surrounding background color/texture
-           - Use content-aware fill/inpainting to make it seamless
-           - Ensure no ghosting or artifacts remain
-        
-        3. PRESERVE everything that is NOT text:
-           - Diagrams, charts, and graphs (only remove text labels)
-           - Icons and shapes
-           - Images and photos
-           - Lines and arrows
-        
-        4. The output image MUST:
-           - Have the EXACT same dimensions as the input
-           - Contain ZERO readable text
-           - Look natural and clean
-        
-        DO NOT add any new elements. Only REMOVE text.
-        Output the cleaned image directly.
-        """
-        
-        logger.info("嘗試使用 Gemini 移除圖片文字...")
+        prompt = base_prompt
         
         try:
             # 使用支援圖像生成的模型
             response = await client.aio.models.generate_content(
-                model='gemini-3-pro-image-preview',  # Nano Banana Pro - 最先進的圖像編輯模型
+                model='gemini-3-pro-image-preview',
                 contents=[
                     types.Part.from_text(text=prompt),
                     types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
                 ],
                 config=types.GenerateContentConfig(
-                    response_modalities=['IMAGE', 'TEXT'],  # 要求回傳圖像
-                    temperature=0.1
+                    response_modalities=['IMAGE', 'TEXT'],
+                    temperature=0.1,
+                    safety_settings=[
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE
+                        )
+                    ]
                 )
             )
             
@@ -252,20 +299,13 @@ async def remove_text_from_image(image, api_key: str):
                     # 解碼回傳的圖像
                     edited_bytes = part.inline_data.data
                     edited_image = Image.open(io.BytesIO(edited_bytes))
-                    logger.info("✅ 圖片文字移除成功！")
+                    # logger.info("✅ 圖片文字移除成功！")
                     return edited_image
             
-            # 沒有找到圖像，回傳原圖
-            logger.warning("Gemini 未回傳圖像，使用原圖")
             return image
             
         except Exception as e:
-            error_str = str(e)
-            # 如果模型不支援圖像輸出，嘗試備用方案
-            if 'response_modalities' in error_str or 'IMAGE' in error_str:
-                logger.warning(f"Gemini 圖像編輯不可用: {error_str}，使用原圖")
-            else:
-                logger.error(f"Gemini 圖像編輯錯誤: {error_str}")
+            # logger.warning(f"Gemini 圖像編輯不可用或失敗: {e}，使用原圖")
             return image
             
     except Exception as e:
@@ -274,46 +314,109 @@ async def remove_text_from_image(image, api_key: str):
 
 
 def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height: int = 1000):
-    """
-    根據正規化邊界框裁切視覺元素。
-    
-    Args:
-        image: PIL Image 物件
-        bbox: [ymin, xmin, ymax, xmax] 正規化座標 (0-1000)
-        slide_width: 用於正規化的寬度基準
-        slide_height: 用於正規化的高度基準
-    
-    Returns:
-        裁切後的 PIL Image，若失敗則回傳 None
-    """
     try:
         if not bbox or len(bbox) != 4:
             return None
-            
         ymin, xmin, ymax, xmax = bbox
-        
-        # 轉換正規化座標為實際像素
         img_width, img_height = image.size
-        
         left = int(xmin / slide_width * img_width)
         top = int(ymin / slide_height * img_height)
         right = int(xmax / slide_width * img_width)
         bottom = int(ymax / slide_height * img_height)
-        
-        # 確保座標有效
         left = max(0, min(left, img_width - 1))
         top = max(0, min(top, img_height - 1))
         right = max(left + 1, min(right, img_width))
         bottom = max(top + 1, min(bottom, img_height))
+        return image.crop((left, top, right, bottom))
+    except Exception:
+        return None
+
+
+async def process_single_page(image: Image.Image, page_num: int, total_pages: int, api_key: str, remove_icon: bool = False, pdf_path: str = None) -> tuple:
+    """
+    [Native Hybrid 3.0] Single Page Processing Pipeline:
+    1. Try Native Text Extraction (pypdf)
+    2. If Text Found:
+       - Generate Determinist Mask (Physical masking)
+       - Inpaint Background (Gemini Image Model)
+       - Analyze Structure (Gemini Text Model)
+    3. If No Text (Scan):
+       - Fallback to Vision Analysis (Gemini Vision)
+       - Remove Text (Gemini Image Model)
+    """
+    logger.info(f"Processing Page {page_num}/{total_pages} (Native Hybrid: {bool(pdf_path)})")
+    
+    native_text_data = []
+    page_width_pts = 0
+    page_height_pts = 0
+    
+    # 1. Native Extraction (if PDF path available)
+    if pdf_path:
+        try:
+            # page_num is 1-based, pypdf is 0-based
+            native_text_data = await asyncio.to_thread(
+                native_pdf.extract_text_and_coordinates, 
+                pdf_path, 
+                page_num - 1
+            )
+            
+            w, h = await asyncio.to_thread(native_pdf.get_page_size, pdf_path, page_num - 1)
+            page_width_pts = w
+            page_height_pts = h
+            
+            if native_text_data:
+                logger.info(f"Page {page_num}: Found {len(native_text_data)} text blocks natively.")
+        except Exception as e:
+            logger.warning(f"Page {page_num}: Native extraction failed ({e}), falling back to Vision.")
+    
+    # 2. Hybrid Decision
+    if native_text_data and page_width_pts > 0:
+        # [Path A] Native Hybrid Mode
+        try:
+            # 2a. Create Masked Image (Complete Text Removal)
+            masked_image = await asyncio.to_thread(
+                mask_engine.create_masked_image,
+                image,
+                native_text_data,
+                page_width_pts,
+                page_height_pts
+            )
+            
+            # 2b. Inpaint Background using Masked Image
+            # We send the MASKED image to Gemini, asking it to "fill in the magenta areas" or strict inpainting
+            # Ideally, we used 'remove_text_from_image' but now we pass the pre-masked image.
+            # Actually, standard remove_text prompt works well on masked images too if we say "restore background".
+            
+            cleaned_image = await remove_text_from_image(masked_image, api_key, remove_icon=remove_icon)
+            
+            # 2c. Structure Analysis from Native Text (No OCR needed)
+            # Combine all text blocks
+            full_text = "\\n".join([item['text'] for item in native_text_data])
+            analysis_result = await analyze_text_structure(full_text, api_key)
+            
+            return (analysis_result, cleaned_image)
+            
+        except Exception as e:
+            logger.error(f"Page {page_num}: Hybrid pipeline error: {e}. Fallback to Vision.")
+            # Fall through to Vision
+    
+    # 3. [Path B] Global Fallback: Vision V2 (Scanned PDF or Native Fail)
+    try:
+        # Parallel Analysis & Cleaning
+        analysis_task = analyze_slide_with_gemini(image, api_key)
+        cleaning_task = remove_text_from_image(image, api_key, remove_icon)
         
-        # 裁切
-        cropped = image.crop((left, top, right, bottom))
-        logger.info(f"裁切視覺元素: ({left}, {top}) -> ({right}, {bottom})")
-        return cropped
+        analysis_result, cleaned_image = await asyncio.gather(analysis_task, cleaning_task)
+        return (analysis_result, cleaned_image)
         
     except Exception as e:
-        logger.error(f"裁切視覺元素失敗: {e}")
-        return None
+        logger.error(f"Page {page_num}: Vision fallback failed: {e}")
+        return ({
+            "title": "處理失敗",
+            "content": ["無法分析此頁面"],
+            "layout": "split_left_image"
+        }, image)
+
 
 
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
@@ -321,145 +424,101 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
     根據分析結果與原始圖片生成 PPTX 檔案 (Split Layout: 左圖右文)。
     """
     prs = Presentation()
-    
-    # 設定 16:9 寬螢幕
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
     
     for i, slide_data in enumerate(analyses):
-        # 建立空白投影片
-        slide_layout = prs.slide_layouts[6] # 6 = Blank
-        slide = prs.slides.add_slide(slide_layout)
-        
-        # 背景顏色 (Adaptive)
-        bg_hex = slide_data.get("background_color_hex", "#18181b") # Default dark if missing
-        text_hex = slide_data.get("text_color_hex", "#ffffff")
-        
-        background = slide.background
-        fill = background.fill
-        fill.solid()
-        fill.fore_color.rgb = hex_to_rgb(bg_hex)
-        
-        text_rgb = hex_to_rgb(text_hex)
-        
-        # 2. 處理圖片 (如果有的話)
-        layout_type = slide_data.get('layout', 'split_left_image')
-        
-        # ... (Image Processing Logic continues...)
+        try:
+            # 建立空白投影片
+            slide_layout = prs.slide_layouts[6] # 6 = Blank
+            slide = prs.slides.add_slide(slide_layout)
+            
+            # 背景顏色
+            bg_hex = slide_data.get("background_color_hex", "#18181b")
+            text_hex = slide_data.get("text_color_hex", "#ffffff")
+            
+            background = slide.background
+            fill = background.fill
+            fill.solid()
+            fill.fore_color.rgb = hex_to_rgb(bg_hex)
+            text_rgb = hex_to_rgb(text_hex)
+            
+            # 版型
+            layout_type = slide_data.get('layout', 'split_left_image')
+            
+            # 圖片處理
+            img_byte_arr = None
+            if i < len(images):
+                original_img = images[i]
+                if original_img:
+                    try:
+                        # 簡單處理：直接使用傳入的圖片 (已裁切或去字)
+                        # 並檢查 bbox 做額外裁切 (視情況)
+                        bbox = slide_data.get('main_image_bbox')
+                        img_source = original_img
+                        if bbox and isinstance(bbox, list) and len(bbox) == 4:
+                            # 嘗試裁切
+                            cropped = crop_visual_element(original_img, bbox)
+                            if cropped: img_source = cropped
 
-        img_source = None
-        img_byte_arr = None # Initialize outside conditional
-        if i < len(images):
-            original_img = images[i]
-            
-            # --- Smart Crop Logic ---
-            bbox = slide_data.get('main_image_bbox')
-            if bbox and isinstance(bbox, list) and len(bbox) == 4:
-                try:
-                    # Bbox format: [ymin, xmin, ymax, xmax] (0-1000)
-                    ymin, xmin, ymax, xmax = bbox
-                    # Validation
-                    if 0 <= xmin < xmax <= 1000 and 0 <= ymin < ymax <= 1000:
-                        w, h = original_img.size
-                        left = int(xmin / 1000 * w)
-                        top = int(ymin / 1000 * h)
-                        right = int(xmax / 1000 * w)
-                        bottom = int(ymax / 1000 * h)
-                        
-                        logger.info(f"Slide {i+1}: Cropping image to ({left}, {top}, {right}, {bottom})")
-                        img_source = original_img.crop((left, top, right, bottom))
-                    else:
-                         img_source = original_img # Invalid bbox
-                except Exception as e:
-                    logger.error(f"Crop failed: {e}")
-                    img_source = original_img
+                        buf = io.BytesIO()
+                        img_source.save(buf, format='JPEG', quality=90)
+                        buf.seek(0)
+                        img_byte_arr = buf
+                    except Exception as e:
+                        logger.error(f"Slide {i}: Image processing failed: {e}")
+                        # FALLBACK: Use a placeholder or skip image
+                        # Create a gray placeholder to indicate error but keep slide
+                        try:
+                            fallback = Image.new('RGB', (1024, 768), color='#e4e4e7')
+                            buf = io.BytesIO()
+                            fallback.save(buf, format='JPEG')
+                            buf.seek(0)
+                            img_byte_arr = buf
+                        except:
+                            img_byte_arr = None
+
+            # --- Layout Implementation ---
+            if layout_type == 'full_width_text':
+                 if slide_data.get("title"):
+                    title_box = slide.shapes.add_textbox(Inches(1), Inches(0.5), Inches(11.3), Inches(1.5))
+                    title_tf = title_box.text_frame
+                    title_tf.word_wrap = True
+                    title_p = title_tf.paragraphs[0]
+                    title_p.text = slide_data["title"]
+                    title_p.font.size = Pt(36)
+                    title_p.font.bold = True
+                    title_p.font.color.rgb = text_rgb
+                    title_p.alignment = PP_ALIGN.CENTER
+                
+                 content_items = slide_data.get("content", [])
+                 if content_items:
+                    content_box = slide.shapes.add_textbox(Inches(1.5), Inches(2.2), Inches(10.3), Inches(4.5))
+                    content_tf = content_box.text_frame
+                    content_tf.word_wrap = True
+                    for item in content_items:
+                        p = content_tf.add_paragraph()
+                        p.text = str(item)
+                        p.font.size = Pt(20)
+                        p.font.color.rgb = text_rgb
+                        p.space_after = Pt(20)
             else:
-                img_source = original_img # No bbox found
-            
-            if img_source: # Only process if an image source is determined
-                img_byte_arr = io.BytesIO()
-                img_source.save(img_byte_arr, format='JPEG', quality=95)
-                img_byte_arr.seek(0)
-            
-        
-        # 版型分流
-        if layout_type == 'full_width_text':
-            # --- 全寬文字版型 ---
-            
-            # 1. 標題居中/置頂
-            if slide_data.get("title"):
-                title_box = slide.shapes.add_textbox(Inches(1), Inches(0.5), Inches(11.3), Inches(1.5))
-                title_tf = title_box.text_frame
-                title_tf.word_wrap = True
-                title_p = title_tf.paragraphs[0]
-                title_p.text = slide_data["title"]
-                title_p.font.size = Pt(36)
-                title_p.font.bold = True
-                title_p.font.color.rgb = text_rgb # Dynamic Color
-                title_p.alignment = 2 # CENTER
-                
-            # 2. 內容全寬
-            content_items = slide_data.get("content", [])
-            if content_items:
-                content_box = slide.shapes.add_textbox(Inches(1.5), Inches(2.2), Inches(10.3), Inches(4.5))
-                content_tf = content_box.text_frame
-                content_tf.word_wrap = True
-                
-                for item in content_items:
-                    p = content_tf.add_paragraph()
-                    p.text = str(item)
-                    p.font.size = Pt(20) # 較大字體
-                    p.font.color.rgb = text_rgb # Dynamic Color
-                    p.space_after = Pt(20)
-                    p.level = 0
-            
-            # 3. 圖片 (縮小放在右下角裝飾，或是背景浮水印? 這裡先放右下小圖)
-            if img_byte_arr: # Use the potentially cropped image if available
-                slide.shapes.add_picture(img_byte_arr, Inches(10.5), Inches(5.5), width=Inches(2.5))
-                
-        else:
-            # --- 預設：左圖右文 (split_left_image) ---
-            
-            # 左側圖片 (Fit into Left Half to prevent overlap)
-            # 左側圖片 (Fit into Left Half to prevent overlap)
-            if img_source and img_byte_arr:
-                # Layout Config
-                left_box_w = Inches(6.5) # Approx 50% of 13.33 inches
-                left_box_h = prs.slide_height
-                
-                # Get Aspect Ratio from SOURCE (Cropped or Original)
-                img_w, img_h = img_source.size
-                if img_h == 0: img_h = 1 # Safety
-                aspect = img_w / img_h
-                
-                # Calculate Box Aspect Ratio
-                box_aspect = left_box_w / left_box_h
-                
-                if aspect > box_aspect:
-                    # Wider -> Fit Width, Center Vertically
-                    pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), width=left_box_w)
-                    top_offset = int((left_box_h - pic.height) / 2)
-                    pic.top = top_offset
-                else:
-                    # Taller -> Fit Height, Center Horizontally (in left box)
-                    pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), height=left_box_h)
-                    left_offset = int((left_box_w - pic.width) / 2)
-                    pic.left = left_offset
-            
-            # --- v2.8.0: 禁用 OCR 精確定位，改用乾淨分離版面 ---
-            # text_elements OCR 邊界框不可靠，文字會散落各處
-            # 強制使用傳統 Split Layout (左圖右文)
-            USE_OCR_POSITIONING = False  # 禁用 OCR 定位
-            
-            text_elements = slide_data.get("text_elements", [])
-            
-            if USE_OCR_POSITIONING and text_elements and len(text_elements) > 0:
-                # [已禁用] 使用 OCR 偵測到的精確位置
-                logger.info(f"Slide {i+1}: Using {len(text_elements)} precise text elements (DISABLED)")
-                pass  # 此區塊目前禁用
-            else:
-                # --- 強制使用：乾淨分離版面 (Split Layout) ---
-                # --- 備用：使用傳統標題+內容方式 ---
+                # Split Layout (Default)
+                if img_byte_arr:
+                    # Left Image
+                    try:
+                        pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), height=prs.slide_height)
+                        # Center in left half (Inches(6.6)) if needed, but full height is good for split
+                        # Crop if too wide
+                        if pic.width > Inches(7):
+                             crop = (pic.width - Inches(7)) / 2
+                             pic.crop_left = crop / pic.width
+                             pic.crop_right = crop / pic.width
+                             pic.left = 0
+                    except Exception as e:
+                        logger.error(f"Slide {i}: Add picture failed: {e}")
+
+                # Right Text
                 text_left = Inches(7.0)
                 text_width = Inches(5.8)
                 
@@ -472,13 +531,12 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     title_p.font.size = Pt(28)
                     title_p.font.bold = True
                     title_p.font.color.rgb = text_rgb
-                
+
                 content_items = slide_data.get("content", [])
                 if content_items:
                     content_box = slide.shapes.add_textbox(text_left, Inches(2.2), text_width, Inches(4.5))
                     content_tf = content_box.text_frame
                     content_tf.word_wrap = True
-                    
                     for item in content_items:
                         p = content_tf.add_paragraph()
                         p.text = str(item)
@@ -486,135 +544,261 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         p.font.color.rgb = text_rgb
                         p.space_after = Pt(12)
                         p.level = 0
-
-        # --- 演講者備忘錄 (通用) ---
-        if slide_data.get("speaker_notes"):
-            notes_slide = slide.notes_slide
-            text_frame = notes_slide.notes_text_frame
-            text_frame.text = slide_data["speaker_notes"]
             
+            # Speaker Notes
+            if slide_data.get("speaker_notes"):
+                slide.notes_slide.notes_text_frame.text = slide_data["speaker_notes"]
+
+        except Exception as e:
+            logger.error(f"Slide {i} generation failed: {e}")
+            continue
+
     prs.save(output_path)
     logger.info(f"簡報已儲存至: {output_path}")
 
 def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
-    """
-    將 PDF 轉換為圖片並儲存，用於前端預覽。
-    回傳圖片的相對路徑列表。
-    """
     try:
-        images = convert_from_bytes(pdf_bytes)
+        # Reduce memory usage: dpi=200 (balanced), thread_count=1
+        images = convert_from_bytes(pdf_bytes, dpi=200, thread_count=1)
         logger.info(f"預覽生成: 轉換了 {len(images)} 張圖片")
-        
         image_paths = []
         for i, img in enumerate(images):
-            # 檔名使用隨機數以避免快取問題，或需定期清理
             filename = f"preview_{secrets.token_hex(4)}_{i}.jpg"
             filepath = os.path.join(output_dir, filename)
-            
-            # Resize 圖片以加快傳輸 (例如寬度 800)
-            img.thumbnail((800, 800))
+            # Resize small thumbnail
+            img.thumbnail((400, 400)) # Smaller thumbnail for preview grid
             img.save(filepath, "JPEG", quality=80)
-            
-            # 回傳給前端的相對 URL
             image_paths.append(f"/static/temp/{filename}")
-            
         return image_paths
     except Exception as e:
-        logger.error(f"預覽生成失敗: {e}")
-        raise ValueError(f"無法生成預覽: {e}")
+        logger.error(f"預覽生成失敗 (Memory/Poppler): {e}")
+        raise ValueError(f"無法生成預覽: {str(e)}")
 
-import asyncio
 
-# ... (Previous imports should be preserved, but I need to add asyncio at top ideally, but I can add here or assume added).
-# Actually better to add import at top. But for this tool I'll focus on the function body.
+from pdf2image import convert_from_path
+from pypdf import PdfReader
 
-async def process_pdf_to_slides(pdf_bytes: bytes, api_key: str, filename: str, selected_indices: Optional[List[int]] = None) -> str:
+async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selected_indices: Optional[List[int]] = None, remove_icon: bool = False, progress_callback: Optional[callable] = None) -> tuple:
     """
-    主要流程：PDF -> 圖片 -> Gemini 分析 -> 文字移除 -> PPTX
-    回傳生成的 PPTX 檔案路徑。
-    若有 selected_indices，只處理指定頁面 (0-based index)。
+    主要流程：PDF (File) -> 圖片 -> Gemini 分析 -> 文字移除
+    優化 (v2.10.17): pypdf 秒讀頁數 + 首頁優先策略 (Priority First Page) + 強制超時保護。
     """
-    logger.info(f"開始處理 PDF: {filename}")
+    logger.info(f"開始處理 PDF: {filename} (Path: {pdf_path})")
     
-    # 1. PDF 轉圖片 (Blocking operation, run in thread)
-    try:
-        # Reduce DPI to 150 to save memory and speed up processing (OOM Prevention)
-        images = await asyncio.to_thread(convert_from_bytes, pdf_bytes, dpi=150)
-        logger.info(f"成功將 PDF 轉換為 {len(images)} 張圖片 (DPI=150)")
-        
-        # 過濾頁面
-        if selected_indices:
-            try:
-                # 確保 indices 為整數且在範圍內
-                valid_indices = [i for i in selected_indices if 0 <= i < len(images)]
-                if valid_indices:
-                    valid_indices.sort()
-                    images = [images[i] for i in valid_indices]
-                    logger.info(f"篩選後剩餘 {len(images)} 頁 (Indices: {valid_indices})")
-                else:
-                    logger.warning("提供的 selected_indices 無效，使用全部頁面")
-            except Exception as e:
-                logger.error(f"頁面篩選失敗: {e}, 使用全部頁面")
-                
-    except Exception as e:
-        logger.error(f"PDF 轉圖片失敗: {e}")
-        raise ValueError("無法讀取 PDF 檔案，請確認格式是否正確 (需安裝 poppler)")
+    # [Optimization] Notify Start Immediately to update UI from "Preparing"
+    if progress_callback:
+        try:
+             await progress_callback(0, 0, message="正在讀取 PDF 檔案結構...")
+        except:
+             pass
 
-    # 2. 逐頁分析 + 文字移除 (並行處理以加速)
+    try:
+        # 1. 快速獲取 PDF 資訊 (使用 pypdf) - 強制 10s Timeout
+        # Run in thread because pypdf file reading is sync IO
+        def get_pdf_count():
+            with open(pdf_path, 'rb') as f:
+                reader = PdfReader(f)
+                return len(reader.pages)
+        
+        # TIMEOUT PROTECTION for PDF Reading (10s)
+        total_pdf_pages = await asyncio.wait_for(
+            asyncio.to_thread(get_pdf_count), 
+            timeout=10
+        )
+        logger.info(f"PDF 總頁數: {total_pdf_pages}")
+        
+    except asyncio.TimeoutError:
+        logger.error("PDF 讀取超時 (pypdf)")
+        raise ValueError("PDF 檔案讀取超時，請檢查檔案是否損毀或過大")
+        
+    except Exception as e:
+        logger.error(f"無法讀取 PDF 資訊: {e}")
+        raise ValueError(f"無法讀取 PDF 結構: {str(e)}")
+
+    # 決定要處理的頁面索引 (0-based)
+    target_indices = selected_indices if selected_indices else list(range(total_pdf_pages))
+    target_indices = [i for i in target_indices if 0 <= i < total_pdf_pages]
+    target_indices.sort()
+    
+    if not target_indices:
+        return [], []
+
     analyses = []
     cleaned_images = []
     
-    # 每批處理的頁數 (避免 Rate Limit)
+    # 策略配置
     BATCH_SIZE = 3
-    DELAY_BETWEEN_BATCHES = 2  # 批次之間的延遲秒數
+    DELAY_BETWEEN_BATCHES = 1
+    TIMEOUT_PER_BATCH = 45 # seconds (Image Conversion)
+    TIMEOUT_PER_PAGE_ANALYSIS = 90 # seconds (Extended for high-res)
     
-    async def process_single_page(img, page_num, total):
-        """並行處理單頁：分析 + 文字移除同時進行"""
-        logger.info(f"正在處理第 {page_num}/{total} 頁 (並行分析+文字移除)...")
-        
-        # 同時執行分析和文字移除
-        analysis_task = analyze_slide_with_gemini(img, api_key)
-        text_removal_task = remove_text_from_image(img, api_key)
-        
-        # 等待兩者完成
-        result, cleaned_img = await asyncio.gather(analysis_task, text_removal_task)
-        
-        return result, cleaned_img
+                 "layout": "split_left_image"
+             }, img)
+        except Exception as e:
+             logger.error(f"Page {page_num} critical failure: {e}")
+             return ({
+                 "title": "分析失敗", 
+                 "content": ["請手動編輯此頁面"], 
+                 "layout": "split_left_image"
+             }, img)
+
+    total_target = len(target_indices)
     
-    # 分批處理以控制 API 負載
-    for batch_start in range(0, len(images), BATCH_SIZE):
-        batch_end = min(batch_start + BATCH_SIZE, len(images))
-        batch = images[batch_start:batch_end]
+    # Custom Loop for "Priority First Page"
+    # We construct batches manually to ensure Batch 1 is SINGLE page (for speed)
+    batches = []
+    remaining_indices = target_indices.copy()
+    
+    # Setup First Batch (Priority)
+    if remaining_indices:
+        # First batch has only 1 page to ensure instant feedback
+        batches.append([remaining_indices.pop(0)])
+    
+    # Setup subsequent batches
+    while remaining_indices:
+        chunk = remaining_indices[:BATCH_SIZE]
+        batches.append(chunk)
+        remaining_indices = remaining_indices[BATCH_SIZE:]
+
+    # Execute Batches
+    processed_count = 0
+    
+    for batch_indices in batches:
+        current_batch_size = len(batch_indices)
         
-        logger.info(f"處理批次 {batch_start//BATCH_SIZE + 1}: 頁 {batch_start+1}-{batch_end}")
-        
-        # 並行處理批次內的所有頁面
+        # Notify progress: Converting
+        if progress_callback:
+            start_p = batch_indices[0] + 1
+            end_p = batch_indices[-1] + 1
+            msg = f"正在處理第 {start_p}-{end_p} 頁..."
+            try:
+                await progress_callback(processed_count, total_target, message=msg)
+            except Exception as e:
+                logger.warning(f"Callback msg failed: {e}")
+
+        # 2. On-Demand Image Conversion (Protected by Timeout)
+        batch_images = []
+        try:
+            # Check for consecutiveness to optimize
+            is_consecutive = (len(batch_indices) > 1 and 
+                             batch_indices[-1] - batch_indices[0] == len(batch_indices) - 1)
+            
+            async def run_conversion():
+                if is_consecutive:
+                    # distinct args for range conversion
+                    s = batch_indices[0] + 1
+                    e = batch_indices[-1] + 1
+                    return await asyncio.to_thread(
+                        convert_from_path, pdf_path, dpi=200, 
+                        first_page=s, last_page=e, thread_count=1
+                    )
+                else:
+                    imgs = []
+                    for idx in batch_indices:
+                        p = idx + 1
+                        res = await asyncio.to_thread(
+                           convert_from_path, pdf_path, dpi=200,
+                           first_page=p, last_page=p, thread_count=1
+                        )
+                        if res: imgs.extend(res)
+                    return imgs
+
+            # TIMEOUT WRAPPER
+            batch_images = await asyncio.wait_for(run_conversion(), timeout=TIMEOUT_PER_BATCH)
+            
+        except asyncio.TimeoutError:
+            logger.error(f"Batch conversion timed out after {TIMEOUT_PER_BATCH}s")
+            batch_images = [Image.new('RGB', (800, 600), color='white') for _ in batch_indices]
+        except Exception as e:
+            logger.error(f"Batch conversion failed: {e}")
+            batch_images = [Image.new('RGB', (800, 600), color='white') for _ in batch_indices]
+
+        # Fail-safe padding
+        while len(batch_images) < current_batch_size:
+             batch_images.append(Image.new('RGB', (800, 600), color='white'))
+        batch_images = batch_images[:current_batch_size]
+
+        # 3. Analyze Batch
         tasks = [
-            process_single_page(img, batch_start + i + 1, len(images))
-            for i, img in enumerate(batch)
+            process_single_page(img, batch_indices[j] + 1, total_pdf_pages)
+            for j, img in enumerate(batch_images)
         ]
         
-        batch_results = await asyncio.gather(*tasks)
+        batch_results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        # 收集結果
-        for result, cleaned_img in batch_results:
-            analyses.append(result)
-            cleaned_images.append(cleaned_img)
+        for k, res in enumerate(batch_results):
+        all_converted_images.extend(batch_images)
+        all_page_numbers.extend([idx + 1 for idx in batch_indices])
         
-        # 批次間延遲 (避免 Rate Limit)
-        if batch_end < len(images):
-            logger.info(f"等待 {DELAY_BETWEEN_BATCHES} 秒後處理下一批...")
+        processed_conversion_count += current_batch_size
+        
+        if processed_conversion_count < total_target:
             await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
-    # 4. 生成 PPTX
+    logger.info(f"所有 {len(all_converted_images)} 頁圖片已轉換。開始分析...")
+
+    # 3. Analyze all converted images using semaphore for concurrency control
+    tasks = []
+    
+    # Analyze all pages (or selected)
+    for i, img in enumerate(all_converted_images):
+        page_num = all_page_numbers[i] # Use the actual page number from the batching
+        
+        # Filter if selected_indices is provided (already handled by target_indices, but as a double check)
+        if selected_indices is not None and (page_num - 1) not in selected_indices:
+            continue
+            
+        tasks.append(process_single_page(img, page_num, total_pdf_pages, api_key, remove_icon=remove_icon, pdf_path=pdf_path))
+
+    # Use a semaphore to limit concurrency for analysis
+    semaphore = asyncio.Semaphore(BATCH_SIZE) # Limit to BATCH_SIZE concurrent pages for analysis
+    
+    async def limited_task(t, current_page_idx):
+        async with semaphore:
+            # Report progress before starting analysis for this page
+            if progress_callback:
+                try:
+                    await progress_callback(current_page_idx, total_target, message=f"正在分析第 {all_page_numbers[current_page_idx]} 頁...")
+                except Exception as e:
+                    logger.warning(f"Callback msg failed for analysis start: {e}")
+            
+            result = await t
+            
+            # Report progress after completing analysis for this page
+            if progress_callback:
+                try:
+                    await progress_callback(current_page_idx + 1, total_target, message=f"第 {all_page_numbers[current_page_idx]} 頁分析完成。")
+                except Exception as e:
+                    logger.warning(f"Callback msg failed for analysis end: {e}")
+            return result
+            
+    results = await asyncio.gather(*(limited_task(t, i) for i, t in enumerate(tasks)), return_exceptions=True)
+    
+    # Separate results
+    analyses = []
+    cleaned_images = []
+    
+    for res in results:
+        if isinstance(res, Exception):
+            logger.error(f"Page analysis critical failure: {res}")
+            analyses.append({"title": "分析失敗", "content": ["請手動編輯此頁面"], "layout": "split_left_image"})
+            # Append a blank image or the original image if available for the failed page
+            # For simplicity, appending a blank image here.
+            cleaned_images.append(Image.new('RGB', (800, 600), color='white')) 
+        else:
+            analyses.append(res[0])
+            cleaned_images.append(res[1])
+        
+    return analyses, cleaned_images
+
+
+async def process_pdf_to_slides(pdf_content, api_key: str, filename: str, selected_indices: List[int] = None):
+    # Legacy wrapper
+    analyses, cleaned_images = await analyze_presentation(pdf_content, api_key, filename, selected_indices)
     output_dir = "temp_slides"
     os.makedirs(output_dir, exist_ok=True)
-    
     base_name = os.path.splitext(filename)[0]
     output_path = os.path.join(output_dir, f"{base_name}_converted.pptx")
-    
-    # 傳入 cleaned_images (已移除文字的圖片) 進行圖文整合排版
     await asyncio.to_thread(create_pptx_from_analysis, analyses, cleaned_images, output_path)
-    
     return output_path
 

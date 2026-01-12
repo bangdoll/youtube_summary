@@ -1,4 +1,25 @@
-## [v2.10.21] - 2026-01-11
+## [v3.0.1] - 2026-01-12
+
+### 🚨 嚴重錯誤修復 (Critical Fixes)
+- **修復部署崩潰 (Container Failed to Start)**：
+    - 修正 `slide_generator.py` 中因程式碼合併時遺漏 `except` 區塊導致的 `IndentationError: unexpected unindent` 語法錯誤。
+    - 移除多餘的重複程式碼區塊（殘留的舊版分析迴圈邏輯）。
+    - 通過本地語法檢查 (`Import Successful`) 驗證後才部署。
+- **修復 Native Hybrid 遺漏邏輯**：
+    - 補齊 `process_single_page` 函式的完整實作（約 87 行程式碼），包含原生文字提取、物理遮罩生成、AI 背景修復與結構化分析的完整流程串接。
+
+### ⚙️ 環境升級 (Environment Upgrade)
+- **Docker 升級至 Python 3.11**：從 `python:3.9-slim` 升級至 `python:3.11-slim`，以解決 `google-genai` SDK 的命名空間套件衝突問題。
+- **強制安裝 Setuptools**：在 `requirements.txt` 中新增 `setuptools`，確保建置工具鏈完整。
+- **SDK 相容性**：同時安裝 `google-genai` (New SDK) 與 `google-generativeai` (Old SDK) 以最大化相容性。
+- **Safe Import 機制**：在 `slide_generator.py` 中為 Google SDK 引用加入 `try-except` 區塊，即使套件載入失敗仍可啟動 App 以便查看日誌除錯。
+
+### 🎨 UI 微調 (UI Refinements)
+- **修正 API Key 按鈕樣式**：調整 `.settings-btn` 的 `border-radius` 為 `9999px`（完美藥丸形狀），並優化 `padding` 與置中對齊。
+
+---
+
+
 
 ### 🐛 錯誤修復 (Bug Fixes)
 - **Fix Progress Bar**: 補回 CSS 變數 `--neon-cyan` 與 `--neon-purple`，修復進度條無法顯示的問題。

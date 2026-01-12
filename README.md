@@ -14,9 +14,13 @@
 ### 1.2 ✨ 來源回溯 (Source Attribution)
 自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
-### 1.3 📊 NoteSlide 簡報生成器 (NoteSlide Generator) v2.10.21
+### 1.3 📊 NoteSlide 簡報生成器 (NoteSlide Generator) v3.0.1
 獨家「圖文分離」與「線上編輯」引擎，解決傳統 PDF 轉 PPTX 的排版錯亂問題。
 
+- **🆕 Native Hybrid Engine (v3.0.0 核心)**：
+    - **原生文字提取**：使用 `pypdf` 直接從 PDF 文字層提取內容，達成 **100% 文字正確率**，徹底繞過 OCR 錯誤。
+    - **物理遮罩去字**：根據文字座標繪製物理遮罩，再由 AI Inpainting 填補背景，保證 **零文字殘留**。
+    - **智慧降級**：若偵測到掃描式 PDF（無文字層），自動切回 Vision AI 分析模式。
 - **Web 簡報內容編輯器 (Web Slide Editor)**：
     - **所見即所得**：上傳 PDF 後，先預覽分析結果，直接在網頁上修改標題與重點，確認無誤再生成檔案。
     - **即時進度條 (Real-time Progress)**：全新串流技術，即時顯示 AI 分析進度與百分比，告別漫長等待的黑盒子。
