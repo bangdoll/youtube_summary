@@ -716,7 +716,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
 
         # 3. Analyze Batch
         tasks = [
-            process_single_page(img, batch_indices[j] + 1, total_pdf_pages)
+            process_single_page(img, batch_indices[j] + 1, total_pdf_pages, api_key, remove_icon=remove_icon, pdf_path=pdf_path)
             for j, img in enumerate(batch_images)
         ]
         
