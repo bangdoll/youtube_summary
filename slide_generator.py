@@ -128,18 +128,24 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
            - **ONE OBJECT**: Do not split a single large blueprint into tiny crops.
 
         2. **Text Elements (STRICT FILTER)**:
-           - **CONTENT**: Only extract CLEAR, READABLE presentation text (Titles, Subtitles, Key Points).
+           - **CONTENT**: Only extract CLEAR, READABLE presentation text.
+           - **DEDUPLICATION**: Do NOT return the same text content twice. Combine if split.
            - **ANTI-HALLUCINATION**: 
-             - IGNORE all text inside the blueprint (measurements, room names, dimensions, architectural labels).
-             - IGNORE broken text, gibberish, or text derived from line artifacts.
-             - If you are unsure if something is text or a line, IGNORE IT.
+             - IGNORE text inside blueprints/diagrams.
+             - IGNORE broken text/gibberish.
            - **Structure**: Group meaningful text into blocks.
 
         3. **BBox**: Return bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000 scale.
         
-        4. **Layout**:
+        4. **Visuals**:
+           - **Backgrounds**: Capture full-page blueprints as 'background_diagram'.
+           - **Icons/Images**: Capture distinct icons.
+             - **CROP**: Include the FULL icon. If a text label is visually attached (e.g. caption under icon) and hard to separate, you can exclude it; BUT if the icon relies on it, handle with care. 
+             - **Reconstruction Note**: We prefer Separation. Try to keep text as Text Element and Icon as Visual.
+        
+        5. **Layout**:
            - `elements`: meaningful text only. NO garbage.
-           - `visual_elements`: graphics/diagrams (including full-page blueprints).
+           - `visual_elements`: graphics/diagrams.
         """
 
         for attempt in range(max_retries):
@@ -588,7 +594,17 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         # Crop visuals from the ORIGINAL image (before any patching)
         # [v6.0] Use Transparent Object Lifting
         for i, viz in enumerate(visual_elements):
-            crop = process_transparent_crop(image, viz.get("bbox"))
+            # [v6.1.3] Special handling for Background Diagrams (Blueprints)
+            # Do NOT use rembg on full-page blueprints as it might wipe out faint lines.
+            is_background = 'background' in viz.get('type', '').lower() or 'blueprint' in viz.get('description', '').lower()
+            
+            if is_background:
+                logger.info(f"Visual {i}: Detected background/blueprint. Skipping rembg.")
+                crop = crop_visual_element(image, viz.get("bbox"))
+            else:
+                 # Standard objects (Icons, Photos) -> use rembg
+                crop = process_transparent_crop(image, viz.get("bbox"))
+            
             if crop:
                 visual_crops.append(crop)
             else:
