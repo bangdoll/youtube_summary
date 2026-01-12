@@ -617,6 +617,14 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         # This prevents "Gray Box" artifacts if the inpainting fails - it will just show the original text.
         cleaned_image = await remove_text_from_image(patched_image, api_key, remove_icon, original_image=image)
         
+        # [v6.1] Reconstruction Mode
+        # If we are in Vision Fallback (likely scanned), we trigger Reconstruction Mode.
+        # This means we DISCARD the patched/original image as background.
+        # Instead, we rely purely on visual_elements and text layout.
+        
+        # We pass a flag in the analysis result
+        analysis_result["reconstruction_mode"] = True
+
         return (analysis_result, cleaned_image)
         
     except Exception as e:
@@ -629,6 +637,19 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         }, image)
 
 
+
+def reconstruct_slide_background(slide, bg_hex):
+    """
+    [v6.1] Generates a clean, solid/gradient background for Reconstruction Mode.
+    """
+    try:
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = hex_to_rgb(bg_hex)
+        # Future: Add subtle gradient or pattern based on analysis
+    except Exception as e:
+        logger.warning(f"Background reconstruction failed: {e}")
 
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
@@ -681,14 +702,26 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                 layout_type = 'overlay'
 
             # --- Layout Implementation ---
+            # --- Layout Implementation ---
+            # [v6.1] Reconstruction Mode Check
+            reconstruction_mode = slide_data.get("reconstruction_mode", False)
+
             if layout_type == 'overlay':
-                # 1. Full Screen Background
-                if img_byte_arr:
-                    try:
-                        pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), width=Inches(SLIDE_W_INCH), height=Inches(SLIDE_H_INCH))
-                        # Send to back? PPTX adds in order, so first added is back. Correct.
-                    except Exception as e:
-                        logger.error(f"Slide {i}: Add bg picture failed: {e}")
+                
+                # 1. Background Handling
+                if reconstruction_mode:
+                    # [Clean Reconstruction]
+                    # Discard original image. Use generated clean background.
+                    reconstruct_slide_background(slide, bg_hex)
+                    # No add_picture for background!
+                else:
+                    # [Legacy/Restoration]
+                    # Use the processed (cleaned/patched) image as background
+                    if img_byte_arr:
+                        try:
+                            pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), width=Inches(SLIDE_W_INCH), height=Inches(SLIDE_H_INCH))
+                        except Exception as e:
+                            logger.error(f"Slide {i}: Add bg picture failed: {e}")
                         
                 # 2. [v5.4] Visual Object Lifting (Images/Charts)
                 # Place crops as separate picture shapes

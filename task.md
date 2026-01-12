@@ -110,5 +110,11 @@
 - [x] **基礎設施**：新增 `rembg` (u2net) 與 `potrace` 至 Docker/Requirements
 - [x] **功能**：透明物件提取 (使用去背取代矩形裁切)
 - [ ] **功能**：藍圖向量化 (點陣圖 -> 向量圖形)
-- [/] **研究**：使用 Python 將 SVG/EMF 注入 PPTX 的可行性 (原型 `research_vectorize.py` 已建立)
+- [x] **研究**：使用 Python 將 SVG/EMF 注入 PPTX 的可行性 (原型 `research_vectorize.py` 已建立)
+- [x] **研究**：分析外部參考代碼 (PDF 轉換平台 & PPT 合併邏輯) - 確認 XML 級別合併策略可行性
 - [ ] **驗證**：確認更乾淨的背景與單一物體分離效果 (v6.0.1)
+
+## v6.1.0 淨化重建引擎 (Clean Reconstruction Engine) - Planned
+- [ ] **核心**：實作 `Clean Reconstruction` 模式 (純色背景 + 獨立物件)
+- [ ] **核心**：實作「丟棄原圖」的渲染邏輯 (PPTX 生成器更新)
+- [ ] **驗證**：測試 `Awakening_Blueprint` Slide 1 的全重建效果 (0 殘影)
