@@ -26,6 +26,12 @@ import secrets
 import time
 import random
 import base64
+try:
+    from rembg import remove as rembg_remove
+    HAS_REMBG = True
+except ImportError:
+    HAS_REMBG = False
+    print("WARNING: rembg not found. Transparent object lifting disabled.")
 
 # --- Configuration ---
 # Use Preview models for V2.10.x
@@ -343,6 +349,9 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False,
 
 
 def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height: int = 1000):
+    """
+    Classic rectangular crop (Fallback).
+    """
     try:
         if not bbox or len(bbox) != 4:
             return None
@@ -359,6 +368,47 @@ def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height
         return image.crop((left, top, right, bottom))
     except Exception:
         return None
+
+def process_transparent_crop(image, bbox: list):
+    """
+    [v6.0] Intelligent Object Lifting using rembg.
+    1. Crop rectangular area.
+    2. Apply U2-Net background removal to get transparent PNG.
+    """
+    # 1. Get Rectangular Crop first
+    crop = crop_visual_element(image, bbox)
+    if not crop:
+        return None
+    
+    # 2. Apply Background Removal
+    if HAS_REMBG:
+        try:
+            # Convert to bytes for rembg (it handles PIL too but bytes is safer for some versions)
+            # rembg expects PIL or bytes. Let's pass PIL.
+            
+            # Optimization: Downscale huge crops to save RAM/CPU
+            # U2-Net works best at 320x320 internally anyway, but we want high res output.
+            # But let's limit max dimension to 1024 to prevent OOM on Cloud Run
+            w, h = crop.size
+            if max(w, h) > 1024:
+                scale = 1024 / max(w, h)
+                new_w = int(w * scale)
+                new_h = int(h * scale)
+                crop_proc = crop.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            else:
+                crop_proc = crop
+
+            # Run rembg
+            # alpha_matting=True improves edges but mimics hair details (slower)
+            # For blueprints, standard is usually fine. Let's use defaults for speed.
+            output = rembg_remove(crop_proc)
+            
+            return output
+        except Exception as e:
+            logger.warning(f"rembg processing failed: {e}. Returning rectangular crop.")
+            return crop
+    else:
+        return crop
 
 
 def get_average_color(image, bbox):
@@ -526,8 +576,9 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         visual_elements = analysis_result.get("visual_elements", [])
         
         # Crop visuals from the ORIGINAL image (before any patching)
+        # [v6.0] Use Transparent Object Lifting
         for i, viz in enumerate(visual_elements):
-            crop = crop_visual_element(image, viz.get("bbox"))
+            crop = process_transparent_crop(image, viz.get("bbox"))
             if crop:
                 visual_crops.append(crop)
             else:

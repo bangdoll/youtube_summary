@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     npm \
     git \
     poppler-utils \
+    potrace \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container

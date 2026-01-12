@@ -105,3 +105,9 @@
 - [x] Engine: Place cropped visuals as separate Picture objects in PPTX
 - [x] Verification: Confirmed Cloud Run deployment (Commit `ca6fc56`)
 - [ ] Verification: Confirm Object Lifting in final PPTX (Optimizing v5.4.2)
+
+## v6.0.0 (Full Object Editability) - Planned
+- [x] **Infrastructure**: Add `rembg` (u2net) and `potrace` to Docker/Requirements
+- [x] **Feature**: Transparent Object Lifting (Replace Rectangular Crop with Background Removal)
+- [ ] **Feature**: Blueprint Vectorization (Bitmap -> Vector Shape)
+- [ ] **Research**: Feasibility of SVG/EMF injection into PPTX using Python

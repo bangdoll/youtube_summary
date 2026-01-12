@@ -20,3 +20,6 @@ pytubefix
 python-pptx
 pdf2image
 pypdf
+rembg
+onnxruntime
+scikit-image
