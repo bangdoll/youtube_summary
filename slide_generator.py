@@ -215,7 +215,15 @@ async def analyze_text_structure(raw_text: str, api_key: str) -> dict:
         )
         
         cleaned_json = clean_json_string(response.text)
-        return json.loads(cleaned_json)
+        result = json.loads(cleaned_json)
+        
+        # 確保回傳 dict（Gemini 有時會回傳 list）
+        if isinstance(result, list):
+            result = result[0] if len(result) > 0 else {}
+        if not isinstance(result, dict):
+            result = {"title": "Parse Error", "content": [str(result)]}
+        
+        return result
         
     except Exception as e:
         logger.error(f"Text Structure Analysis Error: {e}")
@@ -735,11 +743,17 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
                 })
                 cleaned_images.append(Image.new('RGB', (800, 600), color='white')) 
             elif isinstance(res, tuple) and len(res) == 2:
-                analyses.append(res[0])
+                # 確保 analysis 是 dict
+                analysis = res[0]
+                if not isinstance(analysis, dict):
+                    analysis = {"title": "格式錯誤", "content": [str(analysis)[:200]]}
+                analyses.append(analysis)
                 cleaned_images.append(res[1])
             else:
-                 # Should not happen
+                 # 未預期的格式，給預設值
                  logger.warning(f"Unexpected result format: {res}")
+                 analyses.append({"title": "未知錯誤", "content": []})
+                 cleaned_images.append(Image.new('RGB', (800, 600), color='white'))
 
         processed_count += current_batch_size
         
