@@ -302,7 +302,7 @@
 
 ## [2.6.0] - 2026-01-10
 
-### 🎨 NoteSlide 像素級重建 (Pixel-Perfect Reconstruction)
+### 🎨 NoteFlux 像素級重建 (Pixel-Perfect Reconstruction)
 
 #### ✨ AI 圖片文字移除 (AI Text Removal)
 - **Gemini Imagen 整合**：使用 **Nano Banana Pro** (`gemini-3-pro-image-preview`) 進行圖片編輯。
@@ -310,7 +310,7 @@
 - **無縫填補**：使用 content-aware fill 技術，以周圍背景顏色/紋理自然填補文字區域。
 - **圖文分離**：生成的 PPTX 中，圖片為「乾淨版」，文字則作為獨立可編輯的文字框呈現。
 
-#### 📐 NoteSlide 風格 OCR 精確定位 (Stage 1)
+#### 📐 NoteFlux 風格 OCR 精確定位 (Stage 1)
 - **text_elements 陣列**：Gemini 現在會偵測每個文字區塊並回傳精確邊界框 `[ymin, xmin, ymax, xmax]`。
 - **字體屬性還原**：保留字體大小 (pt)、粗體狀態、文字顏色 (hex)。
 - **精確 Shape 定位**：每個文字區塊使用 OCR 偵測到的精確位置建立獨立 PowerPoint Shape。
@@ -343,7 +343,7 @@
 
 ## [2.5.1] - 2026-01-09
 
-### 📊 NoteSlide 體驗重大升級 (Legacy Upgrade)
+### 📊 NoteFlux 體驗重大升級 (Legacy Upgrade)
 
 #### ✨ Codia 風格 UI 重構
 - **網格預覽視圖 (Grid View)**：上傳 PDF 後不再盲目生成，新增「網格預覽」步驟。
@@ -375,7 +375,7 @@
 #### 🆕 品牌重塑 (Rebranding)
 - **Second Brain OS**：專案正式更名為「Second Brain OS (第二大腦作業系統)」，以反映更強大的多模態處理能力 (影片 + 文件)。
 
-#### 📊 NoteSlide 簡報生成 (PowerPoint Generator)
+#### 📊 NoteFlux 簡報生成 (PowerPoint Generator)
 - **PDF 轉 PPTX**：新增模式切換分頁，支援上傳 NotebookLM 輸出或任何 PDF 文件。
 - **Gemini Vision 識別**：利用多模態視覺模型識別每一頁的標題、內文重點與版面配置。
 - **一鍵下載**：自動生成包含演講者備忘錄的 `.pptx` 簡報檔，完美還原內容架構。

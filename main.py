@@ -30,7 +30,7 @@ except ImportError:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     from cost_tracker import tracker as cost_tracker
 
-app = FastAPI(title="Youtube Summary AI")
+app = FastAPI(title="NoteFlux")
 
 # Trust Proxy Headers (CRITICAL for Cloud Run/Render behind Load Balancer)
 # This ensures request.url is seen as HTTPS, preventing redirect_uri mismatches and session cookie issues

@@ -14,7 +14,7 @@
 ### 1.2 ✨ 來源回溯 (Source Attribution)
 自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
-### 1.3 📊 NoteSlide 簡報生成器 (NoteSlide Generator) v3.0.1
+### 1.3 📊 NoteFlux 簡報生成器 (NoteFlux Generator) v3.0.1
 獨家「圖文分離」與「線上編輯」引擎，解決傳統 PDF 轉 PPTX 的排版錯亂問題。
 
 - **🆕 Native Hybrid Engine (v3.0.0 核心)**：
