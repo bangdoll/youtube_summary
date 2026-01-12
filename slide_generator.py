@@ -122,6 +122,7 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         3. **Font Size**: Estimate font size assuming standard slide height.
         4. **Visuals**: IDENTIFY all images, charts, icons, and diagrams. Return them in `visual_elements`.
            - **CRITICAL**: The bbox for visuals must be precise so we can crop them out.
+           - **EXCLUSION**: Do NOT include text blocks, titles, or paragraphs as visual_elements. Only graphical objects.
         5. **Language**: Keep original text language.
         """
 
@@ -258,10 +259,10 @@ def hex_to_rgb(hex_color: str) -> RGBColor:
     return RGBColor(0, 0, 0) # Fallback
 
 
-async def remove_text_from_image(image, api_key: str, remove_icon: bool = False):
+async def remove_text_from_image(image, api_key: str, remove_icon: bool = False, original_image=None):
     """
     使用 Gemini 圖像編輯功能移除圖片上的文字。
-    回傳處理後的 PIL Image 物件，若失敗則回傳原圖。
+    回傳處理後的 PIL Image 物件，若失敗則回傳 original_image (若有提供) 或原圖。
     """
     try:
         from PIL import Image
@@ -330,15 +331,15 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False)
                     # logger.info("✅ 圖片文字移除成功！")
                     return edited_image
             
-            return image
+            return original_image if original_image else image
             
         except Exception as e:
             # logger.warning(f"Gemini 圖像編輯不可用或失敗: {e}，使用原圖")
-            return image
+            return original_image if original_image else image
             
     except Exception as e:
         logger.error(f"圖像處理外層錯誤: {e}")
-        return image
+        return original_image if original_image else image
 
 
 def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height: int = 1000):
@@ -559,8 +560,9 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         patched_image = patch_text_areas(image, mask_targets)
         
         # Step 3: Generative Inpainting (Refine Background)
-        # We send the PATCHED image.
-        cleaned_image = await remove_text_from_image(patched_image, api_key, remove_icon)
+        # We send the PATCHED image, but pass the ORIGINAL image as fallback.
+        # This prevents "Gray Box" artifacts if the inpainting fails - it will just show the original text.
+        cleaned_image = await remove_text_from_image(patched_image, api_key, remove_icon, original_image=image)
         
         return (analysis_result, cleaned_image)
         

@@ -19,6 +19,15 @@
 -   **Structure Analysis**: Vision Prompt 現在會回傳 BBox (Bounding Box) 與字體大小估計值。
 -   **Fallback Precision**: 當原生文字提取失敗時，Vision 模式能提供更接近原貌的重建結果。
 
+## [v5.4.2] - 2026-01-12
+### 🚑 Hotfix (Cleanup & Refinement)
+- **Gray Box Elimination**:
+    - **Fix**: Modified `remove_text_from_image` to accept the `original_image` as a fallback.
+    - **Logic**: If inpainting fails (timeout/safety), the system now returns the *original image* (with text) instead of the *intermediate patched image* (with gray masking boxes), ensuring the slide always looks presentable.
+- **Object Lifting Precision**:
+    - **Fix**: Updated Gemini Analysis Prompt to explicitly **exclude text blocks** from `visual_elements`.
+    - **Impact**: Reduces "Double Text" artifacts where the AI would lift a text block as an image, causing it to be pasted on top of the editable text.
+
 ## [v5.4.1] - 2026-01-12
 ### 🚑 Hotfix (Object Lifting Serialization)
 - **JSON Serialization Fix**:

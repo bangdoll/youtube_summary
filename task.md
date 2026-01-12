@@ -104,3 +104,4 @@
 - [x] Core: Mask extracted visual elements for clean background generation
 - [x] Engine: Place cropped visuals as separate Picture objects in PPTX
 - [x] Verification: Confirmed Cloud Run deployment (Commit `ca6fc56`)
+- [ ] Verification: Confirm Object Lifting in final PPTX (Optimizing v5.4.2)
