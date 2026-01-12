@@ -120,8 +120,7 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
             try:
                 # Use Async Client
                 response = await client.aio.models.generate_content(
-                    # [v5.1] Use 1.5 Pro for superior OCR/Instruction following
-                    model='gemini-1.5-pro', 
+                    model='gemini-2.0-flash-exp', # Revert to working model (Flash 2.0 is extremely capable)
                     contents=[
                         types.Part.from_text(text=prompt),
                         types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
