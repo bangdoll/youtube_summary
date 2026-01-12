@@ -406,7 +406,7 @@ async def analyze_slides(
             await log("正在讀取 PDF 結構與初始化分析...")
 
             # 1. 執行核心分析
-            await log("正在呼叫 Gemini 3 Flash Preview 進行視覺分析...")
+            await log(f"正在呼叫 Gemini Vision Model ({slide_generator.ANALYSIS_MODEL_ID}) 進行視覺分析...")
             analyses, cleaned_images = await slide_generator.analyze_presentation(
                 temp_pdf_path, effective_gemini_key, file.filename, selected_indices, 
                 remove_icon=remove_icon,

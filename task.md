@@ -115,6 +115,8 @@
 - [ ] **驗證**：確認更乾淨的背景與單一物體分離效果 (v6.0.1)
 
 ## v6.1.0 淨化重建引擎 (Clean Reconstruction Engine) - Planned
-- [ ] **核心**：實作 `Clean Reconstruction` 模式 (純色背景 + 獨立物件)
-- [ ] **核心**：實作「丟棄原圖」的渲染邏輯 (PPTX 生成器更新)
-- [ ] **驗證**：測試 `Awakening_Blueprint` Slide 1 的全重建效果 (0 殘影)
+- [x] **[Plan]** 制定此模組的 Implementation Plan <!-- id: 6 -->
+- [x] **[Impl]** 更新 `analyze_slide_with_gemini` 以提取 `text_elements` (含座標) <!-- id: 9 -->
+- [x] **[Impl]** 實作 `ReconstructionPipeline` (白板模式：純色背景 + 視覺物件 + 文字物件) <!-- id: 10 -->
+- [x] **[Impl]** 實作「丟棄原圖」渲染邏輯 (不再使用Inpainting修復原圖) <!-- id: 11 -->
+- [ ] **[Verify]** 測試 `Awakening_Blueprint.pdf` 重建效果 (確保無鬼影、無灰框) <!-- id: 8 -->

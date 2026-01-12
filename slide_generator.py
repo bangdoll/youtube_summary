@@ -121,17 +121,20 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         }
 
         **INSTRUCTIONS:**
-        1. **Text Blocks**: Identify ALL text areas. Group related lines into logical blocks.
+        1. **Text Blocks**: Identify ALL text areas keys as `elements`.
+           - **CRITICAL**: Do NOT include images, icons, or charts in `elements`.
+           - Structure content into logical blocks (Title, Body, List).
         2. **BBox**: Return bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000 scale.
-           - ymin 0 = Top, 1000 = Bottom
-           - xmin 0 = Left, 1000 = Right
-        3. **Font Size**: Estimate font size assuming standard slide height.
+        3. **Font Size**: Estimate font size.
         4. **Visuals**: IDENTIFY all images, charts, icons, and diagrams. Return them in `visual_elements`.
-           - **ONE OBJECT PER BOX**: Do NOT group multiple distinct images into one box. Split them.
-           - **CRITICAL**: The bbox for visuals must be precise so we can crop them out.
-           - **EXCLUSION**: Do NOT include text blocks, titles, or paragraphs as visual_elements. Only graphical objects.
-           - **Precision**: If an image overlaps with text, try to exclude the text from the bbox if possible.
-        5. **Language**: Keep original text language.
+           - **ONE OBJECT PER BOX**: Do NOT group multiple distinct images. Split them.
+           - **CRITICAL**: The bbox for visuals must be precise for cropping.
+           - **EXCLUSION**: Do NOT include text blocks, titles, or paragraphs as visual_elements.
+           - **Precision**: If an image overlaps with text, try to exclude the text from the bbox.
+        5. **Layout**:
+           - `elements` = Text ONLY.
+           - `visual_elements` = Graphics ONLY.
+           - `background_color_hex`: Recommend a solid background color (e.g., #FFFFFF).
         """
 
         for attempt in range(max_retries):
@@ -605,25 +608,24 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
 
         analysis_result["_visual_crops"] = visual_crops_b64
 
-        # 2. Patch Text Areas AND Visual Areas (Deterministic Masking)
-        # Use the BBoxes we just found to "guide" the cleaning.
-        # This helps the Inpainter focus on texture generation rather than removal.
-        # [v5.4] Mask BOTH Text and Visuals so background is clean
-        mask_targets = analysis_result.get('elements', []) + visual_elements
-        patched_image = patch_text_areas(image, mask_targets)
+        # [v6.1] Reconstruction Mode Strategy
+        # For Scanned Docs/Blueprints, we PREFER Reconstruction (Whiteboard) over Restoration (Inpainting).
+        # It's cleaner, faster, and avoids "Gray Box" artifacts.
+        USE_RECONSTRUCTION = True
         
-        # Step 3: Generative Inpainting (Refine Background)
-        # We send the PATCHED image, but pass the ORIGINAL image as fallback.
-        # This prevents "Gray Box" artifacts if the inpainting fails - it will just show the original text.
-        cleaned_image = await remove_text_from_image(patched_image, api_key, remove_icon, original_image=image)
-        
-        # [v6.1] Reconstruction Mode
-        # If we are in Vision Fallback (likely scanned), we trigger Reconstruction Mode.
-        # This means we DISCARD the patched/original image as background.
-        # Instead, we rely purely on visual_elements and text layout.
-        
-        # We pass a flag in the analysis result
-        analysis_result["reconstruction_mode"] = True
+        if USE_RECONSTRUCTION:
+            analysis_result["reconstruction_mode"] = True
+            cleaned_image = None # No background image needed
+            logger.info(f"Page {page_num}: Reconstruction Mode Active. Skipping Inpainting.")
+        else:
+            # [Legacy Path] Patch & Inpaint
+            # 2. Patch Text Areas AND Visual Areas (Deterministic Masking)
+            mask_targets = analysis_result.get('elements', []) + visual_elements
+            patched_image = patch_text_areas(image, mask_targets)
+            
+            # Step 3: Generative Inpainting (Refine Background)
+            cleaned_image = await remove_text_from_image(patched_image, api_key, remove_icon, original_image=image)
+            analysis_result["reconstruction_mode"] = False
 
         return (analysis_result, cleaned_image)
         
