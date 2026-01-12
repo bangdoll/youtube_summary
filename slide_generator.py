@@ -165,6 +165,10 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                     }
                 time.sleep(base_delay * (attempt + 1))
         return {}
+    except Exception as e:
+        logger.error(f"Gemini Analysis Outer Error: {e}")
+        return {}
+
 
 async def analyze_text_structure(raw_text: str, api_key: str) -> dict:
     """
@@ -221,32 +225,7 @@ async def analyze_text_structure(raw_text: str, api_key: str) -> dict:
             "content": raw_text.split('\n')[:10], # First 10 lines
             "speaker_notes": raw_text
         }
-                error_str = str(e)
-                logger.warning(f"嘗試 {attempt + 1}/{max_retries} 失敗: {error_str}")
-                
-                 # Retry on Rate Limit
-                if ('429' in error_str or 'RESOURCE_EXHAUSTED' in error_str) and attempt < max_retries - 1:
-                    sleep_time = (base_delay * (2 ** attempt)) + random.uniform(0, 1)
-                    await asyncio.sleep(sleep_time) # Async sleep!
-                    continue
 
-                if attempt == max_retries - 1:
-                    logger.error(f"Gemini 分析最終失敗: {error_str}")
-                    return {
-                        "title": "分析暫時無法使用",
-                        "content": [f"錯誤: {error_str}", "請稍後再試或更換 API Key"],
-                        "layout": "split_left_image",
-                        "speaker_notes": "系統無法讀取此頁面。",
-                        "background_color_hex": "#FFFFFF",
-                        "text_color_hex": "#000000"
-                    }
-    except Exception as e:
-        logger.error(f"分析函式發生外層錯誤: {e}")
-        return {
-             "title": "分析發生錯誤",
-             "content": ["無法分析此頁面"],
-             "layout": "split_left_image"
-        }
 
 def hex_to_rgb(hex_color: str) -> RGBColor:
     hex_color = hex_color.lstrip('#')
@@ -657,15 +636,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
     TIMEOUT_PER_BATCH = 45 # seconds (Image Conversion)
     TIMEOUT_PER_PAGE_ANALYSIS = 90 # seconds (Extended for high-res)
     
-                 "layout": "split_left_image"
-             }, img)
-        except Exception as e:
-             logger.error(f"Page {page_num} critical failure: {e}")
-             return ({
-                 "title": "分析失敗", 
-                 "content": ["請手動編輯此頁面"], 
-                 "layout": "split_left_image"
-             }, img)
+
 
     total_target = len(target_indices)
     
@@ -751,68 +722,29 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
         
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        for k, res in enumerate(batch_results):
-        all_converted_images.extend(batch_images)
-        all_page_numbers.extend([idx + 1 for idx in batch_indices])
-        
+        # Collect results immediately
+        for res in batch_results:
+            if isinstance(res, Exception):
+                logger.error(f"Batch Analysis Critical Failure: {res}")
+                analyses.append({
+                    "title": "分析失敗", 
+                    "content": ["請手動編輯此頁面"], 
+                    "layout": "split_left_image"
+                })
+                cleaned_images.append(Image.new('RGB', (800, 600), color='white')) 
+            elif isinstance(res, tuple) and len(res) == 2:
+                analyses.append(res[0])
+                cleaned_images.append(res[1])
+            else:
+                 # Should not happen
+                 logger.warning(f"Unexpected result format: {res}")
+
         processed_conversion_count += current_batch_size
         
         if processed_conversion_count < total_target:
             await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
-    logger.info(f"所有 {len(all_converted_images)} 頁圖片已轉換。開始分析...")
-
-    # 3. Analyze all converted images using semaphore for concurrency control
-    tasks = []
-    
-    # Analyze all pages (or selected)
-    for i, img in enumerate(all_converted_images):
-        page_num = all_page_numbers[i] # Use the actual page number from the batching
-        
-        # Filter if selected_indices is provided (already handled by target_indices, but as a double check)
-        if selected_indices is not None and (page_num - 1) not in selected_indices:
-            continue
-            
-        tasks.append(process_single_page(img, page_num, total_pdf_pages, api_key, remove_icon=remove_icon, pdf_path=pdf_path))
-
-    # Use a semaphore to limit concurrency for analysis
-    semaphore = asyncio.Semaphore(BATCH_SIZE) # Limit to BATCH_SIZE concurrent pages for analysis
-    
-    async def limited_task(t, current_page_idx):
-        async with semaphore:
-            # Report progress before starting analysis for this page
-            if progress_callback:
-                try:
-                    await progress_callback(current_page_idx, total_target, message=f"正在分析第 {all_page_numbers[current_page_idx]} 頁...")
-                except Exception as e:
-                    logger.warning(f"Callback msg failed for analysis start: {e}")
-            
-            result = await t
-            
-            # Report progress after completing analysis for this page
-            if progress_callback:
-                try:
-                    await progress_callback(current_page_idx + 1, total_target, message=f"第 {all_page_numbers[current_page_idx]} 頁分析完成。")
-                except Exception as e:
-                    logger.warning(f"Callback msg failed for analysis end: {e}")
-            return result
-            
-    results = await asyncio.gather(*(limited_task(t, i) for i, t in enumerate(tasks)), return_exceptions=True)
-    
-    # Separate results
-    analyses = []
-    cleaned_images = []
-    
-    for res in results:
-        if isinstance(res, Exception):
-            logger.error(f"Page analysis critical failure: {res}")
-            analyses.append({"title": "分析失敗", "content": ["請手動編輯此頁面"], "layout": "split_left_image"})
-            # Append a blank image or the original image if available for the failed page
-            # For simplicity, appending a blank image here.
-            cleaned_images.append(Image.new('RGB', (800, 600), color='white')) 
-        else:
-            analyses.append(res[0])
-            cleaned_images.append(res[1])
+    logger.info(f"所有頁面處理完成。總共: {len(analyses)} 頁")
         
     return analyses, cleaned_images
 
