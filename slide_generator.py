@@ -82,57 +82,51 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         img_bytes = await asyncio.to_thread(process_image)
         
         prompt = """
-        You are an expert presentation analyst optimizing content for RECONSTRUCTION.
-        Your goal is to extract the logical content structure, NOT the physical layout.
+        You are an expert presentation reconstruction engine.
+        Your goal is to extract the EXACT layout and content of the slide for precise reconstruction.
         
         Analyze this slide image and return a JSON object with:
         {
-            "title": "Concise main title of the slide",
-            "content": [
-                "Key point 1",
-                "Key point 2 (condensed if long)",
-                "Key point 3"
-            ],
-            "speaker_notes": "Detailed speaker notes in Traditional Chinese",
+            "layout": "overlay",
+            "title": "Main title if present",
             "background_color_hex": "#FFFFFF",
             "text_color_hex": "#000000",
-            "visual_elements": [
+            "elements": [
                 {
-                    "type": "photo|diagram|chart",
-                    "bbox": [ymin, xmin, ymax, xmax],
-                    "description": "Description for alt text"
+                    "type": "text_block",
+                    "content": "Text content here",
+                    "bbox": [ymin, xmin, ymax, xmax],  # Normalized 0-1000
+                    "font_size": 24, # Estimated point size relative to slide height
+                    "color_hex": "#000000",
+                    "alignment": "left|center|right",
+                    "is_title": boolean
                 }
-            ]
+            ],
+            "speaker_notes": "Summary/Notes in Traditional Chinese"
         }
 
-        **CRITICAL INSTRUCTIONS:**
-        1. **Content Extraction**:
-           - Extract the MAIN title.
-           - Extract the KEY points as a list of strings in `content`.
-           - Ignore page numbers, footers, and decorative text.
-           - Keep the language of the original slide (Traditional Chinese if present).
-
-        2. **Visuals**:
-           - Identify significant visual elements (charts, photos).
-           - Provide `bbox` ONLY for visual elements that need to be preserved/cropped.
-           - NO `text_elements` with bboxes are needed. We will reconstruct the text layout programmatically.
-        
-        3. **Colors**:
-           - Detect dominant background and text colors.
+        **INSTRUCTIONS:**
+        1. **Text Blocks**: Identify ALL text areas. Group related lines into blocks.
+        2. **BBox**: Return bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000 scale.
+           - ymin 0 = Top, 1000 = Bottom
+           - xmin 0 = Left, 1000 = Right
+        3. **Font Size**: Estimate font size assuming standard slide height (e.g., if text height is 5% of image, size is ~36pt).
+        4. **Language**: Keep original text language.
+        5. **Visuals**: DO NOT bounding box images/charts. We will use the CLEARED background image as the base. Only text needs to be reconstructed.
         """
 
         for attempt in range(max_retries):
             try:
                 # Use Async Client
                 response = await client.aio.models.generate_content(
-                    model='gemini-3-flash-preview',
+                    model='gemini-2.0-flash-exp', # Vision Model (Better JSON adherence)
                     contents=[
                         types.Part.from_text(text=prompt),
                         types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
                     ],
                     config=types.GenerateContentConfig(
                         response_mime_type='application/json',
-                        temperature=0.2
+                        temperature=0.1 # Low temp for precision
                     )
                 )
                 
@@ -146,7 +140,16 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                     else:
                         result = {}
                 
-                # Default Fallbacks for new fields
+                # Normalize result structure for backward compatibility
+                if "content" not in result:
+                    # Construct legacy content list for UI Editor
+                    elements = result.get("elements", [])
+                    result["content"] = [e["content"] for e in elements if not e.get("is_title", False)]
+                    titles = [e["content"] for e in elements if e.get("is_title", False)]
+                    if titles and "title" not in result:
+                        result["title"] = titles[0]
+                
+                # Fallbacks
                 if "background_color_hex" not in result: result["background_color_hex"] = "#FFFFFF"
                 if "text_color_hex" not in result: result["text_color_hex"] = "#000000"
                 
@@ -411,6 +414,11 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         cleaning_task = remove_text_from_image(image, api_key, remove_icon)
         
         analysis_result, cleaned_image = await asyncio.gather(analysis_task, cleaning_task)
+        
+        # v5.0: Force overlay layout if elements detected by Vision
+        if analysis_result.get("elements"):
+            analysis_result["layout"] = "overlay"
+
         return (analysis_result, cleaned_image)
         
     except Exception as e:
@@ -425,11 +433,14 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
 
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
-    根據分析結果與原始圖片生成 PPTX 檔案 (Split Layout: 左圖右文)。
+    根據分析結果與原始圖片生成 PPTX 檔案 (v5.0 Overlay Layout & Legacy Split).
     """
     prs = Presentation()
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
+    
+    SLIDE_W_INCH = 13.333
+    SLIDE_H_INCH = 7.5
     
     for i, slide_data in enumerate(analyses):
         try:
@@ -437,53 +448,95 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
             slide_layout = prs.slide_layouts[6] # 6 = Blank
             slide = prs.slides.add_slide(slide_layout)
             
-            # 背景顏色
+            # 背景顏色 (Overlay 模式下通常被背景圖覆蓋，但保留作為底色)
             bg_hex = slide_data.get("background_color_hex", "#18181b")
             text_hex = slide_data.get("text_color_hex", "#ffffff")
+            text_rgb = hex_to_rgb(text_hex)
             
             background = slide.background
             fill = background.fill
             fill.solid()
             fill.fore_color.rgb = hex_to_rgb(bg_hex)
-            text_rgb = hex_to_rgb(text_hex)
             
-            # 版型
-            layout_type = slide_data.get('layout', 'split_left_image')
-            
-            # 圖片處理
+            # 圖片處理 (背景圖)
             img_byte_arr = None
             if i < len(images):
                 original_img = images[i]
                 if original_img:
                     try:
-                        # 簡單處理：直接使用傳入的圖片 (已裁切或去字)
-                        # 並檢查 bbox 做額外裁切 (視情況)
-                        bbox = slide_data.get('main_image_bbox')
-                        img_source = original_img
-                        if bbox and isinstance(bbox, list) and len(bbox) == 4:
-                            # 嘗試裁切
-                            cropped = crop_visual_element(original_img, bbox)
-                            if cropped: img_source = cropped
-
                         buf = io.BytesIO()
-                        img_source.save(buf, format='JPEG', quality=90)
+                        original_img.save(buf, format='JPEG', quality=90)
                         buf.seek(0)
                         img_byte_arr = buf
-                    except Exception as e:
-                        logger.error(f"Slide {i}: Image processing failed: {e}")
-                        # FALLBACK: Use a placeholder or skip image
-                        # Create a gray placeholder to indicate error but keep slide
-                        try:
-                            fallback = Image.new('RGB', (1024, 768), color='#e4e4e7')
-                            buf = io.BytesIO()
-                            fallback.save(buf, format='JPEG')
-                            buf.seek(0)
-                            img_byte_arr = buf
-                        except:
-                            img_byte_arr = None
+                    except:
+                        img_byte_arr = None
+
+            # [Overlay Mode Check]
+            # layout might be 'overlay' (v5) or 'split_left_image' (v2) or others.
+            layout_type = slide_data.get('layout', 'split_left_image')
+            elements = slide_data.get('elements', [])
+            
+            # If we have 'elements' with bboxes, force overlay mode even if layout says otherwise
+            if elements and len(elements) > 0:
+                layout_type = 'overlay'
 
             # --- Layout Implementation ---
-            if layout_type == 'full_width_text':
+            if layout_type == 'overlay':
+                # 1. Full Screen Background
+                if img_byte_arr:
+                    try:
+                        pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), width=Inches(SLIDE_W_INCH), height=Inches(SLIDE_H_INCH))
+                        # Send to back? PPTX adds in order, so first added is back. Correct.
+                    except Exception as e:
+                        logger.error(f"Slide {i}: Add bg picture failed: {e}")
+
+                # 2. Text Overlays
+                for elem in elements:
+                    try:
+                        content = elem.get('content', '')
+                        bbox = elem.get('bbox', [0,0,0,0]) # [ymin, xmin, ymax, xmax] 0-1000
+                        font_size_pt = elem.get('font_size', 24)
+                        align = elem.get('alignment', 'left')
+                        color_hex = elem.get('color_hex', text_hex)
+                        
+                        ymin, xmin, ymax, xmax = bbox
+                        
+                        # Convert 0-1000 to Inches
+                        left = Inches(xmin / 1000 * SLIDE_W_INCH)
+                        top = Inches(ymin / 1000 * SLIDE_H_INCH)
+                        width = Inches((xmax - xmin) / 1000 * SLIDE_W_INCH)
+                        height = Inches((ymax - ymin) / 1000 * SLIDE_H_INCH)
+                        
+                        # Add Text Box
+                        tb = slide.shapes.add_textbox(left, top, width, height)
+                        tf = tb.text_frame
+                        tf.word_wrap = True
+                        
+                        p = tf.paragraphs[0]
+                        p.text = str(content)
+                        
+                        # Use heuristic for font size if missing or too small
+                        if not isinstance(font_size_pt, (int, float)) or font_size_pt < 8: 
+                            font_size_pt = 18
+                        
+                        p.font.size = Pt(font_size_pt)
+                        try:
+                            p.font.color.rgb = hex_to_rgb(color_hex)
+                        except:
+                            p.font.color.rgb = text_rgb
+                        
+                        if align == 'center':
+                            p.alignment = PP_ALIGN.CENTER
+                        elif align == 'right':
+                            p.alignment = PP_ALIGN.RIGHT
+                        else:
+                            p.alignment = PP_ALIGN.LEFT
+                            
+                    except Exception as e:
+                         # logger.warning(f"Element rendering failed: {e}")
+                         pass
+
+            elif layout_type == 'full_width_text':
                  if slide_data.get("title"):
                     title_box = slide.shapes.add_textbox(Inches(1), Inches(0.5), Inches(11.3), Inches(1.5))
                     title_tf = title_box.text_frame
@@ -507,7 +560,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         p.font.color.rgb = text_rgb
                         p.space_after = Pt(20)
             else:
-                # Split Layout (Default)
+                # Split Layout (Default for v2 legacy / fallback)
                 if img_byte_arr:
                     # Left Image
                     try:

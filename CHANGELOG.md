@@ -1,5 +1,17 @@
 # Changelog
 
+## v5.0.0 (Layout Reconstruction) - 2026-01-12
+### 🌟 New Features
+-   **Layout Reconstruction (Overlay Engine)**: 
+    -   針對掃描檔 (Scanned PDF) 與圖片型投影片，不再使用單純的左圖右文切割。
+    -   結合 **Gemini Vision** 座標識別與 **Overlay Positioning** 技術，將 AI 識別的文字精確填回原背景位置。
+    -   **視覺效果**: 看起來像原始圖片 (保留排版)。
+    -   **實用性**: 文字可完全編輯 (Editable Text Boxes)。
+
+### ⚡ Improvements
+-   **Structure Analysis**: Vision Prompt 現在會回傳 BBox (Bounding Box) 與字體大小估計值。
+-   **Fallback Precision**: 當原生文字提取失敗時，Vision 模式能提供更接近原貌的重建結果。
+
 ## v4.0.0 (Native Vector Stripping) - 2026-01-12
 ### 🚀 Major Architectural Change
 - **Vector-Level Text Stripping**: Replaced `pypdf` + `Masking` + `Inpainting` with `PyMuPDF` Vector Stripping.

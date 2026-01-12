@@ -76,3 +76,10 @@
 - [x] 整合：修改 `slide_generator.py` 優先使用向量去字路徑
 - [x] 驗證：測試原生 PDF 背景，確認 100% 無文字殘留且無需 Inpainting
 - [x] 驗證：確認複雜背景 (漸層/圖表) 未受損 (經由合成 PDF 驗證)
+
+## v5.0.0 (Layout Reconstruction) - Current
+- [x] 核心：修改 `analyze_slide_with_gemini` Prompt，請求 `bbox` 與 `font_size`
+- [x] 核心：更新 `process_single_page` 以傳遞 Native BBox (Native Path) 或 Vision BBox (Scanned Path)
+- [x] 引擎：重構 `create_pptx_from_analysis` 支援 `overlay` 佈局與絕對座標定位
+- [ ] 驗證：針對 `Awakening_Blueprint.pdf` (Scanned) 測試 Vision 重建效果 (待部署後驗證)
+- [ ] 驗證：針對原生 PDF 測試 Native 重建效果 (確認文字對齊) (待部署後驗證)
