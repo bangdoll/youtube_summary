@@ -739,9 +739,9 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
                  # Should not happen
                  logger.warning(f"Unexpected result format: {res}")
 
-        processed_conversion_count += current_batch_size
+        processed_count += current_batch_size
         
-        if processed_conversion_count < total_target:
+        if processed_count < total_target:
             await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
     logger.info(f"所有頁面處理完成。總共: {len(analyses)} 頁")
