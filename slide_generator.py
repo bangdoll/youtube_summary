@@ -666,7 +666,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
         if progress_callback:
             start_p = batch_indices[0] + 1
             end_p = batch_indices[-1] + 1
-            msg = f"正在處理第 {start_p}-{end_p} 頁..."
+            msg = f"正在處理第 {start_p}/{total_target} 頁..."
             try:
                 await progress_callback(processed_count, total_target, message=msg)
             except Exception as e:
