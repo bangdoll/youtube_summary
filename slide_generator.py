@@ -127,8 +127,10 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
            - xmin 0 = Left, 1000 = Right
         3. **Font Size**: Estimate font size assuming standard slide height.
         4. **Visuals**: IDENTIFY all images, charts, icons, and diagrams. Return them in `visual_elements`.
+           - **ONE OBJECT PER BOX**: Do NOT group multiple distinct images into one box. Split them.
            - **CRITICAL**: The bbox for visuals must be precise so we can crop them out.
            - **EXCLUSION**: Do NOT include text blocks, titles, or paragraphs as visual_elements. Only graphical objects.
+           - **Precision**: If an image overlaps with text, try to exclude the text from the bbox if possible.
         5. **Language**: Keep original text language.
         """
 
@@ -490,8 +492,8 @@ def patch_text_areas(image, elements):
             bottom = int(ymax / 1000 * height)
             
             # Draw solid rectangle to mask text
-            # [v5.2] Aggressive Padding: Increase from 2 to 15 to cover potential bbox misalignment
-            pad = 15 
+            # [v6.0] Tuning: Increased padding to 20px to ensure no text bits peek out
+            pad = 20 
             draw.rectangle(
                 [max(0, left-pad), max(0, top-pad), min(width, right+pad), min(height, bottom+pad)], 
                 fill=bg_color
