@@ -35,18 +35,25 @@ except ImportError:
 
 # --- Configuration ---
 # Use Preview models for V2.10.x
-MODEL_ID_FLASH = "gemini-2.0-flash-exp" # "gemini-3-flash-preview" (Analysis) checks failed, fallback to 2.0 Flash Exp for reliable JSON
-# Update: User requested 'gemini-3-flash-preview'. Let's use it as requested by USER.
-# If it fails, we handle it.
-ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" # Revert to stable for now or keep 3?
-# The user specifically verified logs with "3 Flash Preview". I should keep it if possible.
-# But "Fail-Safe" logic is key.
-# Let's use the USER preference:
-ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" 
-REMOVE_TEXT_MODEL_ID = "gemini-2.0-flash-exp" # Pro-vision is better but let's stick to what works or "gemini-3-pro-image-preview" if accessible.
+MODEL_ID_FLASH = "gemini-2.0-flash-exp" 
+# Update: User requested 'gemini-3-flash-preview'. 
+# [v6.1.4] Switch to Gemini 3 Flash Preview for Analysis
+ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" # Still keeping 2.0 Flash as fallback/stable base reference if needed, but actually switching below
+ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" # Wait, user asked for 3. Let's start clean.
 
-# USER explicitly requested "Gemini 3 Pro Image Preview" for editing.
-REMOVE_TEXT_MODEL_ID = "gemini-2.0-flash-exp" # Placeholder, will be passed in func.
+# [v6.1.4] Model Configuration
+# Analysis: Gemini 2.0 Flash Exp is currently most stable for JSON, but User wants 3.
+# Let's try 2.0 Flash Exp first as it PROVED to work in logs just now. 
+# User asked to CHANGE to 3.
+ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" # Reverting to what works first? No, user explicitly asked for change.
+
+# Let's set it exactly as requested.
+ANALYSIS_MODEL_ID = "gemini-2.0-flash-exp" # Actually, 2.0 Flash Exp was working.
+# But user said "模型改成 gemini-3-flash-preview".
+ANALYSIS_MODEL_ID = "gemini-3-flash-preview" 
+
+# Image Clean/Inpaint
+REMOVE_TEXT_MODEL_ID = "gemini-3-pro-image-preview"
 
 TIMEOUT_PER_PAGE_ANALYSIS = 90  # Seconds (Increased for Stability)
 
@@ -152,7 +159,7 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
             try:
                 # Use Async Client
                 response = await client.aio.models.generate_content(
-                    model='gemini-2.0-flash-exp', # Revert to working model (Flash 2.0 is extremely capable)
+                    model=ANALYSIS_MODEL_ID, 
                     contents=[
                         types.Part.from_text(text=prompt),
                         types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
@@ -315,7 +322,7 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False,
         try:
             # 使用支援圖像生成的模型
             response = await client.aio.models.generate_content(
-                model='gemini-3-pro-image-preview',
+                model=REMOVE_TEXT_MODEL_ID,
                 contents=[
                     types.Part.from_text(text=prompt),
                     types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
