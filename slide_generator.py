@@ -25,6 +25,7 @@ import re
 import secrets
 import time
 import random
+import base64
 
 # --- Configuration ---
 # Use Preview models for V2.10.x
@@ -532,7 +533,23 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
                 visual_crops.append(None) # Keep index alignment
         
         # Attach crops to analysis result (In-memory transport)
-        analysis_result["_visual_crops"] = visual_crops
+        # [v5.4 Fix] Convert PIL Images to Base64 Strings for JSON Serialization
+        # This prevents "TypeError: Object of type Image is not JSON serializable"
+        visual_crops_b64 = []
+        for crop in visual_crops:
+            if crop:
+                try:
+                    buf = io.BytesIO()
+                    crop.save(buf, format='PNG')
+                    b64_str = base64.b64encode(buf.getvalue()).decode('utf-8')
+                    visual_crops_b64.append(f"data:image/png;base64,{b64_str}")
+                except Exception as e:
+                    logger.warning(f"Crop serialization failed: {e}")
+                    visual_crops_b64.append(None)
+            else:
+                visual_crops_b64.append(None)
+
+        analysis_result["_visual_crops"] = visual_crops_b64
 
         # 2. Patch Text Areas AND Visual Areas (Deterministic Masking)
         # Use the BBoxes we just found to "guide" the cleaning.
@@ -624,21 +641,36 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                 for idx, viz in enumerate(visual_elements):
                     try:
                         if idx < len(visual_crops) and visual_crops[idx]:
-                            crop_img = visual_crops[idx]
-                            bbox = viz.get('bbox', [0,0,0,0])
-                            ymin, xmin, ymax, xmax = bbox
+                            crop_data = visual_crops[idx]
+                            crop_img = None
                             
-                            left = Inches(xmin / 1000 * SLIDE_W_INCH)
-                            top = Inches(ymin / 1000 * SLIDE_H_INCH)
-                            width = Inches((xmax - xmin) / 1000 * SLIDE_W_INCH)
-                            height = Inches((ymax - ymin) / 1000 * SLIDE_H_INCH)
-                            
-                            # Convert PIL to Bytes
-                            crop_buf = io.BytesIO()
-                            crop_img.save(crop_buf, format='PNG') # PNG for transparency if we had it, but mostly JPEG source
-                            crop_buf.seek(0)
-                            
-                            slide.shapes.add_picture(crop_buf, left, top, width=width, height=height)
+                            # Handle Base64 String (v5.4 serialization fix)
+                            if isinstance(crop_data, str) and crop_data.startswith("data:image"):
+                                try:
+                                    header, encoded = crop_data.split(",", 1)
+                                    img_bytes = base64.b64decode(encoded)
+                                    crop_img = Image.open(io.BytesIO(img_bytes))
+                                except Exception as e:
+                                    logger.warning(f"Failed to decode visual element crop: {e}")
+                            # Handle PIL Image (Legacy / Internal)
+                            elif isinstance(crop_data, Image.Image):
+                                crop_img = crop_data
+                                
+                            if crop_img:
+                                bbox = viz.get('bbox', [0,0,0,0])
+                                ymin, xmin, ymax, xmax = bbox
+                                
+                                left = Inches(xmin / 1000 * SLIDE_W_INCH)
+                                top = Inches(ymin / 1000 * SLIDE_H_INCH)
+                                width = Inches((xmax - xmin) / 1000 * SLIDE_W_INCH)
+                                height = Inches((ymax - ymin) / 1000 * SLIDE_H_INCH)
+                                
+                                # Convert PIL to Bytes
+                                crop_buf = io.BytesIO()
+                                crop_img.save(crop_buf, format='PNG') 
+                                crop_buf.seek(0)
+                                
+                                slide.shapes.add_picture(crop_buf, left, top, width=width, height=height)
                     except Exception as e:
                         logger.warning(f"Visual element {idx} placement failed: {e}")
 

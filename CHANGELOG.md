@@ -19,6 +19,14 @@
 -   **Structure Analysis**: Vision Prompt 現在會回傳 BBox (Bounding Box) 與字體大小估計值。
 -   **Fallback Precision**: 當原生文字提取失敗時，Vision 模式能提供更接近原貌的重建結果。
 
+## [v5.4.1] - 2026-01-12
+### 🚑 Hotfix (Object Lifting Serialization)
+- **JSON Serialization Fix**:
+    - **Crash**: Detected `TypeError: Object of type Image is not JSON serializable` in Cloud Run logs.
+    - **Root Cause**: Cropped visual elements (PIL Images) were being passed directly to the frontend JSON response.
+    - **Fix**: Implemented Base64 serialization for all object crops in `slide_generator.py`.
+    - **Restore**: Fixed accidental deletion of `google.genai` imports during hotfix.
+
 ## [v5.1.0] - 2026-01-12
 ### Improved
 - **Sequential Vision Pipeline (v5.1)**: Refactored `process_single_page` to use a sequential Logic (Analysis -> Masking -> Inpainting) for scanned PDFs.
