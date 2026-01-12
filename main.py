@@ -419,6 +419,11 @@ async def analyze_slides(
             
             for i, img in enumerate(cleaned_images):
                 try:
+                    # [v6.1 Fix] Robust Fallback for Reconstruction Mode
+                    if img is None:
+                        # Create a standard white slide placeholder (16:9)
+                        img = Image.new('RGB', (1600, 900), (255, 255, 255))
+
                     # Handle Transparency (RGBA/P) -> RGB with White Background
                     if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
                         background = Image.new('RGB', img.size, (255, 255, 255))
