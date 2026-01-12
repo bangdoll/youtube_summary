@@ -369,7 +369,9 @@ window.generatePresentations = async function () {
         const a = document.createElement('a');
         a.href = downloadUrl;
 
-        let fileName = editorData.filename.replace('.pdf', '_edited.pptx');
+        // 使用原始 PDF 檔名，只替換副檔名為 .pptx
+        let baseName = editorData.filename.replace(/\.(pdf|PDF)$/i, '');
+        let fileName = baseName + '.pptx';
         a.download = fileName;
 
         document.body.appendChild(a);
