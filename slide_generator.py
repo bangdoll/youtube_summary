@@ -394,8 +394,10 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
             cleaned_image = await remove_text_from_image(masked_image, api_key, remove_icon=remove_icon)
             
             # 2c. Structure Analysis from Native Text (No OCR needed)
-            # Combine all text blocks
-            full_text = "\\n".join([item['text'] for item in native_text_data])
+            # Combine all text blocks (確保是 str 類型)
+            def ensure_str(t):
+                return t.decode('utf-8') if isinstance(t, bytes) else str(t) if t else ''
+            full_text = "\n".join([ensure_str(item.get('text', '')) for item in native_text_data])
             analysis_result = await analyze_text_structure(full_text, api_key)
             
             return (analysis_result, cleaned_image)
