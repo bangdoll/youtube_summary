@@ -121,20 +121,19 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         }
 
         **INSTRUCTIONS:**
-        1. **Text Blocks**: Identify ALL text areas keys as `elements`.
-           - **CRITICAL**: Do NOT include images, icons, or charts in `elements`.
-           - Structure content into logical blocks (Title, Body, List).
+        1. **Text Elements**: Identify MAIN presentation text (Titles, Subtitles, Body, Lists).
+           - **CRITICAL**: IGNORE small labels, measurements, code snippets, or watermarks INSIDE diagrams/blueprints.
+           - **CRITICAL**: If text is part of a background image/diagram and not meant to be read as a slide point, IGNORE it.
+           - Structure content into logical blocks.
         2. **BBox**: Return bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000 scale.
-        3. **Font Size**: Estimate font size.
-        4. **Visuals**: IDENTIFY all images, charts, icons, and diagrams. Return them in `visual_elements`.
-           - **ONE OBJECT PER BOX**: Do NOT group multiple distinct images. Split them.
-           - **CRITICAL**: The bbox for visuals must be precise for cropping.
-           - **EXCLUSION**: Do NOT include text blocks, titles, or paragraphs as visual_elements.
-           - **Precision**: If an image overlaps with text, try to exclude the text from the bbox.
+        3. **Font Size**: Estimate font size relative to slide height (e.g., Title=50, Body=24).
+        4. **Visuals**: IDENTIFY all images, charts, icons. Return in `visual_elements`.
+           - **ONE OBJECT PER BOX**: Split distinct images.
+           - **EXCLUSION**: Do NOT include presentation text in visual bboxes.
         5. **Layout**:
-           - `elements` = Text ONLY.
-           - `visual_elements` = Graphics ONLY.
-           - `background_color_hex`: Recommend a solid background color (e.g., #FFFFFF).
+           - `elements`: meaningful text only. NO garbage/hallucinated text.
+           - `visual_elements`: graphics/diagrams.
+           - `background_color_hex`: Recommend valid slide background color.
         """
 
         for attempt in range(max_retries):
