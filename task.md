@@ -109,14 +109,14 @@
 ## v6.0.0 全物件可編輯化 (Full Object Editability) - Planned
 - [x] **基礎設施**：新增 `rembg` (u2net) 與 `potrace` 至 Docker/Requirements
 - [x] **功能**：透明物件提取 (使用去背取代矩形裁切)
-- [ ] **功能**：藍圖向量化 (點陣圖 -> 向量圖形)
+- [x] **功能**：藍圖向量化 (點陣圖 -> 向量圖形) (v6.2.0)
 - [x] **研究**：使用 Python 將 SVG/EMF 注入 PPTX 的可行性 (原型 `research_vectorize.py` 已建立)
 - [x] **研究**：分析外部參考代碼 (PDF 轉換平台 & PPT 合併邏輯) - 確認 XML 級別合併策略可行性
-- [ ] **驗證**：確認更乾淨的背景與單一物體分離效果 (v6.0.1)
+- [x] **驗證**：確認更乾淨的背景與單一物體分離效果 (v6.0.1)
 
 ## v6.1.0 淨化重建引擎 (Clean Reconstruction Engine) - Planned
 - [x] **[Plan]** 制定此模組的 Implementation Plan <!-- id: 6 -->
 - [x] **[Impl]** 更新 `analyze_slide_with_gemini` 以提取 `text_elements` (含座標) <!-- id: 9 -->
 - [x] **[Impl]** 實作 `ReconstructionPipeline` (白板模式：純色背景 + 視覺物件 + 文字物件) <!-- id: 10 -->
 - [x] **[Impl]** 實作「丟棄原圖」渲染邏輯 (不再使用Inpainting修復原圖) <!-- id: 11 -->
-- [ ] **[Verify]** 測試 `Awakening_Blueprint.pdf` 重建效果 (確保無鬼影、無灰框) <!-- id: 8 -->
+- [x] **[Verify]** 測試 `Awakening_Blueprint.pdf` 重建效果 (確保無鬼影、無灰框) <!-- id: 8 -->

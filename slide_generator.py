@@ -3,6 +3,9 @@ import io
 import asyncio
 import json
 import logging
+import shutil
+import tempfile
+import subprocess
 from typing import List, Optional
 from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -684,6 +687,47 @@ def reconstruct_slide_background(slide, bg_hex):
     except Exception as e:
         logger.warning(f"Background reconstruction failed: {e}")
 
+def vectorize_image_to_svg(pil_image):
+    """
+    [v6.2] Converts a PIL Image to SVG using Potrace.
+    Returns the path to the temporary SVG file or None if failed.
+    """
+    if not shutil.which("potrace"):
+        # logger.warning("Potrace not found. Skipping vectorization.")
+        return None
+        
+    try:
+        # Create temp BMP file
+        with tempfile.NamedTemporaryFile(suffix=".bmp", delete=False) as bmp_file:
+            bmp_path = bmp_file.name
+            
+        svg_path = bmp_path.replace(".bmp", ".svg")
+        
+        # Preprocess: Grayscale + Threshold
+        img = pil_image.convert('L')
+        # Threshold: < 180 becomes black (lines), > 180 becomes white (background)
+        # Adjust this threshold if lines are too faint
+        img = img.point(lambda x: 0 if x < 200 else 255, '1')
+        img.save(bmp_path)
+        
+        # Run potrace
+        # -s: SVG backend
+        # --alphamax 0.2: Slightly smooth curves
+        # -k 0.5: Black level
+        cmd = ["potrace", bmp_path, "-s", "-o", svg_path, "--alphamax", "0.2"]
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Cleanup BMP
+        if os.path.exists(bmp_path):
+            os.unlink(bmp_path)
+            
+        return svg_path
+    except Exception as e:
+        logger.error(f"Vectorization failed: {e}")
+        if os.path.exists(bmp_path):
+            os.unlink(bmp_path)
+        return None
+
 def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: str):
     """
     根據分析結果與原始圖片生成 PPTX 檔案 (v5.0 Overlay Layout & Legacy Split).
@@ -786,12 +830,31 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                                 width = Inches((xmax - xmin) / 1000 * SLIDE_W_INCH)
                                 height = Inches((ymax - ymin) / 1000 * SLIDE_H_INCH)
                                 
-                                # Convert PIL to Bytes
-                                crop_buf = io.BytesIO()
-                                crop_img.save(crop_buf, format='PNG') 
-                                crop_buf.seek(0)
+                                # [v6.2] Vectorization Check
+                                is_blueprint = 'blueprint' in viz.get('description', '').lower() or 'background' in viz.get('type', '').lower()
+                                svg_path = None
                                 
-                                slide.shapes.add_picture(crop_buf, left, top, width=width, height=height)
+                                if reconstruction_mode and is_blueprint:
+                                     svg_path = vectorize_image_to_svg(crop_img)
+                                     
+                                if svg_path:
+                                     try:
+                                         # Insert SVG (Vector)
+                                         slide.shapes.add_picture(svg_path, left, top, width=width, height=height)
+                                         # Cleanup
+                                         if os.path.exists(svg_path):
+                                             os.unlink(svg_path)
+                                     except Exception as ve:
+                                         logger.warning(f"SVG injection failed, falling back to raster: {ve}")
+                                         svg_path = None # Trigger fallback
+
+                                if not svg_path:
+                                    # Convert PIL to Bytes (Raster Fallback)
+                                    crop_buf = io.BytesIO()
+                                    crop_img.save(crop_buf, format='PNG') 
+                                    crop_buf.seek(0)
+                                    
+                                    slide.shapes.add_picture(crop_buf, left, top, width=width, height=height)
                     except Exception as e:
                         logger.warning(f"Visual element {idx} placement failed: {e}")
 

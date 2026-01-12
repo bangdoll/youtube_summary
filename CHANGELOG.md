@@ -1,5 +1,19 @@
 # Changelog
 
+## [v6.2.0] - 2026-01-13
+
+### 📐 藍圖向量化 (Blueprint Vectorization)
+- **SVG Engine Support**:
+    - 針對工程藍圖 (`Blueprint`) 或背景圖表 (`Background Diagram`)，系統現在會嘗試將其轉換為 **SVG 向量圖**。
+    - **技術棧**: 使用 `potrace` 將點陣圖 (Bitmap) 描摹為向量路徑。
+    - **優勢**:
+        - **無限放大**: 在 PowerPoint 中可無限縮放而不失真。
+        - **極致清晰**: 消除 JPEG 壓縮雜訊，線條銳利。
+        - **編輯性**: 向量圖形在且支援 PowerPoint 的「轉換為形狀」功能 (需視版本而定)。
+    - **Fallback**: 若向量化失敗，自動降級回高解析度點陣圖。
+
+
+
 ## [v6.1.0] - 2026-01-12
 
 ### 🚀 品牌重塑：NoteFlux (Brand New Identity)
