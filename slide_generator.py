@@ -416,7 +416,8 @@ def patch_text_areas(image, elements):
             bottom = int(ymax / 1000 * height)
             
             # Draw solid rectangle to mask text
-            pad = 2
+            # [v5.2] Aggressive Padding: Increase from 2 to 15 to cover potential bbox misalignment
+            pad = 15 
             draw.rectangle(
                 [max(0, left-pad), max(0, top-pad), min(width, right+pad), min(height, bottom+pad)], 
                 fill=bg_color
