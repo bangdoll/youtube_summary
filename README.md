@@ -6,7 +6,7 @@
 ## ✨ 核心特色 (Unique Selling Points)
 
 ### 1. 🧠 Gemini 3 Flash Preview 核心引擎
-使用 Google 最新的 **Gemini 3 Flash Preview** 模型直接「觀看」與「理解」影片內容。具備極速回應能力與長文本上下文視窗，超越傳統逐字稿限制，能夠捕捉語氣、畫面脈絡與深層含義。
+使用 Google 最新的 **Gemini 3 Flash Preview** 模型直接「觀看」與「理解」影片內容以及進行簡報分析。具備極速回應能力與長文本上下文視窗，超越傳統逐字稿限制，能夠捕捉語氣、畫面脈絡與深層含義。
 
 ### 1.1 🎥 長影片無縫解析 (Long Video Support)
 針對超過 3 小時的超長影片 (如法說會、長時間直播)，系統具備自動切換的 **Audio Fallback** 機制。當影片超過 Gemini 視覺分析限制時，會自動下載音訊並上傳分析，確保內容不漏接。內建 **PO Token** 技術有效繞過 Bot 偵測。

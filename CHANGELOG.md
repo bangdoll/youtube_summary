@@ -1,5 +1,28 @@
 # Changelog
 
+## [v6.1.0] - 2026-01-12
+
+### 🚀 品牌重塑：NoteFlux (Brand New Identity)
+- **Project Renamed**: 正式更名為 **NoteFlux**。
+    - **含義**: 代表筆記 (Note) 的流動 (Flux) 與轉化，將靜態 PDF 活化為動態可編輯的簡報。
+    - **全面更新**: 更新了 UI、文件與程式碼中的所有品牌識別。
+
+### 🌟 核心引擎：Reconstruction Mode (重建模式)
+針對工程藍圖與掃描文件進行了架構級的改進：
+- **Blueprint Preservation**: 針對第一頁等全頁藍圖背景，智慧跳過 `rembg` (去背) 流程，完整保留圖紙細節與淡色線條。
+- **Anti-Hallucination**: 優化 Gemini Prompt，嚴格過濾圖紙上的尺寸標註、雜訊與誤讀的亂碼，確保提取的文字內容純淨。
+- **Clean Structure**: 強制執行「圖文分離」，將圖片作為背景或獨立物件，文字轉換為原生的 PowerPoint Text Box。
+
+### ⚡ 模型大升級 (Gemini 3 Power)
+全面導入 Google 最新一代模型：
+- **Gemini 3 Flash Preview**: 用於 `analyze_presentation`，提供更快的視覺理解速度與更精準的 JSON 結構輸出。
+- **Gemini 3 Pro Image Preview**: 用於 `remove_text_from_image`，具備更強的圖像修復能力 (Inpainting)，能完美擦除文字並補全複雜背景。
+
+### 🐛 修復與優化 (Fixes)
+- **Slide 2 Duplicates**: 修正標題與內文重複出現的問題，並優化了 Icon 的裁切邏輯 (保留完整 Context)。
+- **Cloud Run Logging**: 修正日誌中模型名稱顯示錯誤的問題。
+
+
 ## v5.0.1 (Hotfix) - 2026-01-12
 ### 🚑 Stability Fix
 -   **Image Truncation Error**: 
