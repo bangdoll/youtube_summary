@@ -363,26 +363,37 @@ def get_average_color(image, bbox):
         right = int(xmax / 1000 * width)
         bottom = int(ymax / 1000 * height)
         
-        # Sample margins (outside the bbox)
+        # [v5.3] Smart Local Background Sampling
+        # Instead of 4 corners, sample the perimeter to get a true local background color.
         margin = 5
         
-        # Coordinates for 4 corners outside the text box
-        # Clamp to image boundaries
+        # Clamp coordinates
         l = max(0, left - margin)
         t = max(0, top - margin)
         r = min(width - 1, right + margin)
         b = min(height - 1, bottom + margin)
         
-        # Sample 4 corners
-        c1 = image.getpixel((l, t))
-        c2 = image.getpixel((r, t))
-        c3 = image.getpixel((l, b))
-        c4 = image.getpixel((r, b))
+        # Collect samples from the rectangular perimeter
+        samples = []
         
-        # Average
-        avg_r = (c1[0] + c2[0] + c3[0] + c4[0]) // 4
-        avg_g = (c1[1] + c2[1] + c3[1] + c4[1]) // 4
-        avg_b = (c1[2] + c2[2] + c3[2] + c4[2]) // 4
+        # Top and Bottom edges
+        for x in range(l, r, 10): # Step 10 for speed
+            samples.append(image.getpixel((x, t)))
+            samples.append(image.getpixel((x, b)))
+            
+        # Left and Right edges
+        for y in range(t, b, 10):
+            samples.append(image.getpixel((l, y)))
+            samples.append(image.getpixel((r, y)))
+            
+        # Fallback if box is too small
+        if not samples:
+            samples.append(image.getpixel((max(0, left-1), max(0, top-1))))
+            
+        # Calculate Average
+        avg_r = sum(c[0] for c in samples) // len(samples)
+        avg_g = sum(c[1] for c in samples) // len(samples)
+        avg_b = sum(c[2] for c in samples) // len(samples)
         
         return (avg_r, avg_g, avg_b)
     except Exception:
