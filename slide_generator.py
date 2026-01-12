@@ -121,19 +121,25 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         }
 
         **INSTRUCTIONS:**
-        1. **Text Elements**: Identify MAIN presentation text (Titles, Subtitles, Body, Lists).
-           - **CRITICAL**: IGNORE small labels, measurements, code snippets, or watermarks INSIDE diagrams/blueprints.
-           - **CRITICAL**: If text is part of a background image/diagram and not meant to be read as a slide point, IGNORE it.
-           - Structure content into logical blocks.
-        2. **BBox**: Return bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000 scale.
-        3. **Font Size**: Estimate font size relative to slide height (e.g., Title=50, Body=24).
-        4. **Visuals**: IDENTIFY all images, charts, icons. Return in `visual_elements`.
-           - **ONE OBJECT PER BOX**: Split distinct images.
-           - **EXCLUSION**: Do NOT include presentation text in visual bboxes.
-        5. **Layout**:
-           - `elements`: meaningful text only. NO garbage/hallucinated text.
-           - `visual_elements`: graphics/diagrams.
-           - `background_color_hex`: Recommend valid slide background color.
+        1. **Visuals (PRIORITY)**: First, identify the MAIN VISUALS.
+           - **Blueprint/Diagrams**: If the slide contains a large background diagram/blueprint, capture it as a `visual_element`.
+           - **Type**: Label these as "background_diagram".
+           - **BBox**: Capture the FULL extent of the diagram.
+           - **ONE OBJECT**: Do not split a single large blueprint into tiny crops.
+
+        2. **Text Elements (STRICT FILTER)**:
+           - **CONTENT**: Only extract CLEAR, READABLE presentation text (Titles, Subtitles, Key Points).
+           - **ANTI-HALLUCINATION**: 
+             - IGNORE all text inside the blueprint (measurements, room names, dimensions, architectural labels).
+             - IGNORE broken text, gibberish, or text derived from line artifacts.
+             - If you are unsure if something is text or a line, IGNORE IT.
+           - **Structure**: Group meaningful text into blocks.
+
+        3. **BBox**: Return bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000 scale.
+        
+        4. **Layout**:
+           - `elements`: meaningful text only. NO garbage.
+           - `visual_elements`: graphics/diagrams (including full-page blueprints).
         """
 
         for attempt in range(max_retries):
