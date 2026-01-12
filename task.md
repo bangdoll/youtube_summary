@@ -83,31 +83,31 @@
 - [x] 引擎：重構 `create_pptx_from_analysis` 支援 `overlay` 佈局與絕對座標定位
 - [x] 驗證：針對 `Awakening_Blueprint.pdf` (Scanned) 測試 Vision 重建效果 (v5.0.0 Overlay 驗證通過)
 - [x] 驗證：針對原生 PDF 測試 Native 重建效果 (確認文字對齊)
-- [x] **[Hotfix]** Resolve `OSError: image file is truncated` (v5.0.1)
-- [x] Verify Cloud Run Log status (Healthy)
-- [x] Confirm Vercel disconnection (Only Cloud Run Active)
+- [x] **[Hotfix]** 修復 `OSError: image file is truncated` (v5.0.1)
+- [x] 驗證 Cloud Run 日誌狀態 (正常)
+- [x] 確認 Vercel 斷開連結 (僅 Cloud Run 運作中)
 
-## v5.1.0 (Sequential Vision Pipeline)
-- [x] Refactor: Sequential Hybrid Processing (Analysis -> Masking -> Inpainting)
-- [x] Fix: Ghost text removal for scanned PDFs
+## v5.1.0 序列視覺流水線 (Sequential Vision Pipeline)
+- [x] 重構：混合序列處理 (分析 -> 遮罩 -> 修補)
+- [x] 修復：掃描 PDF 的殘影文字移除
 
-## v5.2.0 (Aggressive Masking)
-- [x] Tuning: Increase mask padding to 15px for better coverage
+## v5.2.0 強力遮罩模式 (Aggressive Masking)
+- [x] 調校：將遮罩填充增加至 15px 以獲得更好的覆蓋率
 
-## v5.3.0 (Smart Local Sampling)
-- [x] Tuning: "Chameleon Masking" - Sample local background pixels instead of global average
-- [x] Fix: Eliminate gray box artifacts on white backgrounds
+## v5.3.0 智慧局部採樣 (Smart Local Sampling)
+- [x] 調校：「變色龍遮罩」- 採樣局部背景像素而非全域平均
+- [x] 修復：消除白色背景上的灰色方塊偽影 (Gray Box Artifacts)
 
-## v5.4.0 (Object Lifting) - Current
-- [x] AI: Detect `visual_elements` (Images/Charts) in Gemini Analysis
-- [x] Core: Crop visual elements from original image
-- [x] Core: Mask extracted visual elements for clean background generation
-- [x] Engine: Place cropped visuals as separate Picture objects in PPTX
-- [x] Verification: Confirmed Cloud Run deployment (Commit `ca6fc56`)
-- [ ] Verification: Confirm Object Lifting in final PPTX (Optimizing v5.4.2)
+## v5.4.0 物件提取 (Object Lifting) - Current
+- [x] AI：在 Gemini 分析中偵測 `visual_elements` (圖片/圖表)
+- [x] 核心：從原始圖像中裁切視覺元素
+- [x] 核心：遮罩已提取的視覺元素以生成乾淨背景
+- [x] 引擎：將裁切的視覺元素作為獨立的圖片物件放置在 PPTX 中
+- [x] 驗證：確認 Cloud Run 部署 (Commit `ca6fc56`)
+- [ ] 驗證：確認最終 PPTX 中的物件提取效果 (v5.4.2 優化中)
 
-## v6.0.0 (Full Object Editability) - Planned
-- [x] **Infrastructure**: Add `rembg` (u2net) and `potrace` to Docker/Requirements
-- [x] **Feature**: Transparent Object Lifting (Replace Rectangular Crop with Background Removal)
-- [ ] **Feature**: Blueprint Vectorization (Bitmap -> Vector Shape)
-- [ ] **Research**: Feasibility of SVG/EMF injection into PPTX using Python
+## v6.0.0 全物件可編輯化 (Full Object Editability) - Planned
+- [x] **基礎設施**：新增 `rembg` (u2net) 與 `potrace` 至 Docker/Requirements
+- [x] **功能**：透明物件提取 (使用去背取代矩形裁切)
+- [ ] **功能**：藍圖向量化 (點陣圖 -> 向量圖形)
+- [/] **研究**：使用 Python 將 SVG/EMF 注入 PPTX 的可行性 (原型 `research_vectorize.py` 已建立)
