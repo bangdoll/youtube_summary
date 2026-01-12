@@ -29,58 +29,26 @@ def extract_text_and_coordinates(pdf_path: str, page_index: int) -> List[Dict]:
         page = reader.pages[page_index]
         
         # Visitor function to extract text and matrix
-        def visitor_body(text, cm, tm, fontDict, fontSize):
+        # 使用 *args 接收參數，避免 pypdf 版本差異導致的簽名問題
+        def visitor_body(text, cm, tm, fontDict=None, fontSize=None, *args, **kwargs):
             if text and text.strip():
                 # cm = Current Transformation Matrix
                 # tm = Text Matrix
-                # We need to calculate the bounding box.
-                # pypdf visitor sends: text, current_matrix, text_matrix, font_dict, font_size
-                
-                # Simplified BBox calculation:
-                # x = tm[4], y = tm[5] (bottom-left start)
-                # But exact width/height is hard to get perfectly without font metrics in pypdf visitor.
-                # However, we can approximate or use a simple point aggregation if using extraction mode.
-                
-                # Update: pypdf's extract_text(visitor_text=...) is easier but gives less granular control per block?
-                # Actually, implementing a custom visitor is better for coordinates.
-                
-                # For this 'visitor_body', we get individual operations.
-                # x = tm[4]
-                # y = tm[5]
-                # This is just the starting point. Calculating width is non-trivial without precise font width tables.
-                
-                # ALTERNATIVE STRATEGY:
-                # Use page.extract_text(orientations=(0, 90, 180, 270)) for raw text string.
-                # BUT we need COORDINATES for masking.
-                
-                # Let's use a simple heuristic for now or strict visitor if possible.
-                # Since pypdf doesn't give easy bbox in visitor, maybe we just store the operation?
-                
-                # Actually, let's look at `extract_words` from pdfplumber? 
-                # Requirement said "Use pypdf". 
-                # pypdf added `visitor_text` callback.
-                
-                # Let's try to capture x, y. Valid width/height might be tricky.
-                # We can assume a standard height based on fontSize.
-                # Width is length of text * fontSize * 0.5 (rough approx) if we can't get it.
-                # But for masking, we want to be generous.
-                
                 x = tm[4]
                 y = tm[5]
                 
                 # Rough BBox approximation
-                # Height is usually fontSize
+                # Height is usually fontSize (default 12 if not provided)
                 height = fontSize if fontSize else 12
                 # Width approx
-                width = len(text) * (fontSize if fontSize else 12) * 0.6 
+                width = len(text) * height * 0.6 
                 
-                # Note: PDF coords (0,0) is usually bottom-left. 
+                # PDF coords (0,0) is usually bottom-left. 
                 # PIL Image coords (0,0) is top-left.
-                # We will need page mediaBox to flip Y.
                 
                 results.append({
                     'text': text,
-                    'bbox_pdf': (x, y, x + width, y + height), # PDF Coords (Bottom-Left Origin usually)
+                    'bbox_pdf': (x, y, x + width, y + height),
                     'tm': tm,
                     'font_size': fontSize
                 })
