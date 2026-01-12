@@ -983,8 +983,10 @@ button#submitBtn:disabled {
     /* Perfect Pill Shape */
     color: var(--text-primary);
     font-size: 0.85rem;
-    padding: 8px 16px;
-    /* Balanced Padding */
+    padding: 0 16px;
+    /* Horizontal Padding only, let height controls vertical */
+    height: 36px;
+    /* Fixed height for perfect centering */
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
@@ -992,8 +994,7 @@ button#submitBtn:disabled {
     justify-content: center;
     /* Ensure content is centered */
     gap: 8px;
-    line-height: 1;
-    /* Reset line-height alignment */
+    line-height: normal;
 }
 
 .settings-btn:hover {

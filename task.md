@@ -54,9 +54,9 @@
 - [x] 修復：Fixed API (422 Schema Mismatch / camelCase -> snake_case)
 - [x] UX：分析完成與預覽生成後自動捲動 (Auto Scroll All)
 
-## v3.0.0 (Native Hybrid Architecture)
-- [x] Core: Native PDF Text Extraction (`native_pdf.py`)
-- [x] Core: Deterministic Masking Engine (`mask_engine.py`)
-- [x] Integration: Hybrid Pipeline in `slide_generator.py`
-- [x] Integration: Smart Inpainting (Gemini Edit)
-- [x] Verify: Zero Text Residue & Perfect Text Accuracy
+## v3.0.0 (原生混合架構)
+- [x] 核心：原生 PDF 文字提取 (`native_pdf.py`)
+- [x] 核心：確定性遮罩引擎 (`mask_engine.py`)
+- [x] 整合：混合流水線 (`slide_generator.py`)
+- [x] 整合：智慧修補 (Gemini 編輯)
+- [x] 驗證：零文字殘留與完美文字準確度

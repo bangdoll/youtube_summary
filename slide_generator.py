@@ -757,6 +757,18 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
 
         processed_count += current_batch_size
         
+        # [Fail-Safe Strategy] First Page Probe
+        # If the very first page failed to analyze, ABORT the entire process.
+        # This prevents wasting cost on 50+ pages if the PDF format is fundamentally unreadable or API is down.
+        if processed_count == 1 and len(analyses) > 0:
+            first_result = analyses[0]
+            # Check for known error signatures
+            error_titles = ["Analysis Error", "Parse Error", "分析失敗", "未知錯誤", "處理失敗"]
+            if (first_result.get("title") in error_titles) or (not first_result.get("content")):
+                logger.error("🛑 First Page Probe FAILED. Aborting remaining pages to save cost.")
+                # We stop here. The UI will receive just this one error slide.
+                break
+
         if processed_count < total_target:
             await asyncio.sleep(DELAY_BETWEEN_BATCHES)
 
