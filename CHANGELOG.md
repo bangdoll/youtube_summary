@@ -19,6 +19,13 @@
 -   **Structure Analysis**: Vision Prompt 現在會回傳 BBox (Bounding Box) 與字體大小估計值。
 -   **Fallback Precision**: 當原生文字提取失敗時，Vision 模式能提供更接近原貌的重建結果。
 
+## [v5.1.0] - 2026-01-12
+### Improved
+- **Sequential Vision Pipeline (v5.1)**: Refactored `process_single_page` to use a sequential Logic (Analysis -> Masking -> Inpainting) for scanned PDFs.
+- **Deterministic Masking**: Added `patch_text_areas` to programmatically mask text regions before inpainting, solving "incomplete text removal" issues.
+- **Enhanced OCR**: Upgraded `analyze_slide_with_gemini` to use `gemini-1.5-pro` (vs Flash) and 2048px resolution for superior text extraction accuracy.
+- **Inpainting Quality**: The inpainting model now receives a "pre-cleaned" image, significantly improving background reconstruction quality.
+
 ## v4.0.0 (Native Vector Stripping) - 2026-01-12
 ### 🚀 Major Architectural Change
 - **Vector-Level Text Stripping**: Replaced `pypdf` + `Masking` + `Inpainting` with `PyMuPDF` Vector Stripping.

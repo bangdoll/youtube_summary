@@ -71,10 +71,10 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         
         # 準備內容 (Image processing is CPU bound, run in thread)
         def process_image():
-            # Optimize for Analysis Speed: 1024px is enough for text/layout extraction
-            # This prevents "Analysis Timeout" on Flash model
+            # [v5.1] Boost Resolution for better OCR
+            # 2048px ensures small text is readable
             img_resized = image.copy()
-            img_resized.thumbnail((1024, 1024))
+            img_resized.thumbnail((2048, 2048))
             
             img_byte_arr = io.BytesIO()
             img_resized.save(img_byte_arr, format='JPEG', quality=85, optimize=True)
@@ -107,20 +107,21 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         }
 
         **INSTRUCTIONS:**
-        1. **Text Blocks**: Identify ALL text areas. Group related lines into blocks.
+        1. **Text Blocks**: Identify ALL text areas. Group related lines into logical blocks.
         2. **BBox**: Return bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000 scale.
            - ymin 0 = Top, 1000 = Bottom
            - xmin 0 = Left, 1000 = Right
         3. **Font Size**: Estimate font size assuming standard slide height (e.g., if text height is 5% of image, size is ~36pt).
         4. **Language**: Keep original text language.
-        5. **Visuals**: DO NOT bounding box images/charts. We will use the CLEARED background image as the base. Only text needs to be reconstructed.
+        5. **Visuals**: DO NOT bounding box images/charts. We need to CLEAR them.
         """
 
         for attempt in range(max_retries):
             try:
                 # Use Async Client
                 response = await client.aio.models.generate_content(
-                    model='gemini-2.0-flash-exp', # Vision Model (Better JSON adherence)
+                    # [v5.1] Use 1.5 Pro for superior OCR/Instruction following
+                    model='gemini-1.5-pro', 
                     contents=[
                         types.Part.from_text(text=prompt),
                         types.Part.from_bytes(data=img_bytes, mime_type='image/jpeg')
@@ -270,7 +271,7 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False)
         img_bytes = await asyncio.to_thread(process_image)
         
         # 使用 Gemini 圖像編輯提示 (Balanced)
-        base_prompt = "Detect and remove ALL text blocks, captions, and watermarks. Inpaint the background to seamlessly match the surrounding texture and gradient. Keep diagrams and charts intact, only remove the text overlays."
+        base_prompt = "Remove all text, watermarks, and captions. If there are any solid color blocks, masked areas, or artifacts, regenerate the background texture to fill them seamlessly. Keep diagrams and charts intact."
         
         if remove_icon:
             base_prompt += " ALSO remove the 'NotebookLM' logo/icon and footer numbers."
@@ -348,15 +349,94 @@ def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height
         return None
 
 
+def get_average_color(image, bbox):
+    """
+    計算 BBox 周圍 (邊框) 的背景顏色，用於偽裝/填補。
+    策略：取 BBox 外擴範圍的四個角落平均值，避開文字本體。
+    """
+    try:
+        width, height = image.size
+        ymin, xmin, ymax, xmax = bbox
+        
+        # Convert normative 0-1000 to pixels
+        left = int(xmin / 1000 * width)
+        top = int(ymin / 1000 * height)
+        right = int(xmax / 1000 * width)
+        bottom = int(ymax / 1000 * height)
+        
+        # Sample margins (outside the bbox)
+        margin = 5
+        
+        # Coordinates for 4 corners outside the text box
+        # Clamp to image boundaries
+        l = max(0, left - margin)
+        t = max(0, top - margin)
+        r = min(width - 1, right + margin)
+        b = min(height - 1, bottom + margin)
+        
+        # Sample 4 corners
+        c1 = image.getpixel((l, t))
+        c2 = image.getpixel((r, t))
+        c3 = image.getpixel((l, b))
+        c4 = image.getpixel((r, b))
+        
+        # Average
+        avg_r = (c1[0] + c2[0] + c3[0] + c4[0]) // 4
+        avg_g = (c1[1] + c2[1] + c3[1] + c4[1]) // 4
+        avg_b = (c1[2] + c2[2] + c3[2] + c4[2]) // 4
+        
+        return (avg_r, avg_g, avg_b)
+    except Exception:
+        return (255, 255, 255) # White fallback
+
+def patch_text_areas(image, elements):
+    """
+    使用分析出的 BBox資訊，簡單粗暴地將文字區域塗抹掉 (Pre-cleaning)。
+    這有助於 Inpainting 模型更從容地修補背景，而不是掙扎於辨識文字。
+    """
+    try:
+        from PIL import ImageDraw, ImageFilter
+        if not elements:
+            return image
+            
+        patched = image.copy()
+        draw = ImageDraw.Draw(patched)
+        width, height = patched.size
+        
+        for elem in elements:
+            bbox = elem.get('bbox')
+            if not bbox: continue
+            
+            # Get Context Color
+            bg_color = get_average_color(image, bbox)
+            
+            ymin, xmin, ymax, xmax = bbox
+            left = int(xmin / 1000 * width)
+            top = int(ymin / 1000 * height)
+            right = int(xmax / 1000 * width)
+            bottom = int(ymax / 1000 * height)
+            
+            # Draw solid rectangle to mask text
+            pad = 2
+            draw.rectangle(
+                [max(0, left-pad), max(0, top-pad), min(width, right+pad), min(height, bottom+pad)], 
+                fill=bg_color
+            )
+            
+        return patched
+    except Exception as e:
+        logger.warning(f"Patching failed: {e}")
+        return image
+
+
 async def process_single_page(image: Image.Image, page_num: int, total_pages: int, api_key: str, remove_icon: bool = False, pdf_path: str = None) -> tuple:
     """
-    [Architecture v4.0: Native Vector Stripping]
-    1. Try Native PDF Vector Stripping (PyMuPDF)
-       - Extract text directly (No OCR)
-       - Render page *without* text layers (No Inpainting)
-    2. Fallback to Vision V2 (Scanned PDF)
-       - Gemini Vision Analysis
-       - Gemini Image Inpainting
+    [Architecture v5.1: Sequential Hybrid Processing]
+    1. Try Native PDF Vector Stripping (PyMuPDF) -> Best Quality
+    2. Fallback to Vision V3 (Scanned PDF)
+       - Step A: High-Res Vision Analysis (Get Content & BBox)
+       - Step B: Deterministic Masking (Patch text areas)
+       - Step C: Generative Inpainting (Refine Background)
     """
     logger.info(f"Processing Page {page_num}/{total_pages} (Mode: {'Native' if pdf_path else 'Vision Only'})")
     
@@ -375,8 +455,6 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
                     text_data = renderer.extract_text(p_idx)
                     
                     # Heuristic: If text content is very little, treat as Image-heavy/Scanned
-                    # But even a few words (Title) should benefit from stripping.
-                    # Only empty text implies purely scanned.
                     if not text_data:
                         return None 
                         
@@ -407,19 +485,26 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
             logger.warning(f"Page {page_num}: Native processing failed ({e}). Fallback to Vision.")
             # Fall through to Path B
 
-    # [Path B] Global Fallback: Vision V2 (Scanned PDF or Native Fail)
+    # [Path B] Global Fallback: Vision V3 (Scanned PDF or Native Fail)
+    # Sequential Processing for Maximum Quality
     try:
-        # Parallel Analysis & Cleaning
-        # Use existing image passed from 'process_pdf_to_slides' loop (pdf2image result)
-        analysis_task = analyze_slide_with_gemini(image, api_key)
-        cleaning_task = remove_text_from_image(image, api_key, remove_icon)
-        
-        analysis_result, cleaned_image = await asyncio.gather(analysis_task, cleaning_task)
+        # Step 1: Analyze Slide (High Res, Get BBoxes)
+        # We await this FIRST.
+        analysis_result = await analyze_slide_with_gemini(image, api_key)
         
         # v5.0: Force overlay layout if elements detected by Vision
         if analysis_result.get("elements"):
             analysis_result["layout"] = "overlay"
-
+            
+        # Step 2: Patch Text Areas (Deterministic Masking)
+        # Use the BBoxes we just found to "guide" the cleaning.
+        # This helps the Inpainter focus on texture generation rather than removal.
+        patched_image = patch_text_areas(image, analysis_result.get('elements', []))
+        
+        # Step 3: Generative Inpainting (Refine Background)
+        # We send the PATCHED image.
+        cleaned_image = await remove_text_from_image(patched_image, api_key, remove_icon)
+        
         return (analysis_result, cleaned_image)
         
     except Exception as e:
