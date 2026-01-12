@@ -103,6 +103,13 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                     "is_title": boolean
                 }
             ],
+            "visual_elements": [
+                {
+                     "type": "image|chart|diagram",
+                     "bbox": [ymin, xmin, ymax, xmax],
+                     "description": "Short description of the visual"
+                }
+            ],
             "speaker_notes": "Summary/Notes in Traditional Chinese"
         }
 
@@ -111,9 +118,10 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         2. **BBox**: Return bounding box [ymin, xmin, ymax, xmax] normalized to 0-1000 scale.
            - ymin 0 = Top, 1000 = Bottom
            - xmin 0 = Left, 1000 = Right
-        3. **Font Size**: Estimate font size assuming standard slide height (e.g., if text height is 5% of image, size is ~36pt).
-        4. **Language**: Keep original text language.
-        5. **Visuals**: DO NOT bounding box images/charts. We need to CLEAR them.
+        3. **Font Size**: Estimate font size assuming standard slide height.
+        4. **Visuals**: IDENTIFY all images, charts, icons, and diagrams. Return them in `visual_elements`.
+           - **CRITICAL**: The bbox for visuals must be precise so we can crop them out.
+        5. **Language**: Keep original text language.
         """
 
         for attempt in range(max_retries):
@@ -141,14 +149,17 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                     else:
                         result = {}
                 
-                # Normalize result structure for backward compatibility
+                # Normalize result structure
                 if "content" not in result:
-                    # Construct legacy content list for UI Editor
                     elements = result.get("elements", [])
                     result["content"] = [e["content"] for e in elements if not e.get("is_title", False)]
                     titles = [e["content"] for e in elements if e.get("is_title", False)]
                     if titles and "title" not in result:
                         result["title"] = titles[0]
+                
+                # [v5.4] Ensure visual_elements exists
+                if "visual_elements" not in result:
+                    result["visual_elements"] = []
                 
                 # Fallbacks
                 if "background_color_hex" not in result: result["background_color_hex"] = "#FFFFFF"
@@ -507,10 +518,28 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         if analysis_result.get("elements"):
             analysis_result["layout"] = "overlay"
             
-        # Step 2: Patch Text Areas (Deterministic Masking)
+        # [v5.4] Object Lifting (Cropping & Masking)
+        # 1. Extract Visuals (Images/Charts) to be placed as separate objects
+        visual_crops = []
+        visual_elements = analysis_result.get("visual_elements", [])
+        
+        # Crop visuals from the ORIGINAL image (before any patching)
+        for i, viz in enumerate(visual_elements):
+            crop = crop_visual_element(image, viz.get("bbox"))
+            if crop:
+                visual_crops.append(crop)
+            else:
+                visual_crops.append(None) # Keep index alignment
+        
+        # Attach crops to analysis result (In-memory transport)
+        analysis_result["_visual_crops"] = visual_crops
+
+        # 2. Patch Text Areas AND Visual Areas (Deterministic Masking)
         # Use the BBoxes we just found to "guide" the cleaning.
         # This helps the Inpainter focus on texture generation rather than removal.
-        patched_image = patch_text_areas(image, analysis_result.get('elements', []))
+        # [v5.4] Mask BOTH Text and Visuals so background is clean
+        mask_targets = analysis_result.get('elements', []) + visual_elements
+        patched_image = patch_text_areas(image, mask_targets)
         
         # Step 3: Generative Inpainting (Refine Background)
         # We send the PATCHED image.
@@ -523,7 +552,8 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         return ({
             "title": "處理失敗",
             "content": ["無法分析此頁面"],
-            "layout": "split_left_image"
+            "layout": "split_left_image",
+            "_visual_crops": []
         }, image)
 
 
@@ -558,11 +588,11 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
             # 圖片處理 (背景圖)
             img_byte_arr = None
             if i < len(images):
-                original_img = images[i]
-                if original_img:
+                cleaned_bg_img = images[i]
+                if cleaned_bg_img:
                     try:
                         buf = io.BytesIO()
-                        original_img.save(buf, format='JPEG', quality=90)
+                        cleaned_bg_img.save(buf, format='JPEG', quality=90)
                         buf.seek(0)
                         img_byte_arr = buf
                     except:
@@ -572,8 +602,9 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
             # layout might be 'overlay' (v5) or 'split_left_image' (v2) or others.
             layout_type = slide_data.get('layout', 'split_left_image')
             elements = slide_data.get('elements', [])
+            visual_elements = slide_data.get('visual_elements', [])
             
-            # If we have 'elements' with bboxes, force overlay mode even if layout says otherwise
+            # If we have 'elements' with bboxes, force overlay mode
             if elements and len(elements) > 0:
                 layout_type = 'overlay'
 
@@ -586,8 +617,32 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         # Send to back? PPTX adds in order, so first added is back. Correct.
                     except Exception as e:
                         logger.error(f"Slide {i}: Add bg picture failed: {e}")
+                        
+                # 2. [v5.4] Visual Object Lifting (Images/Charts)
+                # Place crops as separate picture shapes
+                visual_crops = slide_data.get("_visual_crops", [])
+                for idx, viz in enumerate(visual_elements):
+                    try:
+                        if idx < len(visual_crops) and visual_crops[idx]:
+                            crop_img = visual_crops[idx]
+                            bbox = viz.get('bbox', [0,0,0,0])
+                            ymin, xmin, ymax, xmax = bbox
+                            
+                            left = Inches(xmin / 1000 * SLIDE_W_INCH)
+                            top = Inches(ymin / 1000 * SLIDE_H_INCH)
+                            width = Inches((xmax - xmin) / 1000 * SLIDE_W_INCH)
+                            height = Inches((ymax - ymin) / 1000 * SLIDE_H_INCH)
+                            
+                            # Convert PIL to Bytes
+                            crop_buf = io.BytesIO()
+                            crop_img.save(crop_buf, format='PNG') # PNG for transparency if we had it, but mostly JPEG source
+                            crop_buf.seek(0)
+                            
+                            slide.shapes.add_picture(crop_buf, left, top, width=width, height=height)
+                    except Exception as e:
+                        logger.warning(f"Visual element {idx} placement failed: {e}")
 
-                # 2. Text Overlays
+                # 3. Text Overlays
                 for elem in elements:
                     try:
                         content = elem.get('content', '')
