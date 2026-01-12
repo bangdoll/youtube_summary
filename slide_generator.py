@@ -643,8 +643,11 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         
         if USE_RECONSTRUCTION:
             analysis_result["reconstruction_mode"] = True
-            cleaned_image = None # No background image needed
-            logger.info(f"Page {page_num}: Reconstruction Mode Active. Skipping Inpainting.")
+            # [v6.1 Fix] Return a White Blank Image instead of None
+            # This ensures the Web Editor has a valid preview to show (Clean State)
+            # and prevents "NoneType" errors in main.py
+            cleaned_image = Image.new('RGB', image.size, (255, 255, 255))
+            logger.info(f"Page {page_num}: Reconstruction Mode Active. Created White Blank Image for Preview.")
         else:
             # [Legacy Path] Patch & Inpaint
             # 2. Patch Text Areas AND Visual Areas (Deterministic Masking)
