@@ -1,5 +1,12 @@
 # Changelog
 
+## v5.0.1 (Hotfix) - 2026-01-12
+### 🚑 Stability Fix
+-   **Image Truncation Error**: 
+    -   Cloud Run 監控發現 `OSError: image file is truncated` 導致分析卡住。
+    -   此問題源自於 PIL 預設拒絕載入不完整的圖片區塊。
+    -   **Fix**: 全面啟用 `ImageFile.LOAD_TRUNCATED_IMAGES = True`，容許系統載入並修復截斷的圖像，防止任務中斷。
+
 ## v5.0.0 (Layout Reconstruction) - 2026-01-12
 ### 🌟 New Features
 -   **Layout Reconstruction (Overlay Engine)**: 

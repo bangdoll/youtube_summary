@@ -1,5 +1,6 @@
 import fitz  # PyMuPDF
-from PIL import Image
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import io
 import logging
 from typing import List, Dict, Tuple, Optional

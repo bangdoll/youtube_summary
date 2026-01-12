@@ -4,7 +4,8 @@ import asyncio
 import json
 import logging
 from typing import List, Optional
-from PIL import Image
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 from pdf2image import convert_from_path, convert_from_bytes
 import native_pdf
 import mask_engine
