@@ -85,7 +85,13 @@ window.generateSlides = async function (btnElement) {
     // ...
 
     // UI 切換：進入 Loading (這會覆蓋整個畫面，所以按鈕狀態其實只顯示一瞬間，但這瞬間很重要)
-    if (analysisLoading) analysisLoading.classList.remove('hidden');
+    if (analysisLoading) {
+        analysisLoading.classList.remove('hidden');
+        // UX: 滾動到進度條區域，讓用戶看到處理進度
+        setTimeout(() => {
+            analysisLoading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
     if (previewStep) previewStep.classList.add('hidden');
 
     // 取得必要變數 (來自全域狀態)
