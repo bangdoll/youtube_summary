@@ -68,3 +68,11 @@
 - [x] 介面：修正按鈕需點擊兩次的問題 (onclick -> onmousedown)
 - [x] 驗證：確保下載的 PPTX 為可編輯的原生格式
 - [x] 驗證：確保下載檔名正確 (原始檔名.pptx)
+
+## v4.0.0 (Native Vector Stripping)
+- [x] 依賴：安裝 `pymupdf` 並更新 `requirements.txt`
+- [x] 核心：重構 `native_pdf.py` 使用 PyMuPDF 實作 `get_clean_image` (向量去字)
+- [x] 核心：確保掃描檔 Fallback 機制保留
+- [x] 整合：修改 `slide_generator.py` 優先使用向量去字路徑
+- [x] 驗證：測試原生 PDF 背景，確認 100% 無文字殘留且無需 Inpainting
+- [x] 驗證：確認複雜背景 (漸層/圖表) 未受損 (經由合成 PDF 驗證)

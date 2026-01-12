@@ -346,77 +346,67 @@ def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height
 
 async def process_single_page(image: Image.Image, page_num: int, total_pages: int, api_key: str, remove_icon: bool = False, pdf_path: str = None) -> tuple:
     """
-    [Native Hybrid 3.0] Single Page Processing Pipeline:
-    1. Try Native Text Extraction (pypdf)
-    2. If Text Found:
-       - Generate Determinist Mask (Physical masking)
-       - Inpaint Background (Gemini Image Model)
-       - Analyze Structure (Gemini Text Model)
-    3. If No Text (Scan):
-       - Fallback to Vision Analysis (Gemini Vision)
-       - Remove Text (Gemini Image Model)
+    [Architecture v4.0: Native Vector Stripping]
+    1. Try Native PDF Vector Stripping (PyMuPDF)
+       - Extract text directly (No OCR)
+       - Render page *without* text layers (No Inpainting)
+    2. Fallback to Vision V2 (Scanned PDF)
+       - Gemini Vision Analysis
+       - Gemini Image Inpainting
     """
-    logger.info(f"Processing Page {page_num}/{total_pages} (Native Hybrid: {bool(pdf_path)})")
+    logger.info(f"Processing Page {page_num}/{total_pages} (Mode: {'Native' if pdf_path else 'Vision Only'})")
     
-    native_text_data = []
-    page_width_pts = 0
-    page_height_pts = 0
-    
-    # 1. Native Extraction (if PDF path available)
+    # [Path A] Native Vector Stripping
     if pdf_path:
         try:
-            # page_num is 1-based, pypdf is 0-based
-            native_text_data = await asyncio.to_thread(
-                native_pdf.extract_text_and_coordinates, 
-                pdf_path, 
-                page_num - 1
-            )
+            # We run PyMuPDF operations in a thread to avoid blocking the event loop
+            def native_process():
+                renderer = native_pdf.PdfRenderer(pdf_path)
+                try:
+                    # 1. Extract Text
+                    # page_num is 1-based, fitz is 0-based
+                    p_idx = page_num - 1
+                    
+                    # Check if page has significant text
+                    text_data = renderer.extract_text(p_idx)
+                    
+                    # Heuristic: If text content is very little, treat as Image-heavy/Scanned
+                    # But even a few words (Title) should benefit from stripping.
+                    # Only empty text implies purely scanned.
+                    if not text_data:
+                        return None 
+                        
+                    # 2. Vector Stripping (Get Clean Image)
+                    clean_img = renderer.get_clean_image(p_idx, dpi=200)
+                    
+                    # 3. Formulate Text for Analysis
+                    full_text = "\n".join([item['text'] for item in text_data])
+                    
+                    return (clean_img, full_text)
+                finally:
+                    renderer.close()
+
+            native_result = await asyncio.to_thread(native_process)
             
-            w, h = await asyncio.to_thread(native_pdf.get_page_size, pdf_path, page_num - 1)
-            page_width_pts = w
-            page_height_pts = h
-            
-            if native_text_data:
-                logger.info(f"Page {page_num}: Found {len(native_text_data)} text blocks natively.")
+            if native_result:
+                logger.info(f"Page {page_num}: Native vector stripping successful.")
+                clean_image, full_text = native_result
+                
+                # Analyze Structure (Pure Text)
+                analysis_result = await analyze_text_structure(full_text, api_key)
+                
+                return (analysis_result, clean_image)
+            else:
+                 logger.info(f"Page {page_num}: No native text found. Switching to Vision Fallback.")
+
         except Exception as e:
-            logger.warning(f"Page {page_num}: Native extraction failed ({e}), falling back to Vision.")
-    
-    # 2. Hybrid Decision
-    if native_text_data and page_width_pts > 0:
-        # [Path A] Native Hybrid Mode
-        try:
-            # 2a. Create Masked Image (Complete Text Removal)
-            masked_image = await asyncio.to_thread(
-                mask_engine.create_masked_image,
-                image,
-                native_text_data,
-                page_width_pts,
-                page_height_pts
-            )
-            
-            # 2b. Inpaint Background using Masked Image
-            # We send the MASKED image to Gemini, asking it to "fill in the magenta areas" or strict inpainting
-            # Ideally, we used 'remove_text_from_image' but now we pass the pre-masked image.
-            # Actually, standard remove_text prompt works well on masked images too if we say "restore background".
-            
-            cleaned_image = await remove_text_from_image(masked_image, api_key, remove_icon=remove_icon)
-            
-            # 2c. Structure Analysis from Native Text (No OCR needed)
-            # Combine all text blocks (確保是 str 類型)
-            def ensure_str(t):
-                return t.decode('utf-8') if isinstance(t, bytes) else str(t) if t else ''
-            full_text = "\n".join([ensure_str(item.get('text', '')) for item in native_text_data])
-            analysis_result = await analyze_text_structure(full_text, api_key)
-            
-            return (analysis_result, cleaned_image)
-            
-        except Exception as e:
-            logger.error(f"Page {page_num}: Hybrid pipeline error: {e}. Fallback to Vision.")
-            # Fall through to Vision
-    
-    # 3. [Path B] Global Fallback: Vision V2 (Scanned PDF or Native Fail)
+            logger.warning(f"Page {page_num}: Native processing failed ({e}). Fallback to Vision.")
+            # Fall through to Path B
+
+    # [Path B] Global Fallback: Vision V2 (Scanned PDF or Native Fail)
     try:
         # Parallel Analysis & Cleaning
+        # Use existing image passed from 'process_pdf_to_slides' loop (pdf2image result)
         analysis_task = analyze_slide_with_gemini(image, api_key)
         cleaning_task = remove_text_from_image(image, api_key, remove_icon)
         

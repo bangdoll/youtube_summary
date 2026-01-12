@@ -9,6 +9,7 @@ yt-dlp
 playwright
 google-genai>=0.2.0
 google-generativeai>=0.8.0 # Added for compatibility and stability
+pymupdf
 # Force Rebuild 2026-01-12
 pytest
 authlib

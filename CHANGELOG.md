@@ -1,3 +1,17 @@
+# Changelog
+
+## v4.0.0 (Native Vector Stripping) - 2026-01-12
+### 🚀 Major Architectural Change
+- **Vector-Level Text Stripping**: Replaced `pypdf` + `Masking` + `Inpainting` with `PyMuPDF` Vector Stripping.
+    - **Concept**: Instead of "removing" text, the system now renders the PDF page *suppressing* the text layer entirely.
+    - **Impact**: 100% text removal with zero artifacts. No "AI guessing" of the background. Original vector graphics, gradients, and images are preserved perfectly.
+    - **Performance**: Significant speedup by bypassing the Gemini Image Editing API for native PDFs.
+
+### 🛠 Improvements
+- **Robust Text Extraction**: Switched to PyMuPDF's advanced text extraction for better structure analysis.
+- **Fail-Safe Mechanism**: Retained Vision V2 pipeline as a fallback for Scanned/Image-based PDFs.
+- **Dependency Update**: Added `pymupdf` and `reportlab` (for verification).
+
 ## [v3.0.1] - 2026-01-12
 
 ### 🚨 嚴重錯誤修復 (Critical Fixes)
