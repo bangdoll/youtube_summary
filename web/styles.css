@@ -1723,9 +1723,10 @@ button#submitBtn:disabled {
         min-height: 300px;
     }
 }
+
 /* Title Logo */
 .hero-logo {
-    height: 1.6em;
+    height: 2.2em;
     width: auto;
     vertical-align: middle;
     margin-right: 12px;
@@ -1735,7 +1736,7 @@ button#submitBtn:disabled {
 
 @media (max-width: 768px) {
     .hero-logo {
-        height: 2.2em;
+        height: 2.8em;
         margin-right: 8px;
         margin-bottom: 6px;
     }
