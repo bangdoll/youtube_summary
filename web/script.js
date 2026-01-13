@@ -745,6 +745,19 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.addEventListener('click', () => startAnalysis());
     }
 
+    // [Fix] Re-attach Event Listeners for Tabs
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // Prevent default just in case
+            e.preventDefault();
+            const target = btn.getAttribute('data-target');
+            if (target) {
+                window.switchTab(target);
+            }
+        });
+    });
+
     // Load API Keys from local storage
     try {
         if (typeof window.loadSettings === 'function') {
