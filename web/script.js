@@ -742,10 +742,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const openaiKeyInput = document.getElementById('openaiKeyInput');
 
     // Load API Keys from local storage
-    loadSettings();
+    try {
+        if (typeof window.loadSettings === 'function') {
+            window.loadSettings();
+        } else {
+            console.error("window.loadSettings is not defined");
+        }
+    } catch (e) {
+        console.error("Failed to load settings:", e);
+    }
 
     // Check authentication on page load
-    checkAuth();
+    try {
+        if (typeof checkAuth === 'function') {
+            checkAuth();
+        } else {
+            // Fallback if checkAuth missing (e.g. syntax error prevented definition)
+            console.error("checkAuth not defined, forcing UI visible");
+            if (inputSection) inputSection.classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error("Error invoking checkAuth:", e);
+        if (inputSection) inputSection.classList.remove('hidden');
+    }
 
     async function checkAuth() {
         try {
