@@ -1735,9 +1735,21 @@ button#submitBtn:disabled {
 }
 
 @media (max-width: 768px) {
+
+    /* Mobile Header Layout: Stack Logo and Text */
+    header h1 {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
     .hero-logo {
-        height: 2.8em;
-        margin-right: 8px;
-        margin-bottom: 6px;
+        height: 6em;
+        /* Big Logo on Mobile */
+        width: auto;
+        margin-right: 0;
+        margin-bottom: 10px;
+        display: block;
     }
 }
