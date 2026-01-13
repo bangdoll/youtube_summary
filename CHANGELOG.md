@@ -1,5 +1,12 @@
 # Changelog
 
+## [v6.2.1] - 2026-01-13
+### 🚑 Hotfixes (UI Resilience)
+- **Emergency UI Unlocker**: 新增「緊急解鎖」機制，若 JavaScript 初始化因網路或瀏覽器問題超過 1.5 秒未完成，將強制顯示輸入介面，確保功能可用。
+- **Auth Timeout**: 對身份驗證檢查加入 3 秒強制超時 (AbortController)，防止連線掛起導致畫面卡在 Loading。
+- **Button Fix**: 重新綁定了「開始分析」按鈕的點擊事件，修復了點擊無反應的問題。
+- **Initialization**: 強化了啟動流程的錯誤處理 (Try-Catch)，避免單一錯誤導致整個應用白屏。
+
 ## [v6.2.0] - 2026-01-13
 
 ### 📐 藍圖向量化 (Blueprint Vectorization)
