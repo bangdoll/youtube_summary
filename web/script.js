@@ -768,7 +768,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function checkAuth() {
         try {
-            const res = await fetch('/api/check-auth');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+            const res = await fetch('/api/check-auth', { signal: controller.signal });
+            clearTimeout(timeoutId);
             const data = await res.json();
 
             if (data.auth_required && !data.logged_in) {
