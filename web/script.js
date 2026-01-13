@@ -741,6 +741,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const geminiKeyInput = document.getElementById('geminiKeyInput');
     const openaiKeyInput = document.getElementById('openaiKeyInput');
 
+    if (submitBtn) {
+        submitBtn.addEventListener('click', () => startAnalysis());
+    }
+
     // Load API Keys from local storage
     try {
         if (typeof window.loadSettings === 'function') {
