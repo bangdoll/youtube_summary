@@ -738,8 +738,9 @@ def vectorize_image_to_svg(pil_image):
         # -s: SVG backend
         # --alphamax 0.2: Slightly smooth curves
         # -k 0.5: Black level
+        # [v6.2.1] Add timeout to prevent hanging
         cmd = ["potrace", bmp_path, "-s", "-o", svg_path, "--alphamax", "0.2"]
-        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
         
         # Cleanup BMP
         if os.path.exists(bmp_path):

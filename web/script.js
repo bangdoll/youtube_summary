@@ -360,11 +360,23 @@ window.generatePresentations = async function () {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            // Handle Pydantic 422 Validation Errors
-            let errorMsg = err.error || '生成失敗';
-            if (!err.error && err.detail) {
-                errorMsg = `資料格式錯 (422): ${JSON.stringify(err.detail)}`;
+            let errorMsg = '生成失敗';
+            const text = await response.text();
+            try {
+                const err = JSON.parse(text);
+                errorMsg = err.error || err.detail || errorMsg;
+                if (err.detail && typeof err.detail === 'object') {
+                    errorMsg = `資料格式錯 (422): ${JSON.stringify(err.detail)}`;
+                }
+            } catch (e) {
+                console.error("Server returned non-JSON:", text);
+                // Extract title from HTML if possible (e.g. 504 Gateway Timeout)
+                const match = text.match(/<title>(.*?)<\/title>/i);
+                if (match) {
+                    errorMsg = `伺服器錯誤: ${match[1]}`;
+                } else {
+                    errorMsg = `伺服器回傳無效內容 (${response.status})`;
+                }
             }
             throw new Error(errorMsg);
         }
