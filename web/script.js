@@ -742,39 +742,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const openaiKeyInput = document.getElementById('openaiKeyInput');
 
     // [Fix] Re-attach Event Listeners for Settings Button
+    // [Fix] Re-attach Event Listeners for Settings Button
+    // Nuclear Option: Use both addEventListener and onclick property to ensure binding
+    console.log("Binding UI Events (v2.10.7)...");
+
     if (settingsBtn) {
-        settingsBtn.addEventListener('click', () => {
-            if (window.openSettings) window.openSettings();
-        });
+        const handler = () => { console.log("Settings Clicked"); if (window.openSettings) window.openSettings(); };
+        settingsBtn.onclick = handler;
+        settingsBtn.addEventListener('click', handler);
     }
 
     if (closeSettingsBtn) {
-        closeSettingsBtn.addEventListener('click', () => {
-            if (window.closeSettings) window.closeSettings();
-        });
+        const handler = () => { if (window.closeSettings) window.closeSettings(); };
+        closeSettingsBtn.onclick = handler;
     }
 
     if (saveSettingsBtn) {
-        saveSettingsBtn.addEventListener('click', () => {
-            if (window.saveSettings) window.saveSettings();
-        });
+        const handler = () => { if (window.saveSettings) window.saveSettings(); };
+        saveSettingsBtn.onclick = handler;
     }
 
     if (submitBtn) {
-        submitBtn.addEventListener('click', () => startAnalysis());
+        console.log("Binding Submit Button...");
+        const handler = () => { console.log("Submit Clicked"); startAnalysis(); };
+        submitBtn.onclick = handler;
+        submitBtn.addEventListener('click', handler);
     }
 
     // [Fix] Re-attach Event Listeners for Tabs
     const tabBtns = document.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            // Prevent default just in case
+        const handler = (e) => {
+            console.log("Tab Clicked:", btn.getAttribute('data-target'));
             e.preventDefault();
             const target = btn.getAttribute('data-target');
-            if (target) {
+            if (target && window.switchTab) {
                 window.switchTab(target);
+            } else {
+                console.error("switchTab func or target missing");
             }
-        });
+        };
+        btn.onclick = handler;
+        btn.addEventListener('click', handler);
     });
 
     // Load API Keys from local storage
