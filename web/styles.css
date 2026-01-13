@@ -1732,6 +1732,8 @@ button#submitBtn:disabled {
     margin-right: 12px;
     margin-bottom: 8px;
     filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.5));
+    mix-blend-mode: screen;
+    /* Magic fix for black background */
 }
 
 @media (max-width: 768px) {
