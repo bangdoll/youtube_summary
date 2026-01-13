@@ -646,11 +646,35 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
         
         if USE_RECONSTRUCTION:
             analysis_result["reconstruction_mode"] = True
-            # [v6.1 Fix] Return a White Blank Image instead of None
-            # This ensures the Web Editor has a valid preview to show (Clean State)
-            # and prevents "NoneType" errors in main.py
+            # [v6.1 Fix] Return a White Blank Image WITH Visual Elements
+            # This ensures the Web Editor has a valid preview to show (WYSIWYG)
             cleaned_image = Image.new('RGB', image.size, (255, 255, 255))
-            logger.info(f"Page {page_num}: Reconstruction Mode Active. Created White Blank Image for Preview.")
+            
+            # Composite visual crops onto the white background
+            for i, crop in enumerate(visual_crops):
+                if crop:
+                    try:
+                        bbox = visual_elements[i].get('bbox', [0,0,0,0])
+                        ymin, xmin, ymax, xmax = bbox
+                        
+                        # Calculate pixel position
+                        left = int(xmin / 1000 * image.width)
+                        top = int(ymin / 1000 * image.height)
+                        
+                        # Resize crop if needed to match bbox size (due to crop extraction logic nuances)
+                        # Normally crop size matches bbox implies, but let's be safe or just paste
+                        # For now, simple paste.
+                        
+                        # Handle Transparency
+                        if crop.mode in ('RGBA', 'LA'):
+                             cleaned_image.paste(crop, (left, top), mask=crop)
+                        else:
+                             cleaned_image.paste(crop, (left, top))
+                             
+                    except Exception as e:
+                        logger.warning(f"Failed to composite visual element {i} onto preview: {e}")
+            
+            logger.info(f"Page {page_num}: Reconstruction Mode Active. Created Composited White Image for Preview.")
         else:
             # [Legacy Path] Patch & Inpaint
             # 2. Patch Text Areas AND Visual Areas (Deterministic Masking)
