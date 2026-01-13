@@ -1,5 +1,10 @@
 # Changelog
 
+## [v6.2.2] - 2026-01-13
+### 🚑 Hotfixes (Interactivity)
+- **Global Event Binding**: 全面棄用 HTML Inline `onclick`，改為在 JavaScript 初始化時顯式綁定 (AddEventListener)，徹底解決按鈕無反應問題。
+- **Fixed Targets**: 修復了 Tab 切換、設定 (API Key) 按鈕、以及開始分析按鈕的事件監聽。
+
 ## [v6.2.1] - 2026-01-13
 ### 🚑 Hotfixes (UI Resilience)
 - **Emergency UI Unlocker**: 新增「緊急解鎖」機制，若 JavaScript 初始化因網路或瀏覽器問題超過 1.5 秒未完成，將強制顯示輸入介面，確保功能可用。
