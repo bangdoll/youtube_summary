@@ -830,6 +830,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // [v6.2.2] Check API Keys
+        const geminiKey = localStorage.getItem('gemini_api_key') || "";
+        const openaiKey = localStorage.getItem('openai_api_key') || "";
+
+        if (!geminiKey && !openaiKey) {
+            const proceed = confirm('您尚未設定任何 API Key (Gemini/OpenAI)。\n\n如果伺服器有設定環境變數，將自動使用伺服器金鑰。\n否則分析將會失敗。\n\n是否繼續？\n（建議先點擊右上角「設定 API Key」按鈕設定您的金鑰）');
+            if (!proceed) {
+                return;
+            }
+        }
+
         // Reset UI
         statusSection.classList.remove('hidden');
         resultSection.classList.add('hidden');
