@@ -741,6 +741,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const geminiKeyInput = document.getElementById('geminiKeyInput');
     const openaiKeyInput = document.getElementById('openaiKeyInput');
 
+    // [Fix] Re-attach Event Listeners for Settings Button
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            if (window.openSettings) window.openSettings();
+        });
+    }
+
+    if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', () => {
+            if (window.closeSettings) window.closeSettings();
+        });
+    }
+
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', () => {
+            if (window.saveSettings) window.saveSettings();
+        });
+    }
+
     if (submitBtn) {
         submitBtn.addEventListener('click', () => startAnalysis());
     }
