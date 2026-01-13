@@ -43,7 +43,7 @@ window.switchTab = function (targetMode) {
         // 隱藏 NotebookLM 比較區塊 (只在 YouTube 模式顯示)
         if (youtubeComparison) youtubeComparison.classList.add('hidden');
     } else {
-        if (appSubtitle) appSubtitle.textContent = "稜鏡流 PrismFlow｜將知識從零散資料轉換為結構化的智慧輸出，輕鬆生成可編輯的簡報內容。";
+        if (appSubtitle) appSubtitle.textContent = "將知識從零散資料轉換為結構化的智慧輸出，輕鬆生成可編輯的簡報內容。";
         // 切換特色區塊
         if (youtubeFeatures) youtubeFeatures.classList.remove('hidden');
         if (slideFeatures) slideFeatures.classList.add('hidden');
