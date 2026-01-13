@@ -1723,3 +1723,12 @@ button#submitBtn:disabled {
         min-height: 300px;
     }
 }
+/* Title Logo */
+.hero-logo {
+    height: 1.2em;
+    width: auto;
+    vertical-align: middle;
+    margin-right: 12px;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.5));
+}
