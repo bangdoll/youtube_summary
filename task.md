@@ -1,4 +1,4 @@
-# NoteFlux 品質優化與編輯器任務
+# PrismFlow Project Task List
 
 ## 階段一：禁用 OCR 定位 (已完成)
 - [x] 禁用 `text_elements` 邊界框定位

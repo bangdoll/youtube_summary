@@ -1,5 +1,11 @@
 # Changelog
 
+## [v6.2.3] - 2026-01-13
+### 🎨 Rebranding (全新品牌)
+- **Identity Shift**: 專案正式更名為 **PrismFlow (稜鏡流)**。
+- **Hero Statement**: 更新了產品定位——「將知識從零散資料轉換為結構化的智慧輸出，輕鬆生成可編輯的簡報內容。」
+- **UI Update**: 網頁介面、標題與歡迎語全面更新為新品牌識別。
+
 ## [v6.2.2] - 2026-01-13
 ### 🚑 Hotfixes (Interactivity)
 - **Global Event Binding**: 全面棄用 HTML Inline `onclick`，改為在 JavaScript 初始化時顯式綁定 (AddEventListener)，徹底解決按鈕無反應問題。

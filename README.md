@@ -1,7 +1,7 @@
-# 🧠 Second Brain OS (原: Youtube 智慧大腦)
+# 🌈 PrismFlow (原: Second Brain OS)
 
-> **Unlock the Wisdom of Content.**
-> 不僅僅是摘要。這是您的第二大腦作業系統，將雜亂的影音與原本內容轉化為可執行的結構化洞察。
+> **Refracting Chaos into Clarity.**
+> 稜鏡流 PrismFlow｜將知識從零散資料轉換為結構化的智慧輸出，輕鬆生成可編輯的簡報內容。
 
 ## ✨ 核心特色 (Unique Selling Points)
 
