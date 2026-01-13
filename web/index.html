@@ -499,7 +499,27 @@
         </section>
     </main>
 
-    <script src="/static/script.js?v=2.10.4"></script>
+    <script src="/static/script.js?v=2.10.5"></script>
+    <script>
+        // [Safety Net] Emergency UI Unlocker
+        // If script.js fails to load or checkAuth hangs, force the UI to appear after 1.5s
+        setTimeout(() => {
+            const inputSection = document.getElementById('inputSection');
+            const landingSection = document.getElementById('landingSection');
+            const loginModal = document.getElementById('loginModal');
+
+            // If Input is still hidden and Login is hidden (meaning we are stuck in limbo)
+            if (inputSection && inputSection.classList.contains('hidden')) {
+                console.warn("⚠️ Emergency UI Unlock triggered (Script load timeout)");
+
+                // Hide Landing (Visitor Mode)
+                if (landingSection) landingSection.classList.add('hidden');
+
+                // Show Input (User Mode)
+                inputSection.classList.remove('hidden');
+            }
+        }, 1500);
+    </script>
 </body>
 
 </html>
