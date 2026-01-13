@@ -926,9 +926,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Connect to SSE (session-based auth, no password needed)
         // Connect to SSE (session-based auth, no password needed)
-        // Inject API Keys from Local Storage
-        const geminiKey = localStorage.getItem('gemini_api_key') || "";
-        const openaiKey = localStorage.getItem('openai_api_key') || "";
+        // Keys already retrieved above (geminiKey, openaiKey)
 
         const sseUrl = `/api/summarize?url=${encodeURIComponent(url)}&gemini_key=${encodeURIComponent(geminiKey)}&openai_key=${encodeURIComponent(openaiKey)}`;
         currentEventSource = new EventSource(sseUrl);
@@ -1018,7 +1016,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // === Mode Switching & Slide Generator logic ===
-    const tabBtns = document.querySelectorAll('.tab-btn');
     const modeContents = document.querySelectorAll('.mode-content');
 
     // Slide Gen Elements
@@ -1037,12 +1034,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Keep existing listeners as backup, but inline onclick in HTML will take precedence
     // Keep existing listeners as backup
     // tabBtns is already defined above
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const target = btn.getAttribute('data-target');
-            if (target) window.switchTab(target);
-        });
-    });
+    // Keep existing listeners as backup
+    // (Redundant loop removed to prevent double-firing)
 
     // File Upload Handling - REMOVED (Moved to Global)
     // if (dropZone) { ... }
