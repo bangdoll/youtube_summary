@@ -1,11 +1,15 @@
 # Changelog
 
 ## [v6.2.3] - 2026-01-13
-### 🎨 Rebranding (全新品牌)
-- **Identity Shift**: 專案正式更名為 **PrismFlow (稜鏡流)**。
-- **Visual Identity**: 新增全新的 **PrismFlow Logo** 為網站 Icon。 (針對手機主畫面優化的純符號版；網頁標題使用去背融合版)
-- **Hero Statement**: 更新了產品定位——「將知識從零散資料轉換為結構化的智慧輸出，輕鬆生成可編輯的簡報內容。」
-- **UI Update**: 網頁介面、標題與歡迎語全面更新為新品牌識別。
+### 🎨 Rebranding & UI Polish (全新品牌與介面優化)
+- **Identity Shift**: 專案正式更名為 **PrismFlow (稜鏡流)**，象徵將混亂資訊轉化為結構化智慧。
+- **Visual Identity**:
+    - **Mobile App Icon**: 新增純符號版 (Symbol Only) Prism Logo，針對手機主畫面優化，視覺更清晰。
+    - **Web Header Logo**: 新增透明背景去字版 (No Text/Transparent) Logo，完美融合網頁深色背景。
+    - **Logo Size**: 全面放大 Logo 尺寸 (Desktop 2.2em / Mobile 2.8em)，提升品牌辨識度。
+- **Hero Statement**: 更新並精簡產品定位——「將零散知識結構化，輕鬆生成可編輯簡報。」
+- **UI Interaction**: 修復按鈕點擊無反應問題 (`SyntaxError` fix)，改採用雙重綁定 (Dual Binding) 機制確保互動穩定性。
+- **Deployment**: 解決 Cloud Run 部署衝突 (Concurrency Conflict)，優化部署流程。
 
 ## [v6.2.2] - 2026-01-13
 ### 🚑 Hotfixes (Interactivity)

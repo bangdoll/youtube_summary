@@ -1,7 +1,7 @@
 # 🌈 PrismFlow (原: Second Brain OS)
 
 > **Refracting Chaos into Clarity.**
-> 稜鏡流 PrismFlow｜將知識從零散資料轉換為結構化的智慧輸出，輕鬆生成可編輯的簡報內容。
+> 稜鏡流 PrismFlow｜將零散知識結構化，輕鬆生成可編輯簡報。
 
 ## ✨ 核心特色 (Unique Selling Points)
 
