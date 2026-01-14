@@ -5,11 +5,14 @@
 - **Identity Shift**: 專案正式更名為 **PrismFlow (稜鏡流)**，象徵將混亂資訊轉化為結構化智慧。
 - **Visual Identity**:
     - **Mobile App Icon**: 新增純符號版 (Symbol Only) Prism Logo，針對手機主畫面優化，視覺更清晰。
-    - **Web Header Logo**: 新增透明背景去字版 (No Text/Transparent) Logo，完美融合網頁深色背景。
-    - **Logo Size**: 全面放大 Logo 尺寸 (Desktop 2.2em / Mobile 2.8em)，提升品牌辨識度。
-- **Hero Statement**: 更新並精簡產品定位——「將零散知識結構化，輕鬆生成可編輯簡報。」
-- **UI Interaction**: 修復按鈕點擊無反應問題 (`SyntaxError` fix)，改採用雙重綁定 (Dual Binding) 機制確保互動穩定性。
-- **Deployment**: 解決 Cloud Run 部署衝突 (Concurrency Conflict)，優化部署流程。
+    - **Web Header Logo**: 還原使用者指定的透明背景 (Transparent) Logo，保留原始電路紋路風格，並移除 CSS 濾鏡以還原真實色彩。
+    - **Logo Layout**: 手機版採用「垂直堆疊 (Vertical Stack)」排版，將 Logo 放大至 `6em` 並置中，徹底解決圖片擠壓文字的問題。
+- **PWA / App Icon Fix**:
+    - **Manifest**: 新增 `manifest.json` 定義標準 PWA 圖示 (192x/512x)。
+    - **Cache Busting**: 為 Icon 連結加入版本參數 (`?v=3`)，強制 iOS 刷新快取，解決 Logo 顯示為預設文字的問題。
+- **UI Polish**:
+    - **Browser Title**: 修正瀏覽器標題 (`<title>`)，移除多餘的結尾句號。
+    - **Deployment**: 解決 Cloud Run 部署衝突 (Concurrency Conflict)，優化部署流程。
 
 ## [v6.2.2] - 2026-01-13
 ### 🚑 Hotfixes (Interactivity)
