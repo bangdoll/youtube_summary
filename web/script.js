@@ -344,7 +344,6 @@ window.generatePresentations = async function () {
     btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
 
     try {
-    try {
         // [v6.2.3 Fix] Client-Side Compression to prevent 413 Errors
         const compressedImages = await Promise.all(editorData.cleanedImages.map(async (imgStr) => {
             if (!imgStr || !imgStr.startsWith('data:image')) return imgStr;
