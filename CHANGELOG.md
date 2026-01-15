@@ -1,5 +1,15 @@
 # Changelog
 
+## [v6.2.4] - 2026-01-15
+### 🚑 Stability Fix (413 Payload & OCR)
+- **Fix 413 Payload Too Large**: 
+    - **Frontend**: 實作客戶端圖片壓縮 (Client-Side Compression)，在上傳前自動將投影片縮放至 **HD (1280px)** 並套用 **JPEG 70%** 壓縮，傳輸量減少 80%。
+    - **Backend**: 同步調整後端分析與生成流程的圖片上限為 1280px，確保雙向傳輸皆符合 Cloud Run 32MB 限制。
+- **OCR Engine Upgrade (Prototype)**:
+    - **No Hard Threshold**: 廢除暴力二值化 (Binarization)，改用 **智慧灰階濾鏡 (Smart Grayscale)**，完美保留彩色背景文字。
+    - **Dual Core**: 恢復 **chi_tra+eng** 雙語模式，解決英文亂碼問題。
+    - **Layout Mode**: 針對複雜圖表切換至 **PSM 11 (Sparse Text)**，解決文字錯位與鬼影問題。
+
 ## [v6.2.3] - 2026-01-13
 ### 🎨 Rebranding & UI Polish (全新品牌與介面優化)
 - **Identity Shift**: 專案正式更名為 **PrismFlow (稜鏡流)**，象徵將混亂資訊轉化為結構化智慧。

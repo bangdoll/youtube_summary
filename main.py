@@ -436,12 +436,12 @@ async def analyze_slides(
                         
                     # Convert to Base64
                     def image_to_base64(pil_img):
-                        # Resize if too large (Max 1600px) to reduce payload
-                        pil_img.thumbnail((1600, 1600)) 
+                        # Resize if too large (Max 1280px) to reduce payload
+                        pil_img.thumbnail((1280, 1280)) 
                         
                         buffered = io.BytesIO()
-                        # Optimize JPEG size
-                        pil_img.save(buffered, format="JPEG", quality=80, optimize=True)
+                        # Optimize JPEG size (Quality 70 is good balance)
+                        pil_img.save(buffered, format="JPEG", quality=70, optimize=True)
                         return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
                     b64_str = await loop.run_in_executor(None, image_to_base64, img)

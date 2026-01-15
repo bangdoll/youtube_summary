@@ -344,10 +344,37 @@ window.generatePresentations = async function () {
     btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
 
     try {
-        // Fix Schema Mismatch: Backend expects snake_case for Pydantic
+    try {
+        // [v6.2.3 Fix] Client-Side Compression to prevent 413 Errors
+        const compressedImages = await Promise.all(editorData.cleanedImages.map(async (imgStr) => {
+            if (!imgStr || !imgStr.startsWith('data:image')) return imgStr;
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width;
+                    let h = img.height;
+                    const maxDim = 1280; // HD Limitation
+                    if (w > maxDim || h > maxDim) {
+                        const ratio = Math.min(maxDim / w, maxDim / h);
+                        w *= ratio;
+                        h *= ratio;
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    // Aggressive compression (0.7)
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.onerror = () => resolve(imgStr); // Fallback
+                img.src = imgStr;
+            });
+        }));
+
         const payload = {
             analyses: editorData.analyses,
-            cleaned_images: editorData.cleanedImages,
+            cleaned_images: compressedImages,
             filename: editorData.filename
         };
 
