@@ -10,6 +10,11 @@
     - **Dual Core**: 恢復 **chi_tra+eng** 雙語模式，解決英文亂碼問題。
     - **Layout Mode**: 針對複雜圖表切換至 **PSM 11 (Sparse Text)**，解決文字錯位與鬼影問題。
 
+### 🚑 UI Hotfix (Mobile)
+- **Settings Button**: 
+    - 修正手機版右上角按鈕「無法點擊」的問題。
+    - 增加 `z-index` 至 9999 並支援 `safe-area-inset-top` 以避開動態島 (Dynamic Island) 與狀態列。
+
 ## [v6.2.3] - 2026-01-13
 ### 🎨 Rebranding & UI Polish (全新品牌與介面優化)
 - **Identity Shift**: 專案正式更名為 **PrismFlow (稜鏡流)**，象徵將混亂資訊轉化為結構化智慧。
