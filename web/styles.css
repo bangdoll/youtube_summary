@@ -1145,6 +1145,8 @@ button#submitBtn:disabled {
 
 /* Mode Tabs - Premium Redesign */
 .mode-tabs {
+    display: flex;
+    /* Fix: Horizontal Layout */
     justify-content: center;
     gap: 0.5rem;
     margin-bottom: 2.5rem;
@@ -1157,7 +1159,10 @@ button#submitBtn:disabled {
     margin-right: auto;
     border: 1px solid rgba(255, 255, 255, 0.1);
     pointer-events: auto;
-    /* Ensure wrapper receives events if needed, though buttons handle it */
+    border-radius: 12px;
+    /* Add radius for better look */
+    flex-wrap: wrap;
+    /* Allow wrap on very small screens */
 }
 
 .tab-btn {
