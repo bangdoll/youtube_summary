@@ -503,6 +503,10 @@ async def generate_slides_data(
     [Web Editor Step 2] 接收前端編輯後的 JSON 資料與圖片路徑，生成 PPTX。
     """
     try:
+        # [v6.3 Debug] Log Payload Size
+        total_img_chars = sum(len(img) for img in data.cleaned_images)
+        print(f"[Generate Slides] Received {len(data.cleaned_images)} images. Total payload approx: {total_img_chars / 1024 / 1024:.2f} MB")
+
         # 1. 還原圖片物件 (從 Base64 讀取)
         pil_images = []
         for img_str in data.cleaned_images:
