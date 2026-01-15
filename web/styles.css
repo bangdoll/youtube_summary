@@ -39,6 +39,7 @@ body {
     background: radial-gradient(circle at center, rgba(139, 92, 246, 0.15) 0%, rgba(5, 5, 5, 0) 50%);
     z-index: -2;
     animation: pulse 10s ease-in-out infinite;
+    pointer-events: none;
 }
 
 .bg-grid {
@@ -53,6 +54,7 @@ body {
     background-size: 50px 50px;
     z-index: -1;
     mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+    pointer-events: none;
 }
 
 @keyframes pulse {
@@ -69,17 +71,26 @@ body {
     }
 }
 
-.container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 4rem 1.5rem;
+max-width: 900px;
+margin: 0 auto;
+padding: 4rem 1.5rem;
+position: relative;
+z-index: 10;
 }
 
 /* Header */
-header {
-    text-align: center;
-    margin-bottom: 3rem;
-    animation: fadeInDown 1s ease-out;
+text-align: center;
+margin-bottom: 3rem;
+animation: fadeInDown 1s ease-out;
+position: relative;
+z-index: 5;
+pointer-events: none;
+}
+
+header h1,
+header p,
+header .badge {
+    pointer-events: auto;
 }
 
 .badge {
@@ -1106,13 +1117,13 @@ button#submitBtn:disabled {
 
 /* Mode Tabs - Premium Redesign */
 .mode-tabs {
-    display: flex;
     justify-content: center;
     gap: 0.5rem;
     margin-bottom: 2.5rem;
     background: rgba(255, 255, 255, 0.05);
     padding: 0.4rem;
-    border-radius: 12px;
+    position: relative;
+    z-index: 20;
     width: fit-content;
     margin-left: auto;
     margin-right: auto;

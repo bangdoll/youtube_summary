@@ -14,6 +14,10 @@
 - **Settings Button**: 
     - 修正手機版右上角按鈕「無法點擊」的問題。
     - 增加 `z-index` 至 9999 並支援 `safe-area-inset-top` 以避開動態島 (Dynamic Island) 與狀態列。
+- **Global Touch Fix**:
+    - **Header Overlay**: 修正頁首 (Header) 隱形區域遮擋住下方功能切換按鈕的問題。
+    - **Background Pass-through**: 強制對背景特效 (`.bg-glow`) 啟用 `pointer-events: none`，確保所有點擊都能穿透至互動元件。
+    - **Z-Index Strategy**: 全面提升內容層級 (`.container` z=10, Tabs z=20)，確保互動元素永遠在最上層。
 
 ## [v6.2.3] - 2026-01-13
 ### 🎨 Rebranding & UI Polish (全新品牌與介面優化)
