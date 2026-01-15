@@ -71,20 +71,24 @@ body {
     }
 }
 
-max-width: 900px;
-margin: 0 auto;
-padding: 4rem 1.5rem;
-position: relative;
-z-index: 10;
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem;
+    position: relative;
+    z-index: 10;
 }
 
 /* Header */
-text-align: center;
-margin-bottom: 3rem;
-animation: fadeInDown 1s ease-out;
-position: relative;
-z-index: 5;
-pointer-events: none;
+
+header {
+    text-align: center;
+    margin-bottom: 3rem;
+    animation: fadeInDown 1s ease-out;
+    position: relative;
+    z-index: 5;
+    pointer-events: none;
 }
 
 header h1,
@@ -131,6 +135,9 @@ h1 {
 .input-section {
     margin-bottom: 2rem;
     animation: fadeInUp 1s ease-out 0.2s backwards;
+    position: relative;
+    z-index: 30;
+    /* Ensure it stays above header elements */
 }
 
 .input-wrapper {
@@ -139,6 +146,7 @@ h1 {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     padding: 0.5rem;
+
     display: flex;
     align-items: center;
     transition: all 0.3s ease;
@@ -731,6 +739,25 @@ button#submitBtn:disabled {
     color: #ff5555;
 }
 
+/* Mobile Touch Improvement for Settings Button */
+@media (max-width: 600px) {
+    .settings-btn {
+        height: 40px;
+        /* Increase from 36px */
+        padding: 0 20px;
+        background: rgba(255, 255, 255, 0.15);
+        /* Slightly more visible */
+    }
+
+    .user-bar {
+        /* Ensure top spacing prevents notching interference */
+        top: max(16px, env(safe-area-inset-top) + 8px);
+        right: 16px;
+        z-index: 99999;
+        /* Force On Top */
+    }
+}
+
 /* Landing Page Extensions */
 .landing-section {
     display: flex;
@@ -1129,13 +1156,16 @@ button#submitBtn:disabled {
     margin-left: auto;
     margin-right: auto;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    pointer-events: auto;
+    /* Ensure wrapper receives events if needed, though buttons handle it */
 }
 
 .tab-btn {
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    padding: 0.6rem 1.2rem;
+    padding: 0.8rem 1.5rem;
+    /* Increased padding for better touch */
     border-radius: 8px;
     cursor: pointer;
     font-size: 0.95rem;
@@ -1147,6 +1177,9 @@ button#submitBtn:disabled {
     position: relative;
     overflow: hidden;
     pointer-events: auto;
+    /* Explicitly enable pointer events */
+    min-height: 44px;
+    /* Mobile Friendly Minimum Height */
 }
 
 .tab-btn:hover {
