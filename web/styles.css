@@ -1010,6 +1010,7 @@ button#submitBtn:disabled {
     /* Ensure content is centered */
     gap: 8px;
     line-height: normal;
+    pointer-events: auto;
 }
 
 .settings-btn:hover {
@@ -1145,6 +1146,7 @@ button#submitBtn:disabled {
     gap: 0.5rem;
     position: relative;
     overflow: hidden;
+    pointer-events: auto;
 }
 
 .tab-btn:hover {
