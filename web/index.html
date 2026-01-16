@@ -333,6 +333,18 @@
                             <textarea id="editContent" rows="10" placeholder="輸入重點 (每行一點)..."></textarea>
                             <small>提示：每一行將會轉為一個條列項目</small>
                         </div>
+
+                        <!-- Phase 2: Detail Panel -->
+                        <details class="elements-panel" id="elementsPanel">
+                            <summary>
+                                <i class="ri-layout-masonry-line"></i>
+                                <span>區塊詳情 (Font Matching)</span>
+                                <span class="elements-count" id="elementsCount">0 個區塊</span>
+                            </summary>
+                            <div class="elements-list" id="elementsList">
+                                <!-- 動態生成 -->
+                            </div>
+                        </details>
                     </div>
                 </div>
             </div>
@@ -507,7 +519,7 @@
         </section>
     </main>
 
-    <script src="/static/script.js?v=2.11.0"></script>
+    <script src="/static/script.js?v=2.11.1"></script>
     <script>
         // [Safety Net] Emergency UI Unlocker
         // If script.js fails to load or checkAuth hangs, force the UI to appear after 1.5s

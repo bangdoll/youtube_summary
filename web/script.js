@@ -302,6 +302,9 @@ window.updateEditorUI = function () {
     if (imgEl && imgEl.complete) {
         window.renderBBoxOverlay();
     }
+
+    // 渲染區塊詳情面板
+    window.renderElementsPanel();
 }
 
 // 繪製 AI 識別的 Bounding Boxes
@@ -374,6 +377,71 @@ window.renderBBoxOverlay = function () {
 // Toggle BBox Overlay 顯示/隱藏
 window.toggleBBoxOverlay = function () {
     window.renderBBoxOverlay();
+}
+
+// 渲染區塊詳情面板 (Phase 2)
+window.renderElementsPanel = function () {
+    const listEl = document.getElementById('elementsList');
+    const countEl = document.getElementById('elementsCount');
+
+    if (!listEl) return;
+
+    const currentData = editorData.analyses[currentEditIndex];
+    if (!currentData) {
+        listEl.innerHTML = '<div style="color: #888; padding: 8px;">無資料</div>';
+        if (countEl) countEl.textContent = '0 個區塊';
+        return;
+    }
+
+    const elements = currentData.elements || [];
+
+    if (countEl) countEl.textContent = `${elements.length} 個區塊`;
+
+    if (elements.length === 0) {
+        listEl.innerHTML = '<div style="color: #888; padding: 8px;">此頁無結構化區塊資料</div>';
+        return;
+    }
+
+    // 字體大小選項
+    const fontSizes = [12, 14, 16, 18, 20, 24, 28, 32, 36, 48];
+
+    let html = '';
+    elements.forEach((elem, idx) => {
+        const isTitle = elem.is_title ? 'is-title' : '';
+        const content = (elem.content || '').substring(0, 30) + ((elem.content || '').length > 30 ? '...' : '');
+        const fontSize = elem.font_size || 18;
+        const colorHex = elem.color_hex || '#ffffff';
+
+        html += `
+            <div class="element-item ${isTitle}" data-idx="${idx}">
+                <span class="element-idx">${idx + 1}</span>
+                <span class="element-text" title="${elem.content || ''}">${content || '(空白)'}</span>
+                <select onchange="updateElementFontSize(${idx}, this.value)">
+                    ${fontSizes.map(s => `<option value="${s}" ${s === fontSize ? 'selected' : ''}>${s}pt</option>`).join('')}
+                </select>
+                <input type="color" value="${colorHex}" onchange="updateElementColor(${idx}, this.value)" title="文字顏色">
+            </div>
+        `;
+    });
+
+    listEl.innerHTML = html;
+}
+
+// 更新區塊字體大小
+window.updateElementFontSize = function (idx, value) {
+    const currentData = editorData.analyses[currentEditIndex];
+    if (currentData && currentData.elements && currentData.elements[idx]) {
+        currentData.elements[idx].font_size = parseInt(value, 10);
+        window.renderBBoxOverlay(); // 更新 canvas 顯示
+    }
+}
+
+// 更新區塊顏色
+window.updateElementColor = function (idx, value) {
+    const currentData = editorData.analyses[currentEditIndex];
+    if (currentData && currentData.elements && currentData.elements[idx]) {
+        currentData.elements[idx].color_hex = value;
+    }
 }
 
 window.saveCurrentSlideData = function () {
