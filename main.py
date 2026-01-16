@@ -6,6 +6,7 @@ import logging
 import secrets
 import base64
 import io
+import time
 import pydantic
 from typing import List
 from PIL import Image
@@ -79,6 +80,10 @@ app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 # Lock for single-threaded execution
 processing_lock = asyncio.Lock()
+
+# [v7.0] Session storage for slide images (避免前端重傳圖片導致 413)
+# 格式: {session_id: {"images": [PIL.Image], "timestamp": float}}
+slide_sessions = {}
 
 
 def is_auth_enabled():
@@ -454,10 +459,22 @@ async def analyze_slides(
             
             await log("圖片處理完成，正在回傳結果...")
 
+            # [v7.0] 建立 Session 儲存圖片 (避免前端重傳)
+            session_id = secrets.token_hex(16)
+            slide_sessions[session_id] = {
+                "images": cleaned_images,  # PIL Images
+                "timestamp": time.time()
+            }
+            print(f"[Session] Created session: {session_id} with {len(cleaned_images)} images")
+
+            # 清理過期 session (30 分鐘)
+            cleanup_old_sessions()
+
             # Result
             await queue.put({
                 "analyses": analyses,
-                "cleaned_images": cleaned_image_urls
+                "cleaned_images": cleaned_image_urls,
+                "session_id": session_id  # 新增
             })
             
         except Exception as e:
@@ -491,8 +508,18 @@ async def analyze_slides(
 
 class GenerateSlidesRequest(pydantic.BaseModel):
     analyses: List[dict]
-    cleaned_images: List[str]  # 這裡接收的是圖片 URLPath
+    session_id: str = None  # [v7.0] 新增：從 session 取圖片
+    cleaned_images: List[str] = []  # 向後兼容，但優先用 session_id
     filename: str = "presentation"
+
+
+def cleanup_old_sessions():
+    """清理超過 30 分鐘的 session"""
+    now = time.time()
+    expired = [k for k, v in slide_sessions.items() if now - v["timestamp"] > 1800]
+    for k in expired:
+        del slide_sessions[k]
+        print(f"[Session] Expired: {k}")
 
 @app.post("/api/generate-slides-data")
 async def generate_slides_data(
@@ -503,41 +530,55 @@ async def generate_slides_data(
     [Web Editor Step 2] 接收前端編輯後的 JSON 資料與圖片路徑，生成 PPTX。
     """
     try:
-        # [v6.3 Debug] Log Payload Size
-        total_img_chars = sum(len(img) for img in data.cleaned_images)
-        print(f"[Generate Slides] Received {len(data.cleaned_images)} images. Total payload approx: {total_img_chars / 1024 / 1024:.2f} MB")
-
-        # 1. 還原圖片物件 (從 Base64 讀取)
         pil_images = []
-        for img_str in data.cleaned_images:
-            try:
-                if img_str.startswith("data:image"):
-                    # Parse Base64: data:image/jpeg;base64,.....
-                    header, encoded = img_str.split(",", 1)
-                    img_bytes = base64.b64decode(encoded)
-                    img = Image.open(io.BytesIO(img_bytes))
-                    # FORCE RGB: PPTX/JPEG saving fails with RGBA/P modes
-                    if img.mode != 'RGB':
-                        img = img.convert('RGB')
-                    pil_images.append(img)
-                else:
-                    # Legacy or Error Placeholder
-                    # 若是 URL 路徑 (舊版相容)，嘗試讀取 (但在 Cloud Run 上可能已過期)
-                    if img_str.startswith("/static/temp/"):
-                        filename = os.path.basename(img_str)
-                        file_path = os.path.join(TEMP_DIR, filename)
-                        if os.path.exists(file_path):
-                            img = Image.open(file_path)
-                            if img.mode != 'RGB': img = img.convert('RGB')
-                            pil_images.append(img)
-                        else:
-                             # 找不到檔案，給白圖
-                             pil_images.append(Image.new('RGB', (1024, 768), 'white'))
+
+        # [v7.0] 優先使用 session_id 取圖片
+        if data.session_id and data.session_id in slide_sessions:
+            session = slide_sessions[data.session_id]
+            pil_images = session["images"]
+            print(f"[Generate Slides] Using session: {data.session_id}, {len(pil_images)} images")
+            
+            # 確保轉為 RGB
+            for i, img in enumerate(pil_images):
+                if img is None:
+                    pil_images[i] = Image.new('RGB', (1600, 900), (255, 255, 255))
+                elif img.mode != 'RGB':
+                    pil_images[i] = img.convert('RGB')
+        
+        # 向後兼容：如果沒有 session_id 但有 cleaned_images
+        elif data.cleaned_images:
+            print(f"[Generate Slides] Fallback: Using Base64 images ({len(data.cleaned_images)} images)")
+            for img_str in data.cleaned_images:
+                try:
+                    if img_str.startswith("data:image"):
+                        # Parse Base64: data:image/jpeg;base64,.....
+                        header, encoded = img_str.split(",", 1)
+                        img_bytes = base64.b64decode(encoded)
+                        img = Image.open(io.BytesIO(img_bytes))
+                        # FORCE RGB: PPTX/JPEG saving fails with RGBA/P modes
+                        if img.mode != 'RGB':
+                            img = img.convert('RGB')
+                        pil_images.append(img)
                     else:
-                        pil_images.append(Image.new('RGB', (1024, 768), 'white'))
-            except Exception as e:
-                print(f"Image decode failed: {e}")
-                pil_images.append(Image.new('RGB', (1024, 768), 'white'))
+                        # Legacy or Error Placeholder
+                        if img_str.startswith("/static/temp/"):
+                            filename = os.path.basename(img_str)
+                            file_path = os.path.join(TEMP_DIR, filename)
+                            if os.path.exists(file_path):
+                                img = Image.open(file_path)
+                                if img.mode != 'RGB': img = img.convert('RGB')
+                                pil_images.append(img)
+                            else:
+                                pil_images.append(Image.new('RGB', (1024, 768), 'white'))
+                        else:
+                            pil_images.append(Image.new('RGB', (1024, 768), 'white'))
+                except Exception as e:
+                    print(f"Image decode failed: {e}")
+                    pil_images.append(Image.new('RGB', (1024, 768), 'white'))
+        
+        # 如果都沒有圖片，報錯
+        if not pil_images:
+            return JSONResponse(status_code=400, content={"error": "Session 已過期或無圖片資料，請重新分析"})
 
         # 2. 生成 PPTX
         output_dir = os.path.join(TEMP_DIR, "slides")

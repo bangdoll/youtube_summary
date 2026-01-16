@@ -235,6 +235,7 @@ window.generateSlides = async function (btnElement) {
         // Initialize Editor State
         editorData.analyses = result.analyses;
         editorData.cleanedImages = result.cleaned_images;
+        editorData.sessionId = result.session_id;  // [v7.0] 儲存 session_id
         editorData.filename = file.name;
         currentEditIndex = 0;
 
@@ -522,9 +523,10 @@ window.generatePresentations = async function () {
             });
         }));
 
+        // [v7.0] 使用 session_id 取代圖片傳輸，從根本解決 413 Payload 問題
         const payload = {
             analyses: editorData.analyses,
-            cleaned_images: compressedImages,
+            session_id: editorData.sessionId,  // 後端會用這個 ID 取圖片
             filename: editorData.filename
         };
 
