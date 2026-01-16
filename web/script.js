@@ -333,10 +333,10 @@ window.renderBBoxOverlay = function () {
 
     // 如果沒有 elements，顯示提示
     if (elements.length === 0) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.font = '14px sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('此頁無結構化區塊資料', canvas.width / 2, 30);
+        ctx.fillText('此頁無結構化區塊資料', canvas.width / 2, 24);
         return;
     }
 
@@ -344,34 +344,48 @@ window.renderBBoxOverlay = function () {
         const bbox = elem.bbox || [0, 0, 0, 0];
         const [ymin, xmin, ymax, xmax] = bbox;
 
-        // 轉換 0-1000 正規化座標到 canvas 像素
-        const x = xmin / 1000 * canvas.width;
-        const y = ymin / 1000 * canvas.height;
-        const w = (xmax - xmin) / 1000 * canvas.width;
-        const h = (ymax - ymin) / 1000 * canvas.height;
+        // 轉換 0-1000 正規化座標到 canvas 像素，並 clamp 防止超出
+        let x = Math.max(0, xmin / 1000 * canvas.width);
+        let y = Math.max(0, ymin / 1000 * canvas.height);
+        let w = Math.min((xmax - xmin) / 1000 * canvas.width, canvas.width - x);
+        let h = Math.min((ymax - ymin) / 1000 * canvas.height, canvas.height - y);
 
-        // 繪製矩形框
+        // 跳過太小的框
+        if (w < 10 || h < 10) return;
+
         const isTitle = elem.is_title || false;
-        ctx.strokeStyle = isTitle ? '#FFD700' : '#00FF88'; // 標題用金色，內文用綠色
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, w, h);
+
+        // 柔和的顏色 (半透明)
+        const strokeColor = isTitle ? 'rgba(255, 193, 7, 0.7)' : 'rgba(16, 185, 129, 0.7)';
+        const fillColor = isTitle ? 'rgba(255, 193, 7, 0.08)' : 'rgba(16, 185, 129, 0.08)';
+        const textColor = isTitle ? '#FFC107' : '#10B981';
 
         // 繪製半透明填充
-        ctx.fillStyle = isTitle ? 'rgba(255, 215, 0, 0.1)' : 'rgba(0, 255, 136, 0.1)';
+        ctx.fillStyle = fillColor;
         ctx.fillRect(x, y, w, h);
 
-        // 繪製標籤背景
+        // 繪製細線框 (1px)
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+        // 標籤放在框內左上角
         const fontSize = elem.font_size || '?';
-        const labelText = `${idx + 1}. ${fontSize}pt`;
-        ctx.font = 'bold 11px sans-serif';
-        const textWidth = ctx.measureText(labelText).width + 8;
+        const labelText = `${idx + 1}`;
+        ctx.font = 'bold 10px sans-serif';
+        const textWidth = ctx.measureText(labelText).width + 6;
 
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        ctx.fillRect(x, y - 18, textWidth, 18);
+        // 小圓角標籤背景 (在框內)
+        const labelX = x + 2;
+        const labelY = y + 2;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.roundRect(labelX, labelY, textWidth, 14, 2);
+        ctx.fill();
 
-        // 繪製標籤文字
-        ctx.fillStyle = isTitle ? '#FFD700' : '#00FF88';
-        ctx.fillText(labelText, x + 4, y - 5);
+        // 標籤文字
+        ctx.fillStyle = textColor;
+        ctx.fillText(labelText, labelX + 3, labelY + 10);
     });
 }
 
