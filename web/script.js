@@ -273,7 +273,13 @@ window.updateEditorUI = function () {
 
     // Update Image
     const imgEl = document.getElementById('editorImage');
-    if (imgEl) imgEl.src = currentImage;
+    if (imgEl) {
+        imgEl.src = currentImage;
+        // 等圖片載入後繪製 BBox
+        imgEl.onload = () => {
+            window.renderBBoxOverlay();
+        };
+    }
 
     // Update Form Inputs
     const titleInput = document.getElementById('editTitle');
@@ -291,6 +297,83 @@ window.updateEditorUI = function () {
 
     if (prevBtn) prevBtn.disabled = currentEditIndex === 0;
     if (nextBtn) nextBtn.disabled = currentEditIndex === editorData.analyses.length - 1;
+
+    // 繪製 AI 解析區塊 (如果圖片已載入)
+    if (imgEl && imgEl.complete) {
+        window.renderBBoxOverlay();
+    }
+}
+
+// 繪製 AI 識別的 Bounding Boxes
+window.renderBBoxOverlay = function () {
+    const canvas = document.getElementById('bboxOverlay');
+    const img = document.getElementById('editorImage');
+    const showOverlay = document.getElementById('showAIOverlay');
+
+    if (!canvas || !img || !img.complete) return;
+
+    // 設定 canvas 尺寸與圖片一致
+    canvas.width = img.clientWidth;
+    canvas.height = img.clientHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 如果 toggle 關閉，清空後直接返回
+    if (showOverlay && !showOverlay.checked) return;
+
+    const currentData = editorData.analyses[currentEditIndex];
+    if (!currentData) return;
+
+    const elements = currentData.elements || [];
+
+    // 如果沒有 elements，顯示提示
+    if (elements.length === 0) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('此頁無結構化區塊資料', canvas.width / 2, 30);
+        return;
+    }
+
+    elements.forEach((elem, idx) => {
+        const bbox = elem.bbox || [0, 0, 0, 0];
+        const [ymin, xmin, ymax, xmax] = bbox;
+
+        // 轉換 0-1000 正規化座標到 canvas 像素
+        const x = xmin / 1000 * canvas.width;
+        const y = ymin / 1000 * canvas.height;
+        const w = (xmax - xmin) / 1000 * canvas.width;
+        const h = (ymax - ymin) / 1000 * canvas.height;
+
+        // 繪製矩形框
+        const isTitle = elem.is_title || false;
+        ctx.strokeStyle = isTitle ? '#FFD700' : '#00FF88'; // 標題用金色，內文用綠色
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+
+        // 繪製半透明填充
+        ctx.fillStyle = isTitle ? 'rgba(255, 215, 0, 0.1)' : 'rgba(0, 255, 136, 0.1)';
+        ctx.fillRect(x, y, w, h);
+
+        // 繪製標籤背景
+        const fontSize = elem.font_size || '?';
+        const labelText = `${idx + 1}. ${fontSize}pt`;
+        ctx.font = 'bold 11px sans-serif';
+        const textWidth = ctx.measureText(labelText).width + 8;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(x, y - 18, textWidth, 18);
+
+        // 繪製標籤文字
+        ctx.fillStyle = isTitle ? '#FFD700' : '#00FF88';
+        ctx.fillText(labelText, x + 4, y - 5);
+    });
+}
+
+// Toggle BBox Overlay 顯示/隱藏
+window.toggleBBoxOverlay = function () {
+    window.renderBBoxOverlay();
 }
 
 window.saveCurrentSlideData = function () {

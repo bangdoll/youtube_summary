@@ -28,7 +28,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/static/styles.css?v=6.2.6">
+    <link rel="stylesheet" href="/static/styles.css?v=6.3.0">
     <style>
         /* Terminal Log Window */
         #analysisLog {
@@ -307,12 +307,18 @@
                 </div>
 
                 <div class="editor-workspace">
-                    <!-- Left: Clean Image Preview -->
+                    <!-- Left: Clean Image Preview with AI Overlay -->
                     <div class="editor-preview">
-                        <div class="preview-card">
+                        <div class="preview-card" style="position: relative;">
                             <img id="editorImage" src="" alt="Slide Preview">
+                            <canvas id="bboxOverlay"
+                                style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
                             <span class="badge-overlay">原始版面 (去字)</span>
                         </div>
+                        <label class="toggle-ai-preview">
+                            <input type="checkbox" id="showAIOverlay" checked onchange="toggleBBoxOverlay()">
+                            <span>顯示 AI 解析區塊</span>
+                        </label>
                     </div>
 
                     <!-- Right: Content Form -->
@@ -501,7 +507,7 @@
         </section>
     </main>
 
-    <script src="/static/script.js?v=2.10.8"></script>
+    <script src="/static/script.js?v=2.11.0"></script>
     <script>
         // [Safety Net] Emergency UI Unlocker
         // If script.js fails to load or checkAuth hangs, force the UI to appear after 1.5s
