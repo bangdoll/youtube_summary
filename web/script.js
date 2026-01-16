@@ -690,9 +690,9 @@ window.handleFileSelect = async function (file) {
 };
 
 window.triggerPreview = async function (event) {
+    // 只停止冒泡，不阻止默認行為（避免雙擊問題）
     if (event) {
         event.stopPropagation();
-        event.preventDefault();
     }
 
     if (selectedPdfFile) {
