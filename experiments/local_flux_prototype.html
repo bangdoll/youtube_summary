@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoteFlux Local Core (Prototype)</title>
+    <!-- Tailwind CSS for quick styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Tesseract.js for OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- PptxGenJS for Export -->
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+    <script>
+        // PDF.js worker setup
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #e5e5e5;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .drop-zone {
+            border: 2px dashed #4b5563;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.dragover {
+            border-color: #8b5cf6;
+            background-color: rgba(139, 92, 246, 0.1);
+        }
+
+        #stage {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            margin: 20px auto;
+            transform-origin: top center;
+        }
+
+        #pdfCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #structureLayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .text-bbox {
+            position: absolute;
+            border: 1px dashed rgba(52, 211, 153, 0.5);
+            /* Dashed green for preview */
+            cursor: text;
+            /* Transition for smooth "Ghost Edit" effect */
+            transition: background-color 0.2s, border-color 0.2s;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
+            font-family: sans-serif;
+            /* Fallback font */
+        }
+
+        /* When Hovering, hint that it's editable */
+        .text-bbox:hover {
+            border-color: #34d399;
+            background-color: rgba(52, 211, 153, 0.1);
+        }
+
+        /* THE GHOST STATE: When editing or modified */
+        .text-bbox.is-editing,
+        .text-bbox.is-modified {
+            background-color: white !important;
+            /* Mask original text */
+            color: black !important;
+            border: 1px solid #3b82f6;
+            z-index: 10;
+        }
+
+        .text-bbox.is-modified {
+            border: none;
+            /* Look seamless after edit */
+        }
+
+        [contenteditable]:focus {
+            outline: none;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col items-center justify-start p-8 overflow-y-auto">
+
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+            NoteFlux Local Core
+        </h1>
+        <p class="text-gray-400 mt-2">Phase 3: Client-Side PPTX Export</p>
+    </div>
+
+    <!-- Drop Zone -->
+    <div id="dropZone"
+        class="drop-zone w-full max-w-2xl h-32 rounded-xl flex flex-col items-center justify-center cursor-pointer mb-8 hover:bg-gray-800">
+        <p class="text-gray-300 pointer-events-none">Drag & Drop PDF here <span class="text-gray-500">or Click to
+                Upload</span></p>
+        <p class="text-xs text-gray-500 mt-2 pointer-events-none">Processing happens 100% in your browser</p>
+        <input type="file" id="fileInput" class="hidden" accept=".pdf" />
+    </div>
+
+    <!-- Controls -->
+    <div id="controls" class="hidden flex flex-wrap gap-4 mb-4 items-center justify-center">
+        <button id="prevBtn" class="px-3 py-2 bg-gray-700 rounded hover:bg-gray-600">Prev</button>
+        <span id="pageInfo" class="text-gray-300 text-sm">Page 1 / ?</span>
+        <button id="nextBtn" class="px-3 py-2 bg-gray-700 rounded hover:bg-gray-600">Next</button>
+
+        <div class="w-px h-6 bg-gray-600 mx-2"></div>
+
+        <button id="zoomOutBtn" class="px-3 py-2 bg-gray-800 rounded hover:bg-gray-700 text-sm">Zoom -</button>
+        <span id="zoomLevel" class="text-gray-400 text-sm w-12 text-center">100%</span>
+        <button id="zoomInBtn" class="px-3 py-2 bg-gray-800 rounded hover:bg-gray-700 text-sm">Zoom +</button>
+
+        <div class="w-px h-6 bg-gray-600 mx-2"></div>
+
+        <button id="exportBtn"
+            class="px-6 py-2 bg-green-600 rounded hover:bg-green-500 font-bold text-white shadow-lg shadow-green-900/50 flex items-center gap-2">
+            <span>Download PPTX</span>
+        </button>
+
+        <div class="flex items-center gap-2 ml-4">
+            <input type="checkbox" id="forceOCR"
+                class="w-4 h-4 rounded bg-gray-700 border-gray-600 text-green-600 focus:ring-green-500" checked>
+            <label for="forceOCR" class="text-sm text-gray-300 cursor-pointer select-none">Force OCR (Fix Garbled
+                Text)</label>
+        </div>
+    </div>
+
+    <!-- Status -->
+    <div id="status" class="text-sm text-yellow-400 mb-4 h-6 px-4 text-center">Waiting...</div>
+
+    <!-- The Viewer Stage -->
+    <!-- Fixing overflow and constraints for large slides -->
+    <div id="stageContainer"
+        class="w-full max-w-full overflow-auto relative border border-gray-700 rounded-lg hidden bg-gray-900"
+        style="max-height: 82vh;">
+        <div id="stage">
+            <canvas id="pdfCanvas"></canvas>
+            <div id="structureLayer"></div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('status');
+        const stageContainer = document.getElementById('stageContainer');
+        const pdfCanvas = document.getElementById('pdfCanvas');
+        const structureLayer = document.getElementById('structureLayer');
+        const ctx = pdfCanvas.getContext('2d');
+        const controls = document.getElementById('controls');
+        const pageInfo = document.getElementById('pageInfo');
+
+        let pdfDoc = null;
+        let pageNum = 1;
+        let scale = 1.0;
+        let currentFileName = "NoteFlux_Export";
+
+        // State Management: Stores clusters for each page
+        // Format: { [pageNum]: [ {x,y,w,h,text, type}, ... ] }
+        let pageData = {};
+
+        // Drag & Drop
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        // Click to Upload
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+        async function handleFile(file) {
+            if (file && file.type === 'application/pdf') {
+                currentFileName = file.name.replace('.pdf', '');
+                status.textContent = `Loading ${file.name}...`;
+                const arrayBuffer = await file.arrayBuffer();
+                // Switch to Safe Loader with Auto-Fit Fix
+                loadPDF_Safe(arrayBuffer);
+            } else {
+                status.textContent = 'Please select a valid PDF file.';
+            }
+        }
+
+        async function loadPDF(data) {
+            try {
+                pdfDoc = await pdfjsLib.getDocument(data).promise;
+                stageContainer.classList.remove('hidden');
+                controls.classList.remove('hidden');
+
+                // Force Reflow to ensure clientWidth is updated after removing 'hidden'
+                void stageContainer.offsetWidth;
+
+                status.textContent = `Loaded PDF with ${pdfDoc.numPages} pages.`;
+
+                // Auto-Fit Logic: Calculate scale to fit page 1 into view
+                const page = await pdfDoc.getPage(1);
+                const unscaled = page.getViewport({ scale: 1.0 });
+
+                // Get available container space
+                // Ensure we have a valid width, fallback to window.
+                let containerW = stageContainer.clientWidth;
+                if (!containerW || containerW < 100) containerW = window.innerWidth * 0.8;
+
+                // For height, stageContainer might be flexible, so we use a reasonable portion of window
+                const containerH = (window.innerHeight * 0.70); // 70vh safe area
+
+                const scaleX = (containerW - 40) / unscaled.width;   // 40px padding safety
+                const scaleY = (containerH - 40) / unscaled.height;
+
+                // Choose the smaller scale to ensure "Fit to Screen" (Contain)
+                scale = Math.min(scaleX, scaleY);
+                // Clamp scale between 0.5 and 3.0
+                scale = Math.max(0.5, Math.min(scale, 3.0));
+
+                // Update UI
+                document.getElementById('zoomLevel').textContent = `${Math.round(scale * 100)}%`;
+
+                renderPage(pageNum);
+            } catch (err) {
+                console.error(err);
+                status.textContent = 'Error loading PDF: ' + err.message;
+            }
+        }
+
+        async function renderPage(num) {
+            const page = await pdfDoc.getPage(num);
+            const viewport = page.getViewport({ scale: scale });
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.width = viewport.width;
+
+            const stage = document.getElementById('stage');
+            stage.style.width = `${viewport.width}px`;
+            stage.style.height = `${viewport.height}px`;
+
+            const renderContext = { canvasContext: ctx, viewport: viewport };
+            await page.render(renderContext).promise;
+
+            // Check Cache
+            if (!pageData[num]) {
+                await extractStructure(page, viewport, num); // Removed viewport arg from interface conceptually, but keeping signature safe
+            } else {
+                status.textContent = `Loaded Page ${num} from Memory.`;
+                renderClusters(pageData[num], num); // Viewport logic moved inside
+            }
+
+            pageInfo.textContent = `Page ${num} / ${pdfDoc.numPages}`;
+            document.getElementById('zoomLevel').textContent = `${Math.round(scale * 100)}%`;
+        }
+
+        async function extractStructure(page, viewport, pNum) {
+            // NOTE: We now normalize all data to SCALE 1.0 for storage
+
+            const textContent = await page.getTextContent();
+            const forceOCR = document.getElementById('forceOCR').checked;
+
+            let clusters = [];
+            // Prioritize Native Text UNLESS Force OCR is checked
+            if (textContent.items.length > 0 && !forceOCR) {
+                // PDF Text Layer method
+                // We use a temporary viewport at Scale 1.0 to standardize coordinates
+                const unscaledViewport = page.getViewport({ scale: 1.0 });
+                clusters = clusterItems(textContent.items, unscaledViewport, 'pdf', 1.0);
+            } else {
+                status.textContent = forceOCR ? 'Force OCR Active. Running High-Res OCR...' : 'No text layer found. Running High-Res OCR...';
+                // Run OCR at Scale 4.0 for max detail (Hand-drawn font friendly)
+                const ocrScale = 4.0;
+                // We now get both words and the canvas analysis context
+                const { words, ctx: ocrCtx } = await runHighResOCR(page, ocrScale);
+
+                // Cluster with Color Sampling
+                clusters = clusterItems(words, null, 'ocr', ocrScale, ocrCtx);
+                status.textContent = `OCR Complete. Merged ${words.length} items.`;
+            }
+
+            // Debug
+            if (clusters.length > 0) console.log("First Cluster:", clusters[0]);
+
+            // Save to State
+            pageData[pNum] = clusters;
+            renderClusters(clusters, pNum);
+        }
+
+        // Helper to sample color from the high-res OCR canvas
+        function getDominantColor(ctx, x, y, w, h) {
+            try {
+                // Sample center 5x5 area
+                const cx = Math.floor(x + w / 2);
+                const cy = Math.floor(y + h / 2);
+                const sampleW = Math.min(w, 5);
+                const sampleH = Math.min(h, 5);
+
+                const imgData = ctx.getImageData(cx - 2, cy - 2, sampleW, sampleH);
+                const data = imgData.data;
+                let r = 0, g = 0, b = 0, count = 0;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    // Simple average
+                    r += data[i];
+                    g += data[i + 1];
+                    b += data[i + 2];
+                    count++;
+                }
+
+                r = Math.floor(r / count);
+                g = Math.floor(g / count);
+                b = Math.floor(b / count);
+
+                // If it's very light (background), try to find darker pixels in the box?
+                // For now, simple sampling. If white/transparent, default to black.
+                if (r > 240 && g > 240 && b > 240) return '000000'; // Assume black if background
+
+                return ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+            } catch (e) { return '000000'; }
+        }
+
+        function clusterItems(items, layoutRef, source, sourceScale, colorCtx = null) {
+            // Map inputs to NORMALIZED (Scale 1.0) coordinates
+            const mapped = items.map(item => {
+                let rect;
+                let color = '000000';
+
+                if (source === 'pdf') {
+                    // layoutRef is unscaledViewport (Scale 1.0)
+                    const tx = item.transform;
+                    const [vx, vy] = layoutRef.convertToViewportPoint(tx[4], tx[5]);
+                    const fontHeightPdf = Math.sqrt((tx[2] * tx[2]) + (tx[3] * tx[3]));
+                    // PDF Baseline to Top-Left adjustment
+                    rect = { x: vx, y: vy - fontHeightPdf * 0.85, w: item.width, h: fontHeightPdf, text: item.str, type: 'pdf', color: '000000' };
+                } else {
+                    // OCR item: dimensions are in 'sourceScale' pixels
+                    const x = item.bbox.x0;
+                    const y = item.bbox.y0;
+                    const w = item.bbox.x1 - item.bbox.x0;
+                    const h = item.bbox.y1 - item.bbox.y0;
+
+                    // Sample Color before scaling down
+                    if (colorCtx) {
+                        color = getDominantColor(colorCtx, x, y, w, h);
+                    }
+
+                    rect = {
+                        x: x / sourceScale,
+                        y: y / sourceScale,
+                        w: w / sourceScale,
+                        h: h / sourceScale,
+                        text: item.text,
+                        type: 'ocr',
+                        color: color
+                    };
+                }
+                return rect;
+            }).filter(i => i.text && i.text.trim().length > 0);
+
+            if (mapped.length === 0) return [];
+
+            // --- Advanced Row-Binning ---
+            // 1. Sort by Y initially to help binning
+            mapped.sort((a, b) => a.y - b.y);
+
+            const rows = [];
+
+            mapped.forEach(item => {
+                // Find a row this item belongs to
+                // Criterion: Item's mid-point is within the vertical span of the row
+                const itemMidY = item.y + (item.h / 2);
+
+                let foundRow = null;
+                for (let row of rows) {
+                    const rowMidY = row.y + (row.h / 2);
+                    // If center points are close enough (within half height of the row)
+                    if (Math.abs(itemMidY - rowMidY) < (row.h / 2)) {
+                        foundRow = row;
+                        break;
+                    }
+                }
+
+                if (foundRow) {
+                    foundRow.items.push(item);
+                    // Update Row Geometry
+                    // We DO NOT update Y immediately with min() to avoid jumping.
+                    // We just accumulate items.
+                } else {
+                    // Start new Row
+                    rows.push({
+                        y: item.y, // Initial seed
+                        h: item.h,
+                        items: [item]
+                    });
+                }
+            });
+
+            // 2. Sort items within rows by X and Merge
+            const clusters = [];
+
+            rows.forEach(row => {
+                // ROBUST ALIGNMENT:
+                // Recalculate Row Y based on Median of items to ignore outliers (dust)
+                const rys = row.items.map(i => i.y).sort((a, b) => a - b);
+                const midY = rys[Math.floor(rys.length / 2)];
+                row.y = midY;
+
+                // Sort by X
+                row.items.sort((a, b) => a.x - b.x);
+
+                let current = row.items[0];
+                // Start tracking height stats for median calculation
+                current.heights = [current.h];
+                current.y = row.y; // Align to row median
+                // Color inheritance: simple vote or take first? Take first for now.
+
+                for (let i = 1; i < row.items.length; i++) {
+                    const next = row.items[i];
+                    next.y = row.y; // Force vertical alignment
+
+                    // X-Distance threshold
+                    const xDist = next.x - (current.x + current.w);
+                    // Dynamic threshold based on current font height
+                    const spaceThreshold = current.h * 1.5;
+
+                    if (xDist < spaceThreshold) {
+                        // MERGE
+                        const newW = (next.x + next.w) - current.x;
+                        current.w = newW;
+
+                        // Intelligent Space Insertion
+                        // If gap is significant (> 0.2em), add space. Chinese often doesn't need space, 
+                        // but OCR might put english words.
+                        // For Chinese (usually square high), if gap is small, assume adjacent chars.
+                        let separator = '';
+                        // Chinese check: if mostly chinese, no space. 
+                        // Simple heuristic: if gap is small (< 0.2h), no space.
+                        if (xDist > current.h * 0.3) separator = ' ';
+
+                        current.text += separator + next.text;
+                        current.heights.push(next.h);
+                    } else {
+                        // FINISH CLUSTER
+                        finalizeCluster(current);
+                        clusters.push(current);
+
+                        current = next;
+                        current.heights = [next.h];
+                    }
+                }
+                // Push last one
+                finalizeCluster(current);
+                clusters.push(current);
+            });
+
+            return clusters;
+        }
+
+        function finalizeCluster(c) {
+            // Calculate Median Height for stability
+            c.heights.sort((a, b) => a - b);
+            const mid = Math.floor(c.heights.length / 2);
+            c.h = c.heights.length % 2 !== 0 ? c.heights[mid] : (c.heights[mid - 1] + c.heights[mid]) / 2;
+
+            // Cleanup
+            delete c.heights;
+        }
+
+        async function runHighResOCR(page, renderScale) {
+            // Render to off-screen canvas at High DPI
+            const viewport = page.getViewport({ scale: renderScale });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            // 2. Grayscale & Contrast for OCR
+            const processedUrl = processCanvasForOCR(canvas);
+
+            try {
+                // Tesseract Config: Restore 'chi_tra+eng' for bilingual slides
+                // Since we removed hard binarization, the "ee" hallucination on graphics should be less, 
+                // and 'eng' allows reading titles correctly.
+                const { data: { words } } = await Tesseract.recognize(processedUrl, 'chi_tra+eng', {
+                    logger: m => { if (m.status === 'recognizing text') status.textContent = `OCR (High-Res): ${(m.progress * 100).toFixed(0)}%`; },
+                    tessedit_pageseg_mode: '11' // PSM 11: Sparse Text (Essential for Diagrams/Complex Layouts)
+                });
+                return { words, ctx }; // Return Context too for color sampling
+            } catch (err) {
+                console.error(err);
+                status.textContent = 'OCR Failed: ' + err.message;
+                return { words: [], ctx: null };
+            }
+        }
+
+        function renderClusters(clusters, pNum) {
+            structureLayer.innerHTML = '';
+
+            // PROJECT TO VIEW
+            // clusters are Scale 1.0. We must multiply by global `scale`.
+            const viewScale = scale;
+
+            clusters.forEach((c, index) => {
+                const div = document.createElement('div');
+                div.className = 'text-bbox';
+                // Apply Scale
+                div.style.left = `${c.x * viewScale}px`;
+                div.style.top = `${c.y * viewScale}px`;
+                div.style.width = `${c.w * viewScale}px`;
+
+                const visualHeight = c.h * viewScale;
+                div.style.height = `${visualHeight * 1.2}px`;
+                div.style.fontSize = `${visualHeight * 0.95}px`;
+                div.style.lineHeight = `${visualHeight * 1.2}px`;
+
+                div.contentEditable = true;
+                div.textContent = c.text;
+
+                if (c.type === 'ocr') {
+                    div.style.borderColor = '#60a5fa';
+                    div.style.color = 'transparent';
+                } else {
+                    div.style.color = 'transparent';
+                }
+
+                div.onfocus = () => { div.classList.add('is-editing'); div.style.color = 'black'; };
+                div.onblur = () => {
+                    div.classList.remove('is-editing');
+                    // UPDATE STATE ON BLUR
+                    if (div.innerText !== c.text) {
+                        div.classList.add('is-modified');
+                        div.style.color = 'black';
+                        // Update Persistence
+                        pageData[pNum][index].text = div.innerText;
+                    } else {
+                        div.style.color = 'transparent';
+                    }
+                };
+                div.ondragstart = (e) => e.preventDefault();
+                structureLayer.appendChild(div);
+            });
+        }
+
+        // --- Controls Logic ---
+        document.getElementById('prevBtn').onclick = () => { if (pageNum <= 1) return; pageNum--; renderPage(pageNum); };
+        document.getElementById('nextBtn').onclick = () => { if (pageNum >= pdfDoc.numPages) return; pageNum++; renderPage(pageNum); };
+
+        document.getElementById('zoomInBtn').onclick = () => { scale += 0.25; renderPage(pageNum); };
+        document.getElementById('zoomOutBtn').onclick = () => { if (scale > 0.5) scale -= 0.25; renderPage(pageNum); };
+
+        // --- EXPORT LOGIC (Phase 3) ---
+        document.getElementById('exportBtn').onclick = exportPPTX;
+
+        async function exportPPTX() {
+            const btn = document.getElementById('exportBtn');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+
+            try {
+                const pres = new PptxGenJS();
+                const totalPages = pdfDoc.numPages;
+
+                for (let i = 1; i <= totalPages; i++) {
+                    status.textContent = `Exporting Page ${i} / ${totalPages}... (Rendering & OCR)`;
+                    btn.innerText = `Processing ${i}/${totalPages}`;
+
+                    // Render the page (Wait for everything: PDF render + OCR + Ghost Layer)
+                    await renderPage(i);
+                    // Small delay to ensure DOM is settled/painted (optional but safer)
+                    await new Promise(r => setTimeout(r, 100));
+
+                    // 1. Layout
+                    const page = await pdfDoc.getPage(i);
+                    const unscaled = page.getViewport({ scale: 1.0 });
+                    const wInch = unscaled.width / 72;
+                    const hInch = unscaled.height / 72;
+
+                    // Define unique layout for this page (in case PDF has mixed sizes)
+                    const layoutName = `LAYOUT_${i}`;
+                    pres.defineLayout({ name: layoutName, width: wInch, height: hInch });
+
+                    const slide = pres.addSlide(layoutName); // Use the specific layout
+
+                    // 2. Background
+                    // Capture the canvas (which now holds page i)
+                    const imgData = pdfCanvas.toDataURL('image/png');
+                    slide.background = { data: imgData };
+
+                    // 3. Text Boxes
+                    // Use Data from State (or current DOM if just rendered)
+                    let clusters = pageData[i];
+                    if (!clusters) {
+                        // Should not happen as renderPage fills it, but fallback to DOM logic
+                        console.warn("State missing for page " + i);
+                    }
+
+                    // clusters are in Scale 1.0 (72 DPI reference)
+                    // wInch * 72 should equal the content width at scale 1.0
+                    // So we can assume 1 unit in 'clusters' == 1 PDF point
+                    // PPTX uses inches. 1 Inch = 72 Points.
+
+                    const pointToInch = 1 / 72;
+
+                    clusters.forEach(c => {
+                        const text = c.text.replace(/\n/g, " ");
+                        if (!text.trim()) return;
+
+                        // c has {x, y, w, h} in PDF Points (Scale 1.0)
+                        const fontSizePt = c.h * 0.95;
+
+                        slide.addText(text, {
+                            x: c.x * pointToInch,
+                            y: c.y * pointToInch,
+                            w: c.w * pointToInch,
+                            h: c.h * pointToInch,
+                            fontSize: fontSizePt,
+                            color: c.color || '000000', // Use sampled color
+                            rectFill: 'FFFFFF', // Mask
+                            align: 'left',
+                            valign: 'middle',
+                            margin: 1           // Slight margin
+                        });
+                    });
+                }
+
+                status.textContent = "Finalizing PPTX file...";
+                await pres.writeFile({ fileName: `${currentFileName}_NoteFlux.pptx` });
+                status.textContent = "Export Complete! File downloaded.";
+
+            } catch (err) {
+                console.error(err);
+                status.textContent = "Export Failed: " + err.message;
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                // Optional: Go back to page 1
+                // renderPage(1);
+            }
+        }
+
+        // Helper: Convert to Grayscale + Contrast for Better OCR (No Hard Threshold)
+        function processCanvasForOCR(sourceCanvas) {
+            const w = sourceCanvas.width;
+            const h = sourceCanvas.height;
+            const processor = document.createElement('canvas');
+            processor.width = w;
+            processor.height = h;
+            const ctx = processor.getContext('2d');
+            ctx.drawImage(sourceCanvas, 0, 0);
+
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+
+            // Contrast Factor (1.2x) to pop text from background
+            const contrast = 1.2;
+            const intercept = 128 * (1 - contrast);
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+
+                // Grayscale (Luminance)
+                let gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+                // Contrast Stretch
+                gray = (gray * contrast) + intercept;
+
+                // Clamp
+                gray = Math.min(255, Math.max(0, gray));
+
+                data[i] = gray;
+                data[i + 1] = gray;
+                data[i + 2] = gray;
+                // Alpha remains 255 (or original)
+            }
+            ctx.putImageData(imgData, 0, 0);
+            return processor.toDataURL('image/png');
+        }
+
+        // --- FIXED LOAD FUNCTION ---
+        async function loadPDF_Safe(data) {
+            try {
+                pdfDoc = await pdfjsLib.getDocument(data).promise;
+                stageContainer.classList.remove('hidden');
+                controls.classList.remove('hidden');
+
+                // Force Reflow to ensure clientWidth is updated
+                void stageContainer.offsetWidth;
+
+                status.textContent = `Loaded PDF with ${pdfDoc.numPages} pages.`;
+
+                // Auto-Fit Logic: Wrapped in setTimeout to ensure layout stability
+                setTimeout(async () => {
+                    try {
+                        const page = await pdfDoc.getPage(1);
+                        const unscaled = page.getViewport({ scale: 1.0 });
+
+                        // Get available container space
+                        // Uses 90% of window width as fallback
+                        let containerW = stageContainer.clientWidth;
+                        if (!containerW || containerW < 100) containerW = window.innerWidth * 0.9;
+
+                        // Height: 82% of window height (Matches CSS max-height: 82vh)
+                        const containerH = (window.innerHeight * 0.82);
+
+                        // Padding: 20px safety margin
+                        const scaleX = (containerW - 20) / unscaled.width;
+                        const scaleY = (containerH - 20) / unscaled.height;
+
+                        // Fit Container
+                        scale = Math.min(scaleX, scaleY);
+                        scale = Math.max(0.5, Math.min(scale, 3.0));
+
+                        document.getElementById('zoomLevel').textContent = `${Math.round(scale * 100)}%`;
+                        renderPage(pageNum);
+                    } catch (e) { console.error("AutoFit Error:", e); }
+                }, 50);
+
+            } catch (err) {
+                console.error(err);
+                status.textContent = 'Error loading PDF: ' + err.message;
+            }
+        }
+    </script>
+</body>
+
+</html>

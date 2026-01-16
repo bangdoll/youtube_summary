@@ -353,7 +353,7 @@ window.generatePresentations = async function () {
                     const canvas = document.createElement('canvas');
                     let w = img.width;
                     let h = img.height;
-                    const maxDim = 1024; // [v6.3 Fix] Reduced from 1280 to 1024 to prevent 413 Payload Errors
+                    const maxDim = 800; // [v6.4 Fix] 更激進壓縮：800px 解決多頁 PDF 的 413 問題
                     if (w > maxDim || h > maxDim) {
                         const ratio = Math.min(maxDim / w, maxDim / h);
                         w *= ratio;
@@ -363,8 +363,8 @@ window.generatePresentations = async function () {
                     canvas.height = h;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, w, h);
-                    // Aggressive compression (0.5) - Visual diff is minimal for slides, but size diff is huge
-                    resolve(canvas.toDataURL('image/jpeg', 0.5));
+                    // 極致壓縮 (0.4) - 簡報縮圖品質夠用，體積大減
+                    resolve(canvas.toDataURL('image/jpeg', 0.4));
                 };
                 img.onerror = () => resolve(imgStr); // Fallback
                 img.src = imgStr;
