@@ -938,26 +938,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (submitBtn) {
         console.log("Binding Submit Button...");
-        const handler = () => { console.log("Submit Clicked"); startAnalysis(); };
-        submitBtn.onclick = handler;
-        submitBtn.addEventListener('click', handler);
+        // [v7.0.4 Fix] 只使用 onclick，不重複綁定避免雙擊問題
+        submitBtn.onclick = () => { console.log("Submit Clicked"); startAnalysis(); };
     }
 
     // [Fix] Re-attach Event Listeners for Tabs
+    // [v7.0.4 Fix] 只使用 onclick，避免雙重綁定導致雙擊問題
     const tabBtns = document.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
-        const handler = (e) => {
-            console.log("Tab Clicked:", btn.getAttribute('data-target'));
+        btn.onclick = (e) => {
             e.preventDefault();
             const target = btn.getAttribute('data-target');
             if (target && window.switchTab) {
                 window.switchTab(target);
-            } else {
-                console.error("switchTab func or target missing");
             }
         };
-        btn.onclick = handler;
-        btn.addEventListener('click', handler);
     });
 
     // Load API Keys from local storage
