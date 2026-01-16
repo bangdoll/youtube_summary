@@ -504,7 +504,7 @@ window.generatePresentations = async function () {
                     const canvas = document.createElement('canvas');
                     let w = img.width;
                     let h = img.height;
-                    const maxDim = 640; // [v6.5 Fix] 終極壓縮：640px 撐住 15+ 頁 PDF
+                    const maxDim = 480; // [v6.6 Fix] 最終壓縮：480px 解決高畫質 15+ 頁 PDF
                     if (w > maxDim || h > maxDim) {
                         const ratio = Math.min(maxDim / w, maxDim / h);
                         w *= ratio;
@@ -514,8 +514,8 @@ window.generatePresentations = async function () {
                     canvas.height = h;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, w, h);
-                    // 極致壓縮 (0.35) - 簡報背景圖極限，再低會糊
-                    resolve(canvas.toDataURL('image/jpeg', 0.35));
+                    // 極致壓縮 (0.25) - 簡報背景縮圖，品質夠用
+                    resolve(canvas.toDataURL('image/jpeg', 0.25));
                 };
                 img.onerror = () => resolve(imgStr); // Fallback
                 img.src = imgStr;
