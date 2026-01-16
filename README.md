@@ -14,8 +14,15 @@
 ### 1.2 ✨ 來源回溯 (Source Attribution)
 自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
-### 1.3 📊 NoteFlux 簡報生成器 (NoteFlux Generator) v6.3.0
+### 1.3 📊 NoteFlux 簡報生成器 (NoteFlux Generator) v7.0
 獨家「圖文分離」與「線上編輯」引擎，解決傳統 PDF 轉 PPTX 的排版錯亂問題。
+
+- **🆕 Session ID 後端暫存機制 (v7.0.0)**：
+    - **根治 413 Payload Too Large**：不再將圖片從前端傳回後端，改由後端使用 Session ID 暫存，徹底解決高畫質 PDF 因 Payload 過大導致生成失敗的問題。
+    - **Analyses 清理**：發送前自動移除 `_visual_crops` 等大型 Base64 資料，將 Payload 從 10+MB 降至約 50KB。
+- **🆕 AI 預覽疊加層 (Preview Overlay)**：
+    - **BBox 視覺化**：新增切換開關，可在編輯器中直接顯示 AI 偵測的文字邊界框 (Bounding Box)。
+    - **區塊詳情面板 (Block Details Panel)**：展開即可查看每個文字區塊的字型大小與顏色，支援即時編輯。
 
 - **🆕 Native Hybrid Engine (v3.0.0 核心)**：
     - **原生文字提取**：使用 `pypdf` 直接從 PDF 文字層提取內容，達成 **100% 文字正確率**，徹底繞過 OCR 錯誤。

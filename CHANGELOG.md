@@ -1,5 +1,33 @@
 # Changelog
 
+## [v7.0.4] - 2026-01-16
+### 🚀 新功能 (New Features)
+- **AI 預覽疊加層 (BBox Preview Overlay)**：
+    - 在編輯器中新增「顯示 AI 預覽」切換開關。
+    - 開啟後可直接在圖片上顯示 AI 偵測的文字邊界框 (Bounding Box)，標題為紫色、內文為青色。
+    - 每個框的右上角會顯示偵測到的字型大小 (pt)。
+- **區塊詳情面板 (Block Details Panel)**：
+    - 新增可展開的「區塊詳情」折疊區塊。
+    - 顯示每個文字區塊的索引、內容預覽、字型大小與顏色。
+    - 支援直接在面板中修改字型大小與顏色，變更會即時反映到 PPTX 生成結果。
+
+### 🚑 重大錯誤修復 (Critical Bug Fixes)
+- **徹底根治 413 Payload Too Large (Session ID 後端暫存)**：
+    - **根本原因**：`analyses` 陣列包含 `_visual_crops` (每頁的 Base64 圖片裁切)，導致 Payload 高達 10-15MB。
+    - **解決方案 (v7.0.2)**：發送 `/api/generate-slides-data` 前，前端會移除所有 `_visual_crops` 資料。
+    - **後端暫存 (v7.0.0)**：後端分析完成後，將 PIL Image 物件以 `session_id` 為 Key 暫存於記憶體，前端生成時只需傳回 `session_id`，無需重傳圖片。
+    - **成效**：Payload 大小從 10+ MB 降至約 50KB，徹底解決問題。
+- **修復按鈕需點擊兩次的問題 (Double-Click Fix)**：
+    - **根本原因 (v7.0.4)**：Tab 按鈕與 Submit 按鈕同時使用 `.onclick` 與 `.addEventListener('click')` 雙重綁定，導致事件觸發兩次。
+    - **解決方案**：移除 `addEventListener`，統一只使用 `onclick` 進行事件綁定。
+- **修正標籤名稱錯誤**：
+    - 「NotebookLM vs. YouTube智慧大腦」比對頁面中，「NoteFlux」標籤錯誤地顯示在 YouTube智慧大腦 的位置。
+    - 已將三處「NoteFlux」更正為「YouTube智慧大腦」。
+
+### 🎨 介面微調 (UI Refinements)
+- **BBox 框線優化**：框線改為 1px 實線 + 40% 透明填色，視覺更柔和不干擾閱讀。
+- **標籤改為內嵌顯示**：字型大小標籤從框外移至框內右上角，避免重疊問題。
+
 ## [v6.3.0] - 2026-01-16
 ### 🚑 重大錯誤修復與優化 (Critical Fixes & Improvements)
 - **Fix 413 Payload Too Large (圖片傳輸優化)**:
