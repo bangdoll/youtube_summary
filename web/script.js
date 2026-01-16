@@ -510,37 +510,18 @@ window.generatePresentations = async function () {
     btn.innerHTML = '生成中... <i class="ri-loader-4-line ri-spin"></i>';
 
     try {
-        // [v6.2.3 Fix] Client-Side Compression to prevent 413 Errors
-        const compressedImages = await Promise.all(editorData.cleanedImages.map(async (imgStr) => {
-            if (!imgStr || !imgStr.startsWith('data:image')) return imgStr;
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let w = img.width;
-                    let h = img.height;
-                    const maxDim = 480; // [v6.6 Fix] 最終壓縮：480px 解決高畫質 15+ 頁 PDF
-                    if (w > maxDim || h > maxDim) {
-                        const ratio = Math.min(maxDim / w, maxDim / h);
-                        w *= ratio;
-                        h *= ratio;
-                    }
-                    canvas.width = w;
-                    canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, w, h);
-                    // 極致壓縮 (0.25) - 簡報背景縮圖，品質夠用
-                    resolve(canvas.toDataURL('image/jpeg', 0.25));
-                };
-                img.onerror = () => resolve(imgStr); // Fallback
-                img.src = imgStr;
-            });
-        }));
+        // [v7.0.2] 清理 analyses，移除 _visual_crops 等大型 Base64 資料
+        // 這些資料只在後端 PPTX 生成時使用，不需要傳回前端再傳回後端
+        const cleanedAnalyses = editorData.analyses.map(a => {
+            const cleaned = { ...a };
+            delete cleaned._visual_crops;  // 這是 payload 膨脹的主因！
+            return cleaned;
+        });
 
-        // [v7.0] 使用 session_id 取代圖片傳輸，從根本解決 413 Payload 問題
+        // [v7.0] 使用 session_id 取代圖片傳輸
         const payload = {
-            analyses: editorData.analyses,
-            session_id: editorData.sessionId,  // 後端會用這個 ID 取圖片
+            analyses: cleanedAnalyses,
+            session_id: editorData.sessionId,
             filename: editorData.filename
         };
 
