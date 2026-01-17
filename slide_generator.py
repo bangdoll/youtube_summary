@@ -1007,19 +1007,44 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
     logger.info(f"簡報已儲存至: {output_path}")
 
 def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
+    """
+    [v7.1] 生成 PDF 預覽縮圖，回傳 Base64 Data URL (Stateless)
+    修正 Cloud Run 上因無狀態導致 /static/temp/ 404 的問題
+    """
     try:
-        # Reduce memory usage: dpi=200 (balanced), thread_count=1
-        images = convert_from_bytes(pdf_bytes, dpi=200, thread_count=1)
+        # Reduce memory usage: dpi=150 (lower for thumbnails), thread_count=1
+        images = convert_from_bytes(pdf_bytes, dpi=150, thread_count=1)
         logger.info(f"預覽生成: 轉換了 {len(images)} 張圖片")
-        image_paths = []
+        
+        image_data_urls = []
         for i, img in enumerate(images):
-            filename = f"preview_{secrets.token_hex(4)}_{i}.jpg"
-            filepath = os.path.join(output_dir, filename)
-            # Resize small thumbnail
-            img.thumbnail((400, 400)) # Smaller thumbnail for preview grid
-            img.save(filepath, "JPEG", quality=80)
-            image_paths.append(f"/static/temp/{filename}")
-        return image_paths
+            try:
+                # Resize to thumbnail
+                img.thumbnail((400, 400))
+                
+                # Convert to RGB if needed (JPEG doesn't support transparency)
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    if img.mode in ('RGBA', 'LA'):
+                        background.paste(img, mask=img.split()[-1])
+                    img = background
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Convert to Base64
+                buf = io.BytesIO()
+                img.save(buf, format='JPEG', quality=70, optimize=True)
+                b64_str = base64.b64encode(buf.getvalue()).decode('utf-8')
+                image_data_urls.append(f"data:image/jpeg;base64,{b64_str}")
+                
+            except Exception as page_err:
+                logger.warning(f"頁面 {i+1} 預覽生成失敗: {page_err}")
+                # 使用錯誤佔位符
+                image_data_urls.append("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzMyIgLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZpbGw9IiNhYWEiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuWksei0qzwvdGV4dD48L3N2Zz4=")
+        
+        return image_data_urls
     except Exception as e:
         logger.error(f"預覽生成失敗 (Memory/Poppler): {e}")
         raise ValueError(f"無法生成預覽: {str(e)}")
