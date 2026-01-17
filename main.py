@@ -33,13 +33,13 @@ except ImportError:
 
 app = FastAPI(title="PrismFlow")
 
-# Trust Proxy Headers (CRITICAL for Cloud Run/Render behind Load Balancer)
-# This ensures request.url is seen as HTTPS, preventing redirect_uri mismatches and session cookie issues
+# 信任代理標頭 (對於負載平衡器後面的 Cloud Run/Render 至關重要)
+# 這確保 request.url 被視為 HTTPS，防止 redirect_uri 不匹配和 Session Cookie 問題
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
-# Session middleware for OAuth
-# Use a stable key if env var not set, to prevent session invalidation on restart
-# In production, users SHOULD set SECRET_KEY env var
+# 用於 OAuth 的 Session 中介軟體
+# 如果未設定環境變數，使用穩定的金鑰，以防止重啟時 Session 失效
+# 在正式環境中，使用者應該設定 SECRET_KEY 環境變數
 DEFAULT_SECRET_KEY = "stable_secret_key_for_youtube_summary_app_fix_restart_auth_issue"
 SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY) 
 app.add_middleware(
@@ -78,28 +78,28 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 app.mount("/static/temp", StaticFiles(directory=TEMP_DIR), name="static_temp")
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
-# Lock for single-threaded execution
+# 用於單執行緒執行的鎖
 processing_lock = asyncio.Lock()
 
-# [v7.0] Session storage for slide images (避免前端重傳圖片導致 413)
+# [v7.0] 投影片圖片的 Session 儲存 (避免前端重傳圖片導致 413)
 # 格式: {session_id: {"images": [PIL.Image], "timestamp": float}}
 slide_sessions = {}
 
 
 def is_auth_enabled():
-    """Check if Google OAuth is configured."""
+    """檢查是否設定了 Google OAuth。"""
     return bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
 
 
 def get_user_email(request: Request):
-    """Get the logged-in user's email from session."""
+    """從 Session 中取得已登入使用者的電子郵件。"""
     return request.session.get("user_email")
 
 
 def is_allowed_user(email: str):
-    """Check if the email is in the allowed list."""
+    """檢查電子郵件是否在允許清單中。"""
     if not ALLOWED_EMAILS or ALLOWED_EMAILS == [""]:
-        return True  # No restriction if no emails configured
+        return True  # 如果未設定電子郵件，則無限制
     return email in ALLOWED_EMAILS
 
 
@@ -114,7 +114,7 @@ async def read_root(request: Request):
 
 @app.get("/api/check-auth")
 async def check_auth(request: Request):
-    """Check authentication status."""
+    """檢查驗證狀態。"""
     if not is_auth_enabled():
         return {"auth_required": False, "logged_in": True}
     
@@ -127,15 +127,15 @@ async def check_auth(request: Request):
 
 @app.get("/auth/login")
 async def login(request: Request):
-    """Redirect to Google OAuth login."""
+    """重定向至 Google OAuth 登入。"""
     if not is_auth_enabled():
         return RedirectResponse(url="/")
     
     # Determine redirect URI
     redirect_uri = str(request.url_for("auth_callback"))
     
-    # Force HTTPS in production (non-localhost)
-    # This fixes the 'redirect_uri_mismatch' 400 error on Cloud Run/Render
+    # 在正式環境中強制使用 HTTPS (非 localhost)
+    # 這修復了 Cloud Run/Render 上的 'redirect_uri_mismatch' 400 錯誤
     if "localhost" not in redirect_uri and "127.0.0.1" not in redirect_uri:
         redirect_uri = redirect_uri.replace("http://", "https://")
     
@@ -146,7 +146,7 @@ async def login(request: Request):
 
 @app.get("/auth/callback")
 async def auth_callback(request: Request):
-    """Handle Google OAuth callback."""
+    """處理 Google OAuth 回調。"""
     if not is_auth_enabled():
         return RedirectResponse(url="/")
     
@@ -175,14 +175,14 @@ async def auth_callback(request: Request):
 
 @app.get("/auth/logout")
 async def logout(request: Request):
-    """Clear session and log out."""
+    """清除 Session 並登出。"""
     request.session.clear()
     return RedirectResponse(url="/")
 
 
 @app.get("/api/user")
 async def get_user(request: Request):
-    """Get current user info."""
+    """取得當前使用者資訊。"""
     if not is_auth_enabled():
         return {"email": "local", "name": "Local User", "picture": ""}
     
@@ -195,12 +195,12 @@ async def get_user(request: Request):
 
 @app.get("/api/summarize")
 async def summarize(request: Request, url: str, gemini_key: str = None, openai_key: str = None):
-    """SSE Endpoint that streams processing logs and final result."""
-    # Check authentication
-    # Logic:
-    # 1. If User provides Key -> Allow (BYOK Mode)
-    # 2. If User Logged In & Authorized -> Allow (Server Key Mode)
-    # 3. Else -> Deny
+    """串流處理日誌和最終結果的 SSE 端點。"""
+    # 檢查驗證
+    # 邏輯:
+    # 1. 如果使用者提供金鑰 -> 允許 (BYOK 模式)
+    # 2. 如果使用者已登入且經過授權 -> 允許 (伺服器金鑰模式)
+    # 3. 否則 -> 拒絕
     
     is_authorized = False
     
@@ -234,7 +234,7 @@ async def event_generator(url: str, gemini_key: str = None, openai_key: str = No
         queue = asyncio.Queue()
         yield f"data: {json.dumps({'type': 'log', 'data': '🚀 系統核心已啟動'})}\n\n"
         
-        # Log Auth Status for debugging
+        # 記錄驗證狀態以供調試
         auth_status = "✅ 已啟用 (Google OAuth)" if is_auth_enabled() else "⚠️ 未啟用 (使用 Local 模式)"
         yield f"data: {json.dumps({'type': 'log', 'data': f'🔒 安全模組: {auth_status}'})}\n\n"
         if is_auth_enabled():
@@ -242,7 +242,7 @@ async def event_generator(url: str, gemini_key: str = None, openai_key: str = No
 
         loop = asyncio.get_running_loop()
         
-        # Check cost limit warning
+        # 檢查成本限制警告
         try:
             current_cost = cost_tracker.get_total_cost()
             if cost_tracker.is_limit_exceeded(limit=20.0):
@@ -270,7 +270,7 @@ async def event_generator(url: str, gemini_key: str = None, openai_key: str = No
                     msg = queue.get_nowait()
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                 
-                # Check for completion
+                # 檢查是否完成
                 if future.done():
                     try:
                         filename, content = future.result()
@@ -281,17 +281,17 @@ async def event_generator(url: str, gemini_key: str = None, openai_key: str = No
                         yield f"data: {json.dumps({'type': 'error', 'message': f'❌ 發生錯誤: {str(e)}'})}\n\n"
                     break
                 
-                # Enforce global timeout (10 mins = 600s)
+                # 強制全域逾時 (10 分鐘 = 600 秒)
                 if asyncio.get_running_loop().time() - start_time > 600:
                      yield f"data: {json.dumps({'type': 'error', 'message': '❌ 處理逾時 (10分鐘)，系統強制終止。'})}\n\n"
-                     # We cannot kill the thread easily, but we break the loop to release the lock (via async with processing_lock exit)
+                     # 我們無法輕易終止執行緒，但可以跳出迴圈以釋放鎖 (透過 async with processing_lock 退出)
                      break
                 
                 try:
                     msg = await asyncio.wait_for(queue.get(), timeout=2.0)
                     yield f"data: {json.dumps({'type': 'log', 'data': msg})}\n\n"
                 except asyncio.TimeoutError:
-                    # Send a ping
+                    # 發送 Ping
                     yield f"data: {json.dumps({'type': 'ping'})}\n\n"
                     continue
                     
@@ -303,7 +303,7 @@ async def event_generator(url: str, gemini_key: str = None, openai_key: str = No
 
 
 def run_processing_safe(url, gemini_key=None, openai_key=None):
-    """Wrapper to run the pipeline."""
+    """執行流水線的包裝器。"""
     return youtube_summary.process_video_pipeline(url, gemini_key=gemini_key, openai_key=openai_key)
 
 @app.post("/api/preview-pdf")
@@ -359,15 +359,15 @@ async def analyze_slides(
     if not file.filename.lower().endswith(".pdf"):
         return JSONResponse(status_code=400, content={"error": "請上傳 PDF 檔案"})
 
-    # Read file content first
-    # Remove redundant read that consumes the stream
+    # 先讀取檔案內容
+    # 移除消耗串流的冗餘讀取
     # pdf_bytes = await file.read() was causing the file pointer to be at the end
 
 
-    # Queue for streaming events
+    # 用於串流事件的佇列
     queue = asyncio.Queue()
 
-    # Save Uploaded File to Temp
+    # 儲存上傳檔案至暫存區
     temp_pdf_filename = f"upload_{secrets.token_hex(8)}.pdf"
     temp_pdf_path = os.path.join(TEMP_DIR, temp_pdf_filename)
     
@@ -380,7 +380,7 @@ async def analyze_slides(
 
     async def run_analysis():
         try:
-            # Helper for logging to frontend
+            # 用於輸出日誌至前端的輔助函式
             async def log(msg):
                 print(f"[{file.filename}] {msg}")
                 await queue.put({"type": "log", "data": msg})
@@ -407,7 +407,7 @@ async def analyze_slides(
                     # await queue.put({"type": "log", "data": message}) # Fixed: Duplicated in frontend
                 await queue.put(data)
 
-            # Send initial feedback
+            # 發送初始回饋
             await log("正在讀取 PDF 結構與初始化分析...")
 
             # 1. 執行核心分析
@@ -424,12 +424,12 @@ async def analyze_slides(
             
             for i, img in enumerate(cleaned_images):
                 try:
-                    # [v6.1 Fix] Robust Fallback for Reconstruction Mode
+                    # [v6.1 修正] 重建模式的穩健備援機制
                     if img is None:
-                        # Create a standard white slide placeholder (16:9)
+                        # 建立標準白色投影片佔位符 (16:9)
                         img = Image.new('RGB', (1600, 900), (255, 255, 255))
 
-                    # Handle Transparency (RGBA/P) -> RGB with White Background
+                    # 處理透明度 (RGBA/P) -> 具白色背景的 RGB
                     if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
                         background = Image.new('RGB', img.size, (255, 255, 255))
                         if img.mode == 'P':
@@ -439,13 +439,13 @@ async def analyze_slides(
                     elif img.mode != 'RGB':
                         img = img.convert('RGB')
                         
-                    # Convert to Base64
+                    # 轉換為 Base64
                     def image_to_base64(pil_img):
-                        # Resize if too large (Max 1280px) to reduce payload
+                        # 如果過大則調整大小 (最大 1280px) 以減少傳輸量
                         pil_img.thumbnail((1280, 1280)) 
                         
                         buffered = io.BytesIO()
-                        # Optimize JPEG size (Quality 70 is good balance)
+                        # 最佳化 JPEG 大小 (品質 70 是良好的平衡)
                         pil_img.save(buffered, format="JPEG", quality=70, optimize=True)
                         return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
@@ -454,7 +454,7 @@ async def analyze_slides(
                     
                 except Exception as img_err:
                     print(f"Image {i} encode failed: {img_err}")
-                    # Error Placeholder (Red X)
+                    # 錯誤佔位符 (紅色 X)
                     cleaned_image_urls.append("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmZWFZWEiIC8+PHBhdGggZD0iTTEwIDEwTDkwIDkwTTEwIDkwTDkwIDEwIiBzdHJva2U9InJlZCIgc3Ryb2tlLXdpZHRoPSI1IiAvPjwvc3ZnPg==")
             
             await log("圖片處理完成，正在回傳結果...")
@@ -470,7 +470,7 @@ async def analyze_slides(
             # 清理過期 session (30 分鐘)
             cleanup_old_sessions()
 
-            # Result
+            # 結果
             await queue.put({
                 "analyses": analyses,
                 "cleaned_images": cleaned_image_urls,
@@ -492,7 +492,7 @@ async def analyze_slides(
             except:
                 pass
 
-    # Start background task
+    # 啟動背景任務
     asyncio.create_task(run_analysis())
 
     async def event_generator():

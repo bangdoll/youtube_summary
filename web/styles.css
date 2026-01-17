@@ -1966,22 +1966,40 @@ button#submitBtn:disabled {
         border-color: var(--accent-primary);
     }
 }
+
 /* Footer */
 .app-footer {
     text-align: center;
-    padding: 2rem;
-    margin-top: 3rem;
+    padding: 3rem 1rem;
+    margin-top: 5rem;
     color: var(--text-secondary);
     font-size: 0.9rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.02));
+    animation: fadeInUp 1s ease-out;
+}
+
+.app-footer p {
+    opacity: 0.7;
+    letter-spacing: 0.05em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .app-footer a {
     color: var(--accent-secondary);
     text-decoration: none;
-    transition: color 0.2s;
+    transition: all 0.3s ease;
+    border-bottom: 1px dotted transparent;
+    padding-bottom: 2px;
 }
 
 .app-footer a:hover {
-    color: var(--accent-primary);
+    color: var(--neon-cyan);
+    border-bottom-color: var(--neon-cyan);
+    text-shadow: 0 0 8px rgba(0, 243, 255, 0.5);
+    transform: translateY(-1px);
 }

@@ -1,14 +1,14 @@
 // v2.1.0 - Google OAuth 2026-01-06
 
-// === GLOBAL STATE (Nuclear Reliability) ===
+// === 全域狀態 (高度可靠) ===
 let selectedPdfFile = null;
 let currentPreviewImages = [];
 
-// === GLOBAL FUNCTIONS ===
+// === 全域函式 ===
 window.switchTab = function (targetMode) {
     console.log("Switching to tab:", targetMode);
 
-    // 1. Update Buttons
+    // 1. 更新按鈕狀態
     const tabBtns = document.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
         const btnTarget = btn.getAttribute('data-target') || (btn.getAttribute('onclick') ? btn.getAttribute('onclick').match(/'([^']+)'/)[1] : null);
@@ -19,7 +19,7 @@ window.switchTab = function (targetMode) {
         }
     });
 
-    // 2. Update Content
+    // 2. 更新內容顯示
     const modeContents = document.querySelectorAll('.mode-content');
     modeContents.forEach(content => {
         if (content.id === targetMode) {
@@ -29,7 +29,7 @@ window.switchTab = function (targetMode) {
         }
     });
 
-    // 3. Update Text/Features
+    // 3. 更新文字/功能區塊
     const appSubtitle = document.getElementById('appSubtitle');
     const youtubeFeatures = document.getElementById('youtubeFeatures');
     const slideFeatures = document.getElementById('slideFeatures');
@@ -52,7 +52,7 @@ window.switchTab = function (targetMode) {
     }
 };
 
-// Editor State
+// 編輯器狀態
 let editorData = {
     analyses: [],
     cleanedImages: [],
@@ -130,14 +130,14 @@ window.generateSlides = async function (btnElement) {
     formData.append('gemini_key', geminiKey);
     formData.append('selected_pages', JSON.stringify(selectedIndices));
 
-    // Add Remove Icon Flag
+    // 新增移除圖示標記
     const removeIconCheckbox = document.getElementById('removeIconCheckbox');
     if (removeIconCheckbox && removeIconCheckbox.checked) {
         formData.append('remove_icon', 'true');
     }
 
     try {
-        // Step 1: Call Analyze API (Streaming Response)
+        // 步驟 1：呼叫分析 API (串流回應)
         const response = await fetch('/api/analyze-slides', {
             method: 'POST',
             body: formData
@@ -148,13 +148,13 @@ window.generateSlides = async function (btnElement) {
             throw new Error(err.error || '分析失敗');
         }
 
-        // Reading the stream
+        // 讀取串流
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
         let finalResult = null;
 
-        // Reset Progress Bar & Log
+        // 重置進度條與日誌
         const pBar = document.getElementById('analysisProgressBar');
         const analysisLog = document.getElementById('analysisLog');
         if (pBar) pBar.style.width = '0%';
@@ -166,7 +166,7 @@ window.generateSlides = async function (btnElement) {
             if (!analysisLog) return;
             const now = new Date().toLocaleTimeString('en-US', { hour12: false });
 
-            // Remove 'latest' from previous
+            // 移除先前的 'latest' 標記
             const prev = analysisLog.querySelector('.latest');
             if (prev) prev.classList.remove('latest');
 
@@ -190,7 +190,7 @@ window.generateSlides = async function (btnElement) {
                 try {
                     const data = JSON.parse(line);
 
-                    // 1. Log Messages (Real-time Feedback)
+                    // 1. 日誌訊息 (即時回饋)
                     if (data.type === 'log') {
                         appendAnalysisLog(data.data);
                         continue;
@@ -204,7 +204,7 @@ window.generateSlides = async function (btnElement) {
                     }
 
                     if (data.progress !== undefined) {
-                        // Update UI
+                        // 更新使用者介面
                         const total = data.total || 1; // Prevent div by zero
                         const percent = Math.round((data.progress / total) * 100);
                         const pText = document.getElementById('progressText');
@@ -233,17 +233,17 @@ window.generateSlides = async function (btnElement) {
 
         const result = finalResult;
 
-        // Initialize Editor State
+        // 初始化編輯器狀態
         editorData.analyses = result.analyses;
         editorData.cleanedImages = result.cleaned_images;
         editorData.sessionId = result.session_id;  // [v7.0] 儲存 session_id
         editorData.filename = file.name;
         currentEditIndex = 0;
 
-        // Setup Editor UI
+        // 設定編輯器介面
         window.updateEditorUI();
 
-        // Switch to Editor Step
+        // 切換至編輯步驟
         if (analysisLoading) analysisLoading.classList.add('hidden');
         if (editorStep) {
             editorStep.classList.remove('hidden');
@@ -270,18 +270,18 @@ window.generateSlides = async function (btnElement) {
     }
 }
 
-// Editor Navigation & Logic
+// 編輯器導航與邏輯
 window.updateEditorUI = function () {
     if (editorData.analyses.length === 0) return;
 
     const currentData = editorData.analyses[currentEditIndex];
     const currentImage = editorData.cleanedImages[currentEditIndex];
 
-    // Update Counts
+    // 更新計數
     document.getElementById('currentEditPage').textContent = currentEditIndex + 1;
     document.getElementById('totalEditPages').textContent = editorData.analyses.length;
 
-    // Update Image
+    // 更新圖片
     const imgEl = document.getElementById('editorImage');
     if (imgEl) {
         imgEl.src = currentImage;
@@ -291,7 +291,7 @@ window.updateEditorUI = function () {
         };
     }
 
-    // Update Form Inputs
+    // 更新表單輸入
     const titleInput = document.getElementById('editTitle');
     const contentInput = document.getElementById('editContent');
 
@@ -301,7 +301,7 @@ window.updateEditorUI = function () {
         contentInput.value = (currentData.content || []).join('\n');
     }
 
-    // Update Buttons State
+    // 更新按鈕狀態
     const prevBtn = document.getElementById('prevSlideBtn');
     const nextBtn = document.getElementById('nextSlideBtn');
 
@@ -469,24 +469,24 @@ window.updateElementColor = function (idx, value) {
 }
 
 window.saveCurrentSlideData = function () {
-    // Save UI inputs back to data object
+    // 將 UI 輸入儲存回資料物件
     const titleInput = document.getElementById('editTitle');
     const contentInput = document.getElementById('editContent');
 
     if (!titleInput || !contentInput) return;
 
     const newTitle = titleInput.value.trim();
-    // Split by newline and filter empty items
+    // 根據換行符號分割並過濾空項目
     const newContent = contentInput.value.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
-    // Update State
+    // 更新狀態
     editorData.analyses[currentEditIndex].title = newTitle;
     editorData.analyses[currentEditIndex].content = newContent;
 }
 
 window.prevEditSlide = function () {
     if (currentEditIndex > 0) {
-        window.saveCurrentSlideData(); // Save before move
+        window.saveCurrentSlideData(); // 在移動前儲存
         currentEditIndex--;
         window.updateEditorUI();
     }
@@ -494,7 +494,7 @@ window.prevEditSlide = function () {
 
 window.nextEditSlide = function () {
     if (currentEditIndex < editorData.analyses.length - 1) {
-        window.saveCurrentSlideData(); // Save before move
+        window.saveCurrentSlideData(); // 在移動前儲存
         currentEditIndex++;
         window.updateEditorUI();
     }
@@ -507,9 +507,9 @@ window.backToPreview = function () {
     }
 }
 
-// Final Generation Step
+// 最終生成步驟
 window.generatePresentations = async function () {
-    window.saveCurrentSlideData(); // Save current page first
+    window.saveCurrentSlideData(); // 先儲存當前頁面資料
 
     const btn = document.getElementById('finalGenerateBtn');
     if (!btn) return;
@@ -566,7 +566,7 @@ window.generatePresentations = async function () {
             throw new Error(errorMsg);
         }
 
-        // Download logic
+        // 下載邏輯
         const blob = await response.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -613,7 +613,7 @@ window.openSettings = function () {
     if (modal) {
         modal.classList.remove('hidden');
 
-        // Load Settings
+        // 載入設定
         const geminiKey = localStorage.getItem('gemini_api_key');
         const openaiKey = localStorage.getItem('openai_api_key');
         if (geminiKey && geminiKeyInput) geminiKeyInput.value = geminiKey;
@@ -644,7 +644,7 @@ window.saveSettings = function () {
     if (modal) modal.classList.add('hidden');
 };
 
-// === 全域 PDF 處理函式 (Global PDF Handlers) ===
+// === 全域 PDF 處理函式 ===
 window.triggerUpload = function () {
     const pdfInput = document.getElementById('pdfInput');
     if (pdfInput) pdfInput.click();
@@ -803,7 +803,7 @@ window.startPreview = async function (file) {
             startPreviewBtn.innerHTML = '<span>下一步：解析頁面</span><i class="ri-arrow-right-line"></i>';
         }
 
-        // UX Improvement: Auto scroll to preview step
+        // UX 改進：自動捲動到預覽步驟
         if (previewStep && !previewStep.classList.contains('hidden')) {
             setTimeout(() => {
                 previewStep.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -812,7 +812,7 @@ window.startPreview = async function (file) {
     }
 };
 
-// === GRID 與選擇邏輯 ===
+// === 網格與選擇邏輯 ===
 
 window.renderGrid = function () {
     const pageGrid = document.getElementById('pageGrid');
@@ -926,9 +926,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const geminiKeyInput = document.getElementById('geminiKeyInput');
     const openaiKeyInput = document.getElementById('openaiKeyInput');
 
+    // [修正] 重新綁定設定按鈕的事件監聽器
     // [Fix] Re-attach Event Listeners for Settings Button
-    // [Fix] Re-attach Event Listeners for Settings Button
-    // Nuclear Option: Use both addEventListener and onclick property to ensure binding
+    // 強制手段：同時使用 addEventListener 和 onclick 以確保綁定
     console.log("Binding UI Events (v2.10.7)...");
 
     if (settingsBtn) {
@@ -953,7 +953,7 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.onclick = () => { console.log("Submit Clicked"); startAnalysis(); };
     }
 
-    // [Fix] Re-attach Event Listeners for Tabs
+    // [修正] 重新綁定分頁標籤的事件監聽器
     // [v7.0.4 Fix] 只使用 onclick，避免雙重綁定導致雙擊問題
     const tabBtns = document.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
@@ -966,7 +966,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
-    // Load API Keys from local storage
+    // 從本機儲存載入 API 金鑰
     try {
         if (typeof window.loadSettings === 'function') {
             window.loadSettings();
@@ -977,12 +977,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Failed to load settings:", e);
     }
 
-    // Check authentication on page load
+    // 頁面載入時檢查驗證狀態
     try {
         if (typeof checkAuth === 'function') {
             checkAuth();
         } else {
-            // Fallback if checkAuth missing (e.g. syntax error prevented definition)
+            // 若 checkAuth 缺失的備援措施 (例如語法錯誤導致未定義)
             console.error("checkAuth not defined, forcing UI visible");
             if (inputSection) inputSection.classList.remove('hidden');
         }
@@ -1000,15 +1000,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
 
             if (data.auth_required && !data.logged_in) {
-                // Public Access Mode (BYOK)
-                // Always show accessible UI
+                // 公開存取模式 (BYOK)
+                // 始終顯示可存取的 UI
                 landingSection.classList.add('hidden');
                 inputSection.classList.remove('hidden');
                 loginModal.classList.add('hidden');
 
-                // Optionally show a toast or message? No, keep it clean.
+                // 選項：顯示提示訊息？不，保持畫面簡潔。
             } else {
-                // Logged in (or Local mode) -> Show Feature
+                // 已登入 (或本地模式) -> 顯示功能
                 landingSection.classList.add('hidden');
                 inputSection.classList.remove('hidden');
                 loginModal.classList.add('hidden');
@@ -1016,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) {
             console.log('Auth check failed, continuing');
-            // Fallback: Show input in case of error (e.g. local dev offline)
+            // 備援：發生錯誤時顯示輸入框 (例如本地開發離線)
             landingSection.classList.add('hidden');
             inputSection.classList.remove('hidden');
         }
@@ -1053,8 +1053,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Use Global openSettings/closeSettings/saveSettings
-    // Settings Listeners removed to prevent race conditions
+    // 使用全域 openSettings/closeSettings/saveSettings
+    // 移除設定監聽器以防止競爭條件
 
     downloadBtn.addEventListener('click', () => {
         const blob = new Blob([currentResult], { type: 'text/markdown' });
@@ -1077,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // [v6.2.2] Check API Keys
+        // [v6.2.2] 檢查 API 金鑰
         const geminiKey = localStorage.getItem('gemini_api_key') || "";
         const openaiKey = localStorage.getItem('openai_api_key') || "";
 
@@ -1088,25 +1088,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Reset UI
+        // 重置介面
         statusSection.classList.remove('hidden');
         resultSection.classList.add('hidden');
         terminalOutput.innerHTML = '';
         markdownOutput.innerHTML = '';
         currentResult = "";
 
-        // Disable button
+        // 禁用按鈕
         submitBtn.disabled = true;
         submitBtn.innerHTML = 'AI 分析中 <i class="ri-loader-4-line ri-spin"></i>';
 
-        // Close previous connection if any
+        // 關閉先前的連線 (如果存在)
         if (currentEventSource) {
             currentEventSource.close();
         }
 
-        // Connect to SSE (session-based auth, no password needed)
-        // Connect to SSE (session-based auth, no password needed)
-        // Keys already retrieved above (geminiKey, openaiKey)
+        // 連線至 SSE (基於 Session 驗證，無需密碼)
+        // 連線至 SSE (基於 Session 驗證，無需密碼)
+        // 金鑰已在上方取得 (geminiKey, openaiKey)
 
         const sseUrl = `/api/summarize?url=${encodeURIComponent(url)}&gemini_key=${encodeURIComponent(geminiKey)}&openai_key=${encodeURIComponent(openaiKey)}`;
         currentEventSource = new EventSource(sseUrl);
@@ -1125,13 +1125,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("EventSource failed:", err);
             let state = currentEventSource ? currentEventSource.readyState : "Unknown";
 
-            // Auto-retry logic for Cold Starts (State 0 usually means connection refused/timeout)
+            // 冷啟動自動重試邏輯 (State 0 通常表示拒絕連線/逾時)
             if (state === 0 && retryCount < 3) {
                 appendLog(`伺服器喚醒中 (嘗試 ${retryCount + 1}/3)...`, "warn");
                 retryCount++;
                 currentEventSource.close();
                 setTimeout(() => {
-                    startAnalysis(true); // Retry flag
+                    startAnalysis(true); // 重試標記
                 }, 3000);
             } else {
                 appendLog(`連線中斷或發生錯誤 (State: ${state})。若為 Render 免費版，請稍候重試。`, "error");
@@ -1141,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleEvent(payload) {
-        // Reset retry count on successful message
+        // 成功接收訊息後重置重試計數
         retryCount = 0;
         switch (payload.type) {
             case 'log':
@@ -1153,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderResult(payload.data);
                 break;
             case 'ping':
-                // Keeping connection alive, no action needed
+                // 保持連線活躍，無需動作
                 break;
             case 'done':
                 appendLog("分析流程成功完成。", "latest");
@@ -1195,10 +1195,10 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.innerHTML = '<span>開始分析</span><i class="ri-flashlight-line"></i>';
     }
 
-    // === Mode Switching & Slide Generator logic ===
+    // === 模式切換與簡報生成邏輯 ===
     const modeContents = document.querySelectorAll('.mode-content');
 
-    // Slide Gen Elements
+    // 簡報生成元素
     const dropZone = document.getElementById('dropZone');
     const pdfInput = document.getElementById('pdfInput');
     const fileInfo = document.getElementById('fileInfo');
@@ -1206,25 +1206,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeFileBtn = document.getElementById('removeFileBtn');
     const generateSlideBtn = document.getElementById('generateSlideBtn');
 
-    // Use Global selectedPdfFile (defined at top)
+    // 使用全域 selectedPdfFile (定義於頂部)
     // let selectedPdfFile = null;
 
-    // Inner switchTab removed (Moved to Global)
+    // 移除內部 switchTab (已移至全域)
 
-    // Keep existing listeners as backup, but inline onclick in HTML will take precedence
-    // Keep existing listeners as backup
+    // 保留現有監聽器作為備份，但 HTML 中的 inline onclick 優先
+    // 保留現有監聽器作為備份
     // tabBtns is already defined above
     // Keep existing listeners as backup
-    // (Redundant loop removed to prevent double-firing)
+    // (移除冗餘迴圈以防止重複觸發)
 
-    // File Upload Handling - REMOVED (Moved to Global)
+    // 檔案上傳處理 - 已移除 (移至全域)
     // if (dropZone) { ... }
 
-    // State for Preview
-    // Use Global currentPreviewImages
+    // 預覽狀態
+    // 使用全域 currentPreviewImages
     // let currentPreviewImages = [];
 
-    // DOM Elements for Preview
+    // 預覽 DOM 元素
     const uploadStep = document.getElementById('uploadStep');
     const previewStep = document.getElementById('previewStep');
     const pageGrid = document.getElementById('pageGrid');
@@ -1236,11 +1236,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelPreviewBtn = document.getElementById('cancelPreviewBtn');
 
 
-    // (Moved to Global Scope above)
+    // (已移至上方全域範圍)
 
 
 
-    // Preview Actions
+    // 預覽動作
     if (selectAllBtn) {
         selectAllBtn.addEventListener('click', () => {
             currentPreviewImages.forEach(i => i.selected = true);
@@ -1257,19 +1257,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    // Inner generateSlides removed (Moved to Global)
+    // 移除內部 generateSlides (已移至全域)
 
     // if (generateSlideBtn) {
     //    generateSlideBtn.disabled = true; // Initial state
     // }
 
-    // === Demo Terminal Animation ===
+    // === 演示終端機動畫 ===
     const demoBody = document.getElementById('demoTerminalBody');
     const typewriter = document.getElementById('typewriter');
     const replayBtn = document.getElementById('replayDemoBtn');
 
     if (demoBody && typewriter) {
-        // Sequence of events for the demo
+        // 演示事件序列
         const demoSequence = [
             { text: "youtu-brain analyze https://youtu.be/demo123", type: "command" },
             { text: "🔌 連線建立中...", type: "info", delay: 500 },
@@ -1292,21 +1292,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isAnimating) return;
             isAnimating = true;
 
-            // Clear previous content except cursor line
+            // 清除除游標行以外的先前內容
             const existingLogs = demoBody.querySelectorAll('.log-line');
             existingLogs.forEach(el => el.remove());
             replayBtn.classList.add('hidden');
             typewriter.textContent = "";
 
-            // Step 1: Type the command
+            // 步驟 1：輸入指令
             await typeCommand(demoSequence[0].text);
 
-            // Step 2: Process logs
+            // 步驟 2：處理日誌
             for (let i = 1; i < demoSequence.length; i++) {
                 const item = demoSequence[i];
                 await new Promise(r => setTimeout(r, item.delay - (i > 1 ? demoSequence[i - 1].delay : 0)));
                 appendDemoLog(item.text, item.type);
-                // Scroll to bottom
+                // 捲動到底部
                 demoBody.scrollTop = demoBody.scrollHeight;
             }
 
@@ -1325,16 +1325,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         clearInterval(interval);
                         setTimeout(() => {
-                            // "Enter" key effect
+                            // "Enter" 鍵效果
                             const cmdLine = document.createElement('div');
                             cmdLine.className = 'cursor-line';
                             cmdLine.innerHTML = `<span class="prompt">$</span> <span class="command-text">${text}</span>`;
                             demoBody.insertBefore(cmdLine, demoBody.firstChild);
-                            typewriter.textContent = ""; // Clear for next input implication
+                            typewriter.textContent = ""; // 清除以暗示下一次輸入
                             resolve();
                         }, 500);
                     }
-                }, 50); // Typing speed
+                }, 50); // 打字速度
             });
         }
 
@@ -1342,20 +1342,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const div = document.createElement('div');
             div.className = `log-entry log-line ${type}`;
             div.textContent = `> ${message}`;
-            // Insert before the cursor line (which is always last)
+            // 插入在游標行之前 (游標行始終在最後)
             const cursorLine = demoBody.querySelector('.cursor-line');
             demoBody.insertBefore(div, cursorLine);
         }
 
-        // Auto run on load
+        // 載入時自動執行
         setTimeout(runDemo, 1000);
 
-        // Replay handler
+        // 重播處理器
         replayBtn.addEventListener('click', runDemo);
     }
 
 
-    // [Fix] Start Preview Button uses onmousedown in HTML to prevent double-click
-    // No JS listener needed here.
+    // [修正] 開始預覽按鈕在 HTML 中使用 onmousedown 以防止雙擊
+    // 此處不需要 JS 監聽器。
 
 });

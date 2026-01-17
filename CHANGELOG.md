@@ -156,60 +156,60 @@
 - **Cloud Run Logging**: 修正日誌中模型名稱顯示錯誤的問題。
 
 
-## v5.0.1 (Hotfix) - 2026-01-12
-### 🚑 Stability Fix
--   **Image Truncation Error**: 
+## v5.0.1 (緊急修復) - 2026-01-12
+### 🚑 穩定性修復 (Stability Fix)
+-   **圖片截斷錯誤 (Image Truncation Error)**: 
     -   Cloud Run 監控發現 `OSError: image file is truncated` 導致分析卡住。
     -   此問題源自於 PIL 預設拒絕載入不完整的圖片區塊。
-    -   **Fix**: 全面啟用 `ImageFile.LOAD_TRUNCATED_IMAGES = True`，容許系統載入並修復截斷的圖像，防止任務中斷。
+    -   **修復**: 全面啟用 `ImageFile.LOAD_TRUNCATED_IMAGES = True`，容許系統載入並修復截斷的圖像，防止任務中斷。
 
-## v5.0.0 (Layout Reconstruction) - 2026-01-12
-### 🌟 New Features
--   **Layout Reconstruction (Overlay Engine)**: 
+## v5.0.0 (版面重建) - 2026-01-12
+### 🌟 新功能 (New Features)
+-   **版面重建 (Overlay Engine)**: 
     -   針對掃描檔 (Scanned PDF) 與圖片型投影片，不再使用單純的左圖右文切割。
     -   結合 **Gemini Vision** 座標識別與 **Overlay Positioning** 技術，將 AI 識別的文字精確填回原背景位置。
     -   **視覺效果**: 看起來像原始圖片 (保留排版)。
     -   **實用性**: 文字可完全編輯 (Editable Text Boxes)。
 
-### ⚡ Improvements
--   **Structure Analysis**: Vision Prompt 現在會回傳 BBox (Bounding Box) 與字體大小估計值。
--   **Fallback Precision**: 當原生文字提取失敗時，Vision 模式能提供更接近原貌的重建結果。
+### ⚡ 改進 (Improvements)
+-   **結構分析 (Structure Analysis)**: Vision Prompt 現在會回傳 BBox (Bounding Box) 與字體大小估計值。
+-   **備援精確度 (Fallback Precision)**: 當原生文字提取失敗時，Vision 模式能提供更接近原貌的重建結果。
 
 ## [v5.4.2] - 2026-01-12
-### 🚑 Hotfix (Cleanup & Refinement)
-- **Gray Box Elimination**:
-    - **Fix**: Modified `remove_text_from_image` to accept the `original_image` as a fallback.
-    - **Logic**: If inpainting fails (timeout/safety), the system now returns the *original image* (with text) instead of the *intermediate patched image* (with gray masking boxes), ensuring the slide always looks presentable.
-- **Object Lifting Precision**:
-    - **Fix**: Updated Gemini Analysis Prompt to explicitly **exclude text blocks** from `visual_elements`.
-    - **Impact**: Reduces "Double Text" artifacts where the AI would lift a text block as an image, causing it to be pasted on top of the editable text.
+### 🚑 緊急修復 (Cleanup & Refinement)
+- **消除灰色方塊 (Gray Box Elimination)**:
+    - **修復**: 修改 `remove_text_from_image` 以接受 `original_image` 作為備援。
+    - **邏輯**: 如果修補失敗 (超時/安全攔截)，系統現在會回傳 *原始圖片* (含文字)，而非 *中間修補圖片* (含灰色遮罩方塊)，確保投影片外觀始終得體。
+- **物件提取精確度 (Object Lifting Precision)**:
+    - **修復**: 更新 Gemini 分析提示詞，明確 **排除文字區塊** 於 `visual_elements` 之外。
+    - **影響**: 減少「雙重文字」偽影，即 AI 將文字區塊提取為圖片，導致貼在可編輯文字上方的問題。
 
 ## [v5.4.1] - 2026-01-12
-### 🚑 Hotfix (Object Lifting Serialization)
-- **JSON Serialization Fix**:
-    - **Crash**: Detected `TypeError: Object of type Image is not JSON serializable` in Cloud Run logs.
-    - **Root Cause**: Cropped visual elements (PIL Images) were being passed directly to the frontend JSON response.
-    - **Fix**: Implemented Base64 serialization for all object crops in `slide_generator.py`.
-    - **Restore**: Fixed accidental deletion of `google.genai` imports during hotfix.
+### 🚑 緊急修復 (Object Lifting Serialization)
+- **JSON 序列化修復 (JSON Serialization Fix)**:
+    - **崩潰**: 在 Cloud Run 日誌中偵測到 `TypeError: Object of type Image is not JSON serializable`。
+    - **根本原因**: 裁切的視覺元素 (PIL Images) 被直接傳遞給前端 JSON 回應。
+    - **修復**: 在 `slide_generator.py` 中為所有物件裁切實作 Base64 序列化。
+    - **還原**: 修復了緊急修復期間意外刪除的 `google.genai` 導入。
 
 ## [v5.1.0] - 2026-01-12
-### Improved
-- **Sequential Vision Pipeline (v5.1)**: Refactored `process_single_page` to use a sequential Logic (Analysis -> Masking -> Inpainting) for scanned PDFs.
-- **Deterministic Masking**: Added `patch_text_areas` to programmatically mask text regions before inpainting, solving "incomplete text removal" issues.
-- **Enhanced OCR**: Upgraded `analyze_slide_with_gemini` to use `gemini-1.5-pro` (vs Flash) and 2048px resolution for superior text extraction accuracy.
-- **Inpainting Quality**: The inpainting model now receives a "pre-cleaned" image, significantly improving background reconstruction quality.
+### 改進 (Improved)
+- **序列視覺流水線 (Sequential Vision Pipeline) (v5.1)**: 重構 `process_single_page`，針對掃描 PDF 採用序列邏輯 (分析 -> 遮罩 -> 修補)。
+- **確定性遮罩 (Deterministic Masking)**: 新增 `patch_text_areas`，在修補前以程式化方式遮蔽文字區域，解決「文字移除不完全」的問題。
+- **增強型 OCR (Enhanced OCR)**: 升級 `analyze_slide_with_gemini` 使用 `gemini-1.5-pro` (相較於 Flash) 與 2048px 解析度，以獲得更優越的文字提取準確度。
+- **修補品質 (Inpainting Quality)**: 修補模型現在接收「預先清理」的圖片，顯著提升背景重建品質。
 
-## v4.0.0 (Native Vector Stripping) - 2026-01-12
-### 🚀 Major Architectural Change
-- **Vector-Level Text Stripping**: Replaced `pypdf` + `Masking` + `Inpainting` with `PyMuPDF` Vector Stripping.
-    - **Concept**: Instead of "removing" text, the system now renders the PDF page *suppressing* the text layer entirely.
-    - **Impact**: 100% text removal with zero artifacts. No "AI guessing" of the background. Original vector graphics, gradients, and images are preserved perfectly.
-    - **Performance**: Significant speedup by bypassing the Gemini Image Editing API for native PDFs.
+## v4.0.0 (原生向量剝離) - 2026-01-12
+### 🚀 重大架構變更 (Major Architectural Change)
+- **向量級文字剝離 (Vector-Level Text Stripping)**: 以 `PyMuPDF` 向量剝離取代了 `pypdf` + `Masking` + `Inpainting`。
+    - **概念**: 系統不再「移除」文字，而是渲染 PDF 頁面時完全 *抑制* 文字層。
+    - **影響**: 100% 文字移除，零偽影。無需「AI 猜測」背景。原始向量圖形、漸層與圖片完美保留。
+    - **效能**: 透過繞過 Gemini 圖像編輯 API 處理原生 PDF，顯著提升速度。
 
-### 🛠 Improvements
-- **Robust Text Extraction**: Switched to PyMuPDF's advanced text extraction for better structure analysis.
-- **Fail-Safe Mechanism**: Retained Vision V2 pipeline as a fallback for Scanned/Image-based PDFs.
-- **Dependency Update**: Added `pymupdf` and `reportlab` (for verification).
+### 🛠 改進 (Improvements)
+- **穩健的文字提取 (Robust Text Extraction)**: 切換至 PyMuPDF 的進階文字提取以獲得更好的結構分析。
+- **安全備援機制 (Fail-Safe Mechanism)**: 保留 Vision V2 流水線作為掃描/圖片型 PDF 的備援。
+- **相依性更新 (Dependency Update)**: 新增 `pymupdf` 與 `reportlab` (用於驗證)。
 
 ## [v3.0.1] - 2026-01-12
 

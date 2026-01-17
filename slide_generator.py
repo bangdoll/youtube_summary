@@ -77,7 +77,7 @@ def clean_json_string(text: str) -> str:
 async def analyze_slide_with_gemini(image, api_key: str) -> dict:
     """
     使用 Gemini Vision API 分析單張投影片圖片，提取標題、內文與結構。
-    (Async Version)
+    (非同步版本)
     """
     try:
         max_retries = 3
@@ -86,10 +86,10 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
         # 建立 Client
         client = genai.Client(api_key=api_key)
         
-        # 準備內容 (Image processing is CPU bound, run in thread)
+        # 準備內容 (影像處理為 CPU 密集型，在線程中執行)
         def process_image():
-            # [v5.1] Boost Resolution for better OCR
-            # 2048px ensures small text is readable
+            # [v5.1] 提升解析度以獲得更好的 OCR 效果
+            # 2048px 確保小字清晰可讀
             img_resized = image.copy()
             img_resized.thumbnail((2048, 2048))
             
@@ -160,7 +160,7 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
 
         for attempt in range(max_retries):
             try:
-                # Use Async Client
+                # 使用非同步客戶端
                 response = await client.aio.models.generate_content(
                     model=ANALYSIS_MODEL_ID, 
                     contents=[
@@ -169,7 +169,7 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                     ],
                     config=types.GenerateContentConfig(
                         response_mime_type='application/json',
-                        temperature=0.1 # Low temp for precision
+                        temperature=0.1 # 低溫度以提高精確度
                     )
                 )
                 
@@ -183,7 +183,7 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                     else:
                         result = {}
                 
-                # Normalize result structure
+                # 正規化結果結構
                 if "content" not in result:
                     elements = result.get("elements", [])
                     result["content"] = [e["content"] for e in elements if not e.get("is_title", False)]
@@ -191,11 +191,11 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
                     if titles and "title" not in result:
                         result["title"] = titles[0]
                 
-                # [v5.4] Ensure visual_elements exists
+                # [v5.4] 確保 visual_elements 存在
                 if "visual_elements" not in result:
                     result["visual_elements"] = []
                 
-                # Fallbacks
+                # 備援
                 if "background_color_hex" not in result: result["background_color_hex"] = "#FFFFFF"
                 if "text_color_hex" not in result: result["text_color_hex"] = "#000000"
                 
@@ -221,8 +221,8 @@ async def analyze_slide_with_gemini(image, api_key: str) -> dict:
 
 async def analyze_text_structure(raw_text: str, api_key: str) -> dict:
     """
-    [Native Hybrid] Identical to analyze_slide but takes RAW TEXT instead of Image.
-    Bypasses OCR errors.
+    [原生混合] 與 analyze_slide 相同，但接受原始文字而非圖片。
+    避開 OCR 錯誤。
     """
     try:
         client = genai.Client(api_key=api_key)
@@ -303,8 +303,8 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False,
         
         # 準備圖片資料
         def process_image():
-            # Resize optimization: Downscale to 1600px max dimension to prevent timeouts/artifacts
-            # while preserving enough detail from the 200 DPI source.
+            # 縮放最佳化：縮小至最大 1600px 以避免逾時/偽影
+            # 同時保留 200 DPI 來源的足夠細節。
             img_resized = image.copy()
             img_resized.thumbnail((1600, 1600))
             
@@ -376,7 +376,7 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False,
 
 def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height: int = 1000):
     """
-    Classic rectangular crop (Fallback).
+    經典矩形裁切 (備援)。
     """
     try:
         if not bbox or len(bbox) != 4:
@@ -409,12 +409,12 @@ def process_transparent_crop(image, bbox: list):
     # 2. Apply Background Removal
     if HAS_REMBG:
         try:
-            # Convert to bytes for rembg (it handles PIL too but bytes is safer for some versions)
-            # rembg expects PIL or bytes. Let's pass PIL.
+            # 轉換為位元組以供 rembg 使用 (它也支援 PIL，但對於某些版本，位元組較安全)
+            # rembg 接受 PIL 或位元組。這裡傳遞 PIL。
             
-            # Optimization: Downscale huge crops to save RAM/CPU
-            # U2-Net works best at 320x320 internally anyway, but we want high res output.
-            # But let's limit max dimension to 1024 to prevent OOM on Cloud Run
+            # 最佳化：縮小巨大的裁切圖以節省 RAM/CPU
+            # U2-Net 內部最佳工作解析度約為 320x320，但我們希望輸出高解析度。
+            # 但將最大尺寸限制為 1024 以防止 Cloud Run 記憶體不足 (OOM)
             w, h = crop.size
             if max(w, h) > 1024:
                 scale = 1024 / max(w, h)
@@ -424,9 +424,9 @@ def process_transparent_crop(image, bbox: list):
             else:
                 crop_proc = crop
 
-            # Run rembg
-            # alpha_matting=True improves edges but mimics hair details (slower)
-            # For blueprints, standard is usually fine. Let's use defaults for speed.
+            # 執行 rembg
+            # alpha_matting=True 可改善邊緣，但會模擬髮絲細節 (較慢)
+            # 對於藍圖，標準模式通常就足夠了。為了速度，使用預設值。
             output = rembg_remove(crop_proc)
             
             return output
@@ -446,14 +446,14 @@ def get_average_color(image, bbox):
         width, height = image.size
         ymin, xmin, ymax, xmax = bbox
         
-        # Convert normative 0-1000 to pixels
+        # 將正規化 0-1000 轉換為像素
         left = int(xmin / 1000 * width)
         top = int(ymin / 1000 * height)
         right = int(xmax / 1000 * width)
         bottom = int(ymax / 1000 * height)
         
-        # [v5.3] Smart Local Background Sampling
-        # Instead of 4 corners, sample the perimeter to get a true local background color.
+        # [v5.3] 智慧局部背景採樣
+        # 採樣周邊以獲取真實的局部背景顏色，而非僅取四個角落。
         margin = 5
         
         # Clamp coordinates
@@ -462,24 +462,24 @@ def get_average_color(image, bbox):
         r = min(width - 1, right + margin)
         b = min(height - 1, bottom + margin)
         
-        # Collect samples from the rectangular perimeter
+        # 從矩形周邊收集樣本
         samples = []
         
-        # Top and Bottom edges
+        # 上下邊緣
         for x in range(l, r, 10): # Step 10 for speed
             samples.append(image.getpixel((x, t)))
             samples.append(image.getpixel((x, b)))
             
-        # Left and Right edges
+        # 左右邊緣
         for y in range(t, b, 10):
             samples.append(image.getpixel((l, y)))
             samples.append(image.getpixel((r, y)))
             
-        # Fallback if box is too small
+        # 如果方塊太小則使用備援
         if not samples:
             samples.append(image.getpixel((max(0, left-1), max(0, top-1))))
             
-        # Calculate Average
+        # 計算平均值
         avg_r = sum(c[0] for c in samples) // len(samples)
         avg_g = sum(c[1] for c in samples) // len(samples)
         avg_b = sum(c[2] for c in samples) // len(samples)
@@ -506,7 +506,7 @@ def patch_text_areas(image, elements):
             bbox = elem.get('bbox')
             if not bbox: continue
             
-            # Get Context Color
+            # 獲取上下文顏色
             bg_color = get_average_color(image, bbox)
             
             ymin, xmin, ymax, xmax = bbox
@@ -515,8 +515,8 @@ def patch_text_areas(image, elements):
             right = int(xmax / 1000 * width)
             bottom = int(ymax / 1000 * height)
             
-            # Draw solid rectangle to mask text
-            # [v6.0] Tuning: Increased padding to 20px to ensure no text bits peek out
+            # 繪製實心矩形以遮蔽文字
+            # [v6.0] 調校：將填充增加至 20px 以確保文字不會露出
             pad = 20 
             draw.rectangle(
                 [max(0, left-pad), max(0, top-pad), min(width, right+pad), min(height, bottom+pad)], 
@@ -531,37 +531,37 @@ def patch_text_areas(image, elements):
 
 async def process_single_page(image: Image.Image, page_num: int, total_pages: int, api_key: str, remove_icon: bool = False, pdf_path: str = None) -> tuple:
     """
-    [Architecture v5.1: Sequential Hybrid Processing]
-    1. Try Native PDF Vector Stripping (PyMuPDF) -> Best Quality
-    2. Fallback to Vision V3 (Scanned PDF)
-       - Step A: High-Res Vision Analysis (Get Content & BBox)
-       - Step B: Deterministic Masking (Patch text areas)
-       - Step C: Generative Inpainting (Refine Background)
+    [架構 v5.1：序列混合處理]
+    1. 嘗試原生 PDF 向量剝離 (PyMuPDF) -> 最佳品質
+    2. 備援至 Vision V3 (掃描 PDF)
+       - 步驟 A：高解析度視覺分析 (獲取內容與 BBox)
+       - 步驟 B：確定性遮罩 (修補文字區域)
+       - 步驟 C：生成式修補 (優化背景)
     """
     logger.info(f"Processing Page {page_num}/{total_pages} (Mode: {'Native' if pdf_path else 'Vision Only'})")
     
-    # [Path A] Native Vector Stripping
+    # [路徑 A] 原生向量剝離
     if pdf_path:
         try:
-            # We run PyMuPDF operations in a thread to avoid blocking the event loop
+            # 我們線上程中執行 PyMuPDF 操作以避免阻塞事件迴圈
             def native_process():
                 renderer = native_pdf.PdfRenderer(pdf_path)
                 try:
-                    # 1. Extract Text
-                    # page_num is 1-based, fitz is 0-based
+                    # 1. 提取文字
+                    # page_num 從 1 開始，fitz 從 0 開始
                     p_idx = page_num - 1
                     
-                    # Check if page has significant text
+                    # 檢查頁面是否有顯著文字
                     text_data = renderer.extract_text(p_idx)
                     
-                    # Heuristic: If text content is very little, treat as Image-heavy/Scanned
+                    # 啟發式：如果文字內容很少，視為圖片為主/掃描文件
                     if not text_data:
                         return None 
                         
-                    # 2. Vector Stripping (Get Clean Image)
+                    # 2. 向量剝離 (獲取乾淨圖片)
                     clean_img = renderer.get_clean_image(p_idx, dpi=200)
                     
-                    # 3. Formulate Text for Analysis
+                    # 3. 制定分析用文字
                     full_text = "\n".join([item['text'] for item in text_data])
                     
                     return (clean_img, full_text)
@@ -585,34 +585,34 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
             logger.warning(f"Page {page_num}: Native processing failed ({e}). Fallback to Vision.")
             # Fall through to Path B
 
-    # [Path B] Global Fallback: Vision V3 (Scanned PDF or Native Fail)
-    # Sequential Processing for Maximum Quality
+    # [路徑 B] 全域備援：Vision V3 (掃描 PDF 或原生失敗)
+    # 為了最高品質的序列處理
     try:
-        # Step 1: Analyze Slide (High Res, Get BBoxes)
-        # We await this FIRST.
+        # 步驟 1：分析投影片 (高解析度，獲取 BBox)
+        # 我們先等待這個完成。
         analysis_result = await analyze_slide_with_gemini(image, api_key)
         
-        # v5.0: Force overlay layout if elements detected by Vision
+        # v5.0: 如果 Vision 偵測到元素，強制使用 overlay 佈局
         if analysis_result.get("elements"):
             analysis_result["layout"] = "overlay"
             
-        # [v5.4] Object Lifting (Cropping & Masking)
-        # 1. Extract Visuals (Images/Charts) to be placed as separate objects
+        # [v5.4] 物件提取 (裁切與遮罩)
+        # 1. 提取視覺元素 (圖片/圖表) 以作為獨立物件放置
         visual_crops = []
         visual_elements = analysis_result.get("visual_elements", [])
         
-        # Crop visuals from the ORIGINAL image (before any patching)
-        # [v6.0] Use Transparent Object Lifting
+        # 從原始圖片裁切視覺元素 (在任何修補之前)
+        # [v6.0] 使用透明物件提取
         for i, viz in enumerate(visual_elements):
-            # [v6.1.3] Special handling for Background Diagrams (Blueprints)
-            # Do NOT use rembg on full-page blueprints as it might wipe out faint lines.
+            # [v6.1.3] 背景圖表 (藍圖) 的特殊處理
+            # 不要在全頁藍圖上使用 rembg，因為可能會擦除微弱的線條。
             is_background = 'background' in viz.get('type', '').lower() or 'blueprint' in viz.get('description', '').lower()
             
             if is_background:
                 logger.info(f"Visual {i}: Detected background/blueprint. Skipping rembg.")
                 crop = crop_visual_element(image, viz.get("bbox"))
             else:
-                 # Standard objects (Icons, Photos) -> use rembg
+                 # 標準物件 (圖示、照片) -> 使用 rembg
                 crop = process_transparent_crop(image, viz.get("bbox"))
             
             if crop:
@@ -620,9 +620,9 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
             else:
                 visual_crops.append(None) # Keep index alignment
         
-        # Attach crops to analysis result (In-memory transport)
-        # [v5.4 Fix] Convert PIL Images to Base64 Strings for JSON Serialization
-        # This prevents "TypeError: Object of type Image is not JSON serializable"
+        # 將裁切圖附加到分析結果 (記憶體內傳輸)
+        # [v5.4 修正] 將 PIL 圖片轉換為 Base64 字串以進行 JSON 序列化
+        # 這防止 "TypeError: Object of type Image is not JSON serializable"
         visual_crops_b64 = []
         for crop in visual_crops:
             if crop:
@@ -639,33 +639,33 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
 
         analysis_result["_visual_crops"] = visual_crops_b64
 
-        # [v6.1] Reconstruction Mode Strategy
-        # For Scanned Docs/Blueprints, we PREFER Reconstruction (Whiteboard) over Restoration (Inpainting).
-        # It's cleaner, faster, and avoids "Gray Box" artifacts.
+        # [v6.1] 重建模式策略
+        # 對於掃描文件/藍圖，我們偏好重建 (白板) 勝於修復 (Inpainting)。
+        # 這更乾淨、更快，且避免 "灰色方塊" 偽影。
         USE_RECONSTRUCTION = True
         
         if USE_RECONSTRUCTION:
             analysis_result["reconstruction_mode"] = True
-            # [v6.1 Fix] Return a White Blank Image WITH Visual Elements
-            # This ensures the Web Editor has a valid preview to show (WYSIWYG)
+            # [v6.1 修正] 回傳帶有視覺元素的白色空白圖片
+            # 這確保網頁編輯器有有效的預覽可顯示 (所見即所得)
             cleaned_image = Image.new('RGB', image.size, (255, 255, 255))
             
-            # Composite visual crops onto the white background
+            # 將視覺裁切圖合成到白色背景上
             for i, crop in enumerate(visual_crops):
                 if crop:
                     try:
                         bbox = visual_elements[i].get('bbox', [0,0,0,0])
                         ymin, xmin, ymax, xmax = bbox
                         
-                        # Calculate pixel position
+                        # 計算像素位置
                         left = int(xmin / 1000 * image.width)
                         top = int(ymin / 1000 * image.height)
                         
-                        # Resize crop if needed to match bbox size (due to crop extraction logic nuances)
-                        # Normally crop size matches bbox implies, but let's be safe or just paste
-                        # For now, simple paste.
+                        # 如果需要，調整裁切圖大小以匹配 bbox 大小 (由於裁切提取邏輯的細微差別)
+                        # 通常裁切尺寸與 bbox 相符，但為了保險起見或直接貼上
+                        # 目前採簡單貼上。
                         
-                        # Handle Transparency
+                        # 處理透明度
                         if crop.mode in ('RGBA', 'LA'):
                              cleaned_image.paste(crop, (left, top), mask=crop)
                         else:
@@ -674,14 +674,14 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
                     except Exception as e:
                         logger.warning(f"Failed to composite visual element {i} onto preview: {e}")
             
-            logger.info(f"Page {page_num}: Reconstruction Mode Active. Created Composited White Image for Preview.")
+            logger.info(f"頁面 {page_num}: 重建模式已啟用。已建立合成的白色預覽圖片。")
         else:
-            # [Legacy Path] Patch & Inpaint
-            # 2. Patch Text Areas AND Visual Areas (Deterministic Masking)
+            # [舊版路徑] 修補與 Inpaint
+            # 2. 修補文字區域與視覺區域 (確定性遮罩)
             mask_targets = analysis_result.get('elements', []) + visual_elements
             patched_image = patch_text_areas(image, mask_targets)
             
-            # Step 3: Generative Inpainting (Refine Background)
+            # 步驟 3：生成式修補 (優化背景)
             cleaned_image = await remove_text_from_image(patched_image, api_key, remove_icon, original_image=image)
             analysis_result["reconstruction_mode"] = False
 
@@ -700,49 +700,49 @@ async def process_single_page(image: Image.Image, page_num: int, total_pages: in
 
 def reconstruct_slide_background(slide, bg_hex):
     """
-    [v6.1] Generates a clean, solid/gradient background for Reconstruction Mode.
+    [v6.1] 為重建模式生成乾淨的純色/漸層背景。
     """
     try:
         background = slide.background
         fill = background.fill
         fill.solid()
         fill.fore_color.rgb = hex_to_rgb(bg_hex)
-        # Future: Add subtle gradient or pattern based on analysis
+        # 未來：根據分析添加細微的漸層或圖案
     except Exception as e:
         logger.warning(f"Background reconstruction failed: {e}")
 
 def vectorize_image_to_svg(pil_image):
     """
-    [v6.2] Converts a PIL Image to SVG using Potrace.
-    Returns the path to the temporary SVG file or None if failed.
+    [v6.2] 使用 Potrace 將 PIL 圖片轉換為 SVG。
+    回傳暫存 SVG 檔案的路徑，若失敗則回傳 None。
     """
     if not shutil.which("potrace"):
-        # logger.warning("Potrace not found. Skipping vectorization.")
+        # logger.warning("未找到 Potrace。跳過向量化。")
         return None
         
     try:
-        # Create temp BMP file
+        # 建立暫存 BMP 檔案
         with tempfile.NamedTemporaryFile(suffix=".bmp", delete=False) as bmp_file:
             bmp_path = bmp_file.name
             
         svg_path = bmp_path.replace(".bmp", ".svg")
         
-        # Preprocess: Grayscale + Threshold
+        # 預處理：灰階 + 閾值
         img = pil_image.convert('L')
-        # Threshold: < 180 becomes black (lines), > 180 becomes white (background)
-        # Adjust this threshold if lines are too faint
+        # 閾值：< 180 變黑 (線條)，> 180 變白 (背景)
+        # 如果線條太淡，請調整此閾值
         img = img.point(lambda x: 0 if x < 200 else 255, '1')
         img.save(bmp_path)
         
-        # Run potrace
-        # -s: SVG backend
-        # --alphamax 0.2: Slightly smooth curves
-        # -k 0.5: Black level
-        # [v6.2.1] Add timeout to prevent hanging
+        # 執行 potrace
+        # -s: SVG 後端
+        # --alphamax 0.2: 輕微平滑曲線
+        # -k 0.5: 黑階
+        # [v6.2.1] 新增逾時以防止掛起
         cmd = ["potrace", bmp_path, "-s", "-o", svg_path, "--alphamax", "0.2"]
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
         
-        # Cleanup BMP
+        # 清理 BMP
         if os.path.exists(bmp_path):
             os.unlink(bmp_path)
             
@@ -793,40 +793,40 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     except:
                         img_byte_arr = None
 
-            # [Overlay Mode Check]
-            # layout might be 'overlay' (v5) or 'split_left_image' (v2) or others.
+            # [Overlay 模式檢查]
+            # layout 可能是 'overlay' (v5) 或 'split_left_image' (v2) 或其他。
             layout_type = slide_data.get('layout', 'split_left_image')
             elements = slide_data.get('elements', [])
             visual_elements = slide_data.get('visual_elements', [])
             
-            # If we have 'elements' with bboxes, force overlay mode
+            # 如果有帶有 BBox 的 'elements'，強制使用 overlay 模式
             if elements and len(elements) > 0:
                 layout_type = 'overlay'
 
-            # --- Layout Implementation ---
-            # --- Layout Implementation ---
-            # [v6.1] Reconstruction Mode Check
+            # --- 佈局實作 ---
+            # --- 佈局實作 ---
+            # [v6.1] 重建模式檢查
             reconstruction_mode = slide_data.get("reconstruction_mode", False)
 
             if layout_type == 'overlay':
                 
-                # 1. Background Handling
+                # 1. 背景處理
                 if reconstruction_mode:
-                    # [Clean Reconstruction]
-                    # Discard original image. Use generated clean background.
+                    # [乾淨重建]
+                    # 捨棄原始圖片。使用生成的乾淨背景。
                     reconstruct_slide_background(slide, bg_hex)
-                    # No add_picture for background!
+                    # 不為背景執行 add_picture！
                 else:
-                    # [Legacy/Restoration]
-                    # Use the processed (cleaned/patched) image as background
+                    # [舊版/復原]
+                    # 使用處理過 (清理/修補) 的圖片作為背景
                     if img_byte_arr:
                         try:
                             pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), width=Inches(SLIDE_W_INCH), height=Inches(SLIDE_H_INCH))
                         except Exception as e:
                             logger.error(f"Slide {i}: Add bg picture failed: {e}")
                         
-                # 2. [v5.4] Visual Object Lifting (Images/Charts)
-                # Place crops as separate picture shapes
+                # 2. [v5.4] 視覺物件提取 (圖片/圖表)
+                # 將裁切圖放置為獨立的圖片形狀
                 visual_crops = slide_data.get("_visual_crops", [])
                 for idx, viz in enumerate(visual_elements):
                     try:
@@ -834,7 +834,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                             crop_data = visual_crops[idx]
                             crop_img = None
                             
-                            # Handle Base64 String (v5.4 serialization fix)
+                            # 處理 Base64 字串 (v5.4 序列化修正)
                             if isinstance(crop_data, str) and crop_data.startswith("data:image"):
                                 try:
                                     header, encoded = crop_data.split(",", 1)
@@ -842,7 +842,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                                     crop_img = Image.open(io.BytesIO(img_bytes))
                                 except Exception as e:
                                     logger.warning(f"Failed to decode visual element crop: {e}")
-                            # Handle PIL Image (Legacy / Internal)
+                            # 處理 PIL 圖片 (舊版/內部)
                             elif isinstance(crop_data, Image.Image):
                                 crop_img = crop_data
                                 
@@ -855,7 +855,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                                 width = Inches((xmax - xmin) / 1000 * SLIDE_W_INCH)
                                 height = Inches((ymax - ymin) / 1000 * SLIDE_H_INCH)
                                 
-                                # [v6.2] Vectorization Check
+                                # [v6.2] 向量化檢查
                                 is_blueprint = 'blueprint' in viz.get('description', '').lower() or 'background' in viz.get('type', '').lower()
                                 svg_path = None
                                 
@@ -864,9 +864,9 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                                      
                                 if svg_path:
                                      try:
-                                         # Insert SVG (Vector)
+                                         # 插入 SVG (向量)
                                          slide.shapes.add_picture(svg_path, left, top, width=width, height=height)
-                                         # Cleanup
+                                         # 清理
                                          if os.path.exists(svg_path):
                                              os.unlink(svg_path)
                                      except Exception as ve:
@@ -874,7 +874,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                                          svg_path = None # Trigger fallback
 
                                 if not svg_path:
-                                    # Convert PIL to Bytes (Raster Fallback)
+                                    # 將 PIL 轉換為位元組 (點陣圖備援)
                                     crop_buf = io.BytesIO()
                                     crop_img.save(crop_buf, format='PNG') 
                                     crop_buf.seek(0)
@@ -883,7 +883,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     except Exception as e:
                         logger.warning(f"Visual element {idx} placement failed: {e}")
 
-                # 3. Text Overlays
+                # 3. 文字覆蓋
                 for elem in elements:
                     try:
                         content = elem.get('content', '')
@@ -894,13 +894,13 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         
                         ymin, xmin, ymax, xmax = bbox
                         
-                        # Convert 0-1000 to Inches
+                        # 將 0-1000 轉換為英吋
                         left = Inches(xmin / 1000 * SLIDE_W_INCH)
                         top = Inches(ymin / 1000 * SLIDE_H_INCH)
                         width = Inches((xmax - xmin) / 1000 * SLIDE_W_INCH)
                         height = Inches((ymax - ymin) / 1000 * SLIDE_H_INCH)
                         
-                        # Add Text Box
+                        # 新增文字方塊
                         tb = slide.shapes.add_textbox(left, top, width, height)
                         tf = tb.text_frame
                         tf.word_wrap = True
@@ -908,7 +908,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         p = tf.paragraphs[0]
                         p.text = str(content)
                         
-                        # Use heuristic for font size if missing or too small
+                        # 如果字體大小缺失或太小，使用啟發式方法
                         if not isinstance(font_size_pt, (int, float)) or font_size_pt < 8: 
                             font_size_pt = 18
                         
@@ -953,13 +953,13 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         p.font.color.rgb = text_rgb
                         p.space_after = Pt(20)
             else:
-                # Split Layout (Default for v2 legacy / fallback)
+                # 分割佈局 (v2 舊版/備援預設)
                 if img_byte_arr:
-                    # Left Image
+                    # 左側圖片
                     try:
                         pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), height=prs.slide_height)
-                        # Center in left half (Inches(6.6)) if needed, but full height is good for split
-                        # Crop if too wide
+                        # 如果需要，置中於左半部 (Inches(6.6))，但全高適合分割佈局
+                        # 如果太寬則裁切
                         if pic.width > Inches(7):
                              crop = (pic.width - Inches(7)) / 2
                              pic.crop_left = crop / pic.width
@@ -968,7 +968,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     except Exception as e:
                         logger.error(f"Slide {i}: Add picture failed: {e}")
 
-                # Right Text
+                # 右側文字
                 text_left = Inches(7.0)
                 text_width = Inches(5.8)
                 
@@ -995,7 +995,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         p.space_after = Pt(12)
                         p.level = 0
             
-            # Speaker Notes
+            # 演講者筆記
             if slide_data.get("speaker_notes"):
                 slide.notes_slide.notes_text_frame.text = slide_data["speaker_notes"]
 
@@ -1012,17 +1012,17 @@ def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
     修正 Cloud Run 上因無狀態導致 /static/temp/ 404 的問題
     """
     try:
-        # Reduce memory usage: dpi=150 (lower for thumbnails), thread_count=1
+        # 降低記憶體使用量：dpi=150 (縮圖可較低)，thread_count=1
         images = convert_from_bytes(pdf_bytes, dpi=150, thread_count=1)
         logger.info(f"預覽生成: 轉換了 {len(images)} 張圖片")
         
         image_data_urls = []
         for i, img in enumerate(images):
             try:
-                # Resize to thumbnail
+                # 調整為縮圖大小
                 img.thumbnail((400, 400))
                 
-                # Convert to RGB if needed (JPEG doesn't support transparency)
+                # 如果需要，轉換為 RGB (JPEG 不支援透明度)
                 if img.mode in ('RGBA', 'LA', 'P'):
                     background = Image.new('RGB', img.size, (255, 255, 255))
                     if img.mode == 'P':
@@ -1033,7 +1033,7 @@ def generate_preview_images(pdf_bytes: bytes, output_dir: str) -> List[str]:
                 elif img.mode != 'RGB':
                     img = img.convert('RGB')
                 
-                # Convert to Base64
+                # 轉換為 Base64
                 buf = io.BytesIO()
                 img.save(buf, format='JPEG', quality=70, optimize=True)
                 b64_str = base64.b64encode(buf.getvalue()).decode('utf-8')
@@ -1060,7 +1060,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
     """
     logger.info(f"開始處理 PDF: {filename} (Path: {pdf_path})")
     
-    # [Optimization] Notify Start Immediately to update UI from "Preparing"
+    # [最佳化] 立即通知開始，以更新 UI 狀態 "準備中"
     if progress_callback:
         try:
              await progress_callback(0, 0, message="正在讀取 PDF 檔案結構...")
@@ -1069,13 +1069,13 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
 
     try:
         # 1. 快速獲取 PDF 資訊 (使用 pypdf) - 強制 10s Timeout
-        # Run in thread because pypdf file reading is sync IO
+        # 在線程中執行，因為 pypdf 檔案讀取是同步 IO
         def get_pdf_count():
             with open(pdf_path, 'rb') as f:
                 reader = PdfReader(f)
                 return len(reader.pages)
         
-        # TIMEOUT PROTECTION for PDF Reading (10s)
+        # PDF 讀取逾時保護 (10秒)
         total_pdf_pages = await asyncio.wait_for(
             asyncio.to_thread(get_pdf_count), 
             timeout=10
@@ -1111,29 +1111,29 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
 
     total_target = len(target_indices)
     
-    # Custom Loop for "Priority First Page"
-    # We construct batches manually to ensure Batch 1 is SINGLE page (for speed)
+    # "優先首頁" 的自訂迴圈
+    # 我們手動建構批次以確保第 1 批次為單頁 (為了速度)
     batches = []
     remaining_indices = target_indices.copy()
     
-    # Setup First Batch (Priority)
+    # 設定第一批次 (優先)
     if remaining_indices:
-        # First batch has only 1 page to ensure instant feedback
+        # 第一批次只有 1 頁以確保即時回饋
         batches.append([remaining_indices.pop(0)])
     
-    # Setup subsequent batches
+    # 設定後續批次
     while remaining_indices:
         chunk = remaining_indices[:BATCH_SIZE]
         batches.append(chunk)
         remaining_indices = remaining_indices[BATCH_SIZE:]
 
-    # Execute Batches
+    # 執行批次
     processed_count = 0
     
     for batch_indices in batches:
         current_batch_size = len(batch_indices)
         
-        # Notify progress: Converting
+        # 通知進度：轉檔中
         if progress_callback:
             start_p = batch_indices[0] + 1
             end_p = batch_indices[-1] + 1
@@ -1143,16 +1143,16 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
             except Exception as e:
                 logger.warning(f"Callback msg failed: {e}")
 
-        # 2. On-Demand Image Conversion (Protected by Timeout)
+        # 2. 隨需影像轉換 (受逾時保護)
         batch_images = []
         try:
-            # Check for consecutiveness to optimize
+            # 檢查連續性以進行最佳化
             is_consecutive = (len(batch_indices) > 1 and 
                              batch_indices[-1] - batch_indices[0] == len(batch_indices) - 1)
             
             async def run_conversion():
                 if is_consecutive:
-                    # distinct args for range conversion
+                    # 範圍轉換的相異參數
                     s = batch_indices[0] + 1
                     e = batch_indices[-1] + 1
                     return await asyncio.to_thread(
@@ -1170,7 +1170,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
                         if res: imgs.extend(res)
                     return imgs
 
-            # TIMEOUT WRAPPER
+            # 逾時包裝器
             batch_images = await asyncio.wait_for(run_conversion(), timeout=TIMEOUT_PER_BATCH)
             
         except asyncio.TimeoutError:
@@ -1180,12 +1180,12 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
             logger.error(f"Batch conversion failed: {e}")
             batch_images = [Image.new('RGB', (800, 600), color='white') for _ in batch_indices]
 
-        # Fail-safe padding
+        # 安全填充
         while len(batch_images) < current_batch_size:
              batch_images.append(Image.new('RGB', (800, 600), color='white'))
         batch_images = batch_images[:current_batch_size]
 
-        # 3. Analyze Batch
+        # 3. 分析批次
         tasks = [
             process_single_page(img, batch_indices[j] + 1, total_pdf_pages, api_key, remove_icon=remove_icon, pdf_path=pdf_path)
             for j, img in enumerate(batch_images)
@@ -1193,7 +1193,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
         
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        # Collect results immediately
+        # 立即收集結果
         for res in batch_results:
             if isinstance(res, Exception):
                 logger.error(f"Batch Analysis Critical Failure: {res}")
@@ -1218,16 +1218,16 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
 
         processed_count += current_batch_size
         
-        # [Fail-Safe Strategy] First Page Probe
-        # If the very first page failed to analyze, ABORT the entire process.
-        # This prevents wasting cost on 50+ pages if the PDF format is fundamentally unreadable or API is down.
+        # [安全策略] 首頁探測
+        # 如果第一頁分析失敗，則中止整個流程。
+        # 這可以防止在 PDF 格式根本無法讀取或 API 停機的情況下浪費 50 多頁的成本。
         if processed_count == 1 and len(analyses) > 0:
             first_result = analyses[0]
-            # Check for known error signatures
+            # 檢查已知的錯誤簽名
             error_titles = ["Analysis Error", "Parse Error", "分析失敗", "未知錯誤", "處理失敗"]
             if (first_result.get("title") in error_titles) or (not first_result.get("content")):
-                logger.error("🛑 First Page Probe FAILED. Aborting remaining pages to save cost.")
-                # We stop here. The UI will receive just this one error slide.
+                logger.error("🛑 首頁探測失敗。中止剩餘頁面以節省成本。")
+                # 我們在此停止。UI 將只收到這一個錯誤投影片。
                 break
 
         if processed_count < total_target:
@@ -1239,7 +1239,7 @@ async def analyze_presentation(pdf_path: str, api_key: str, filename: str, selec
 
 
 async def process_pdf_to_slides(pdf_content, api_key: str, filename: str, selected_indices: List[int] = None):
-    # Legacy wrapper
+    # 舊版包裝器
     analyses, cleaned_images = await analyze_presentation(pdf_content, api_key, filename, selected_indices)
     output_dir = "temp_slides"
     os.makedirs(output_dir, exist_ok=True)
