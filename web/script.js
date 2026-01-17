@@ -70,24 +70,25 @@ window.generateSlides = async function (btnElement) {
 
     if (!btn) return;
 
-    // 立即給予視覺回饋 (防止重複點擊)
+    // [v7.1 Fix] 防止重複點擊：檢查是否正在處理中
+    // 使用 data 屬性而非 CSS class 來追蹤處理狀態
+    if (btn.dataset.processing === 'true') {
+        console.log('[generateSlides] Already processing, ignoring click');
+        return;
+    }
+
+    // 標記開始處理
+    btn.dataset.processing = 'true';
+
+    // 視覺回饋
     const originalText = btn.innerHTML;
-    btn.classList.add('btn-disabled'); // Visual Disable
+    btn.classList.add('btn-disabled');
     btn.style.opacity = '0.7';
     btn.style.cursor = 'wait';
-    // 這裡不改變 innerHTML 以免破壞 icon 結構，用 CSS class 控制即可，或顯示 spinner
 
-    // 安全檢查 - 使用 CSS class 而非 disabled 狀態
-    const isVisuallyDisabled = btn.classList.contains('btn-disabled') && !btn.style.cursor === 'wait'; // Allow if we just set it? No.
-
-    // Resume checks...
-
-    // ...
-
-    // UI 切換：進入 Loading (這會覆蓋整個畫面，所以按鈕狀態其實只顯示一瞬間，但這瞬間很重要)
+    // UI 切換：進入 Loading
     if (analysisLoading) {
         analysisLoading.classList.remove('hidden');
-        // UX: 滾動到進度條區域，讓用戶看到處理進度
         setTimeout(() => {
             analysisLoading.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
@@ -252,12 +253,20 @@ window.generateSlides = async function (btnElement) {
             }, 100);
         }
 
+        // [v7.1] 清除處理狀態 (成功)
+        btn.dataset.processing = 'false';
+
     } catch (error) {
         console.error("Analysis Error:", error);
         alert(`錯誤: ${error.message}`);
         // 回到預覽
         if (analysisLoading) analysisLoading.classList.add('hidden');
         if (previewStep) previewStep.classList.remove('hidden');
+        // [v7.1] 清除處理狀態 (失敗)
+        btn.dataset.processing = 'false';
+        btn.classList.remove('btn-disabled');
+        btn.style.opacity = '';
+        btn.style.cursor = '';
     }
 }
 
