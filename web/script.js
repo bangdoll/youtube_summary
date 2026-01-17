@@ -518,10 +518,12 @@ window.generatePresentations = async function () {
             return cleaned;
         });
 
-        // [v7.0] 使用 session_id 取代圖片傳輸
+        // [v7.1] 使用 session_id + cleaned_images fallback
+        // Cloud Run 多實例不共享記憶體，session 可能失效，需傳 cleaned_images 作為後備
         const payload = {
             analyses: cleanedAnalyses,
             session_id: editorData.sessionId,
+            cleaned_images: editorData.cleanedImages,  // Fallback for stateless Cloud Run
             filename: editorData.filename
         };
 
