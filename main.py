@@ -580,6 +580,31 @@ async def generate_slides_data(
         if not pil_images:
             return JSONResponse(status_code=400, content={"error": "Session 已過期或無圖片資料，請重新分析"})
 
+        # [v7.1 Fix] 重建 _visual_crops
+        # 前端為避免 413 錯誤刪除了 _visual_crops，這裡從 session 圖片重新裁切
+        print(f"[Generate Slides] Rebuilding _visual_crops from session images...")
+        for i, analysis in enumerate(data.analyses):
+            visual_elements = analysis.get("visual_elements", [])
+            if visual_elements and i < len(pil_images):
+                src_img = pil_images[i]
+                rebuilt_crops = []
+                for viz in visual_elements:
+                    bbox = viz.get("bbox")
+                    if bbox:
+                        crop = slide_generator.crop_visual_element(src_img, bbox)
+                        if crop:
+                            # 轉為 Base64 供 PPTX 生成使用
+                            buf = io.BytesIO()
+                            crop.save(buf, format='PNG')
+                            b64_str = base64.b64encode(buf.getvalue()).decode('utf-8')
+                            rebuilt_crops.append(f"data:image/png;base64,{b64_str}")
+                        else:
+                            rebuilt_crops.append(None)
+                    else:
+                        rebuilt_crops.append(None)
+                analysis["_visual_crops"] = rebuilt_crops
+                print(f"  Slide {i+1}: Rebuilt {len(rebuilt_crops)} visual crops")
+
         # 2. 生成 PPTX
         output_dir = os.path.join(TEMP_DIR, "slides")
         os.makedirs(output_dir, exist_ok=True)
