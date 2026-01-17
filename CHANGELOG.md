@@ -1,5 +1,26 @@
 # Changelog
 
+## [v7.1.0] - 2026-01-17
+### 🚀 新功能 (New Features)
+- **AIsland.tw 上架**：稜鏡流 PrismFlow 已成功上架至 [AI創作島](https://www.aisland.tw/project/66835ea2-f5c3-4f16-98c1-5c8c445117b7)，成為台灣 Vibe Coding 作品展示平台的一員。
+
+### 🚑 重大錯誤修復 (Critical Bug Fixes)
+- **修復 PPTX 圖片遺失問題**：
+    - **根本原因**：前端為避免 413 Payload 過大，刪除了 `_visual_crops` 欄位，但後端 `create_pptx_from_analysis` 需要此資料來嵌入視覺元素。
+    - **解決方案**：後端在生成 PPTX 前，從 Session 儲存的原始圖片重新裁切 `visual_elements`，重建 `_visual_crops` 欄位。
+- **修復 PDF 預覽縮圖黑色/404 問題**：
+    - **根本原因**：Cloud Run 無狀態，`/static/temp/` 路徑的臨時檔案在實例間不共享。
+    - **解決方案**：`generate_preview_images` 改用 Base64 Data URL 傳輸縮圖，實現完全 Stateless 架構。
+- **修復 Session 過期問題**：
+    - **根本原因**：Cloud Run 多實例不共享記憶體中的 `slide_sessions` 字典。
+    - **解決方案**：前端同時傳送 `session_id` 和 `cleaned_images`，後端優先使用 Session，失效時自動 Fallback 至 Base64 圖片。
+- **修復「生成簡報」按鈕需雙擊的問題**：
+    - **根本原因**：`generateSlides` 函數在開頭設置 `btn-disabled` 但未正確追蹤處理狀態。
+    - **解決方案**：使用 `data-processing` 屬性追蹤處理狀態，避免誤判重複點擊。
+
+### 📝 文檔更新 (Documentation)
+- 更新 `README.md` 與 `CHANGELOG.md`，記錄所有新功能與錯誤修復。
+
 ## [v7.0.4] - 2026-01-16
 ### 🚀 新功能 (New Features)
 - **AI 預覽疊加層 (BBox Preview Overlay)**：

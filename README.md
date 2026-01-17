@@ -14,9 +14,13 @@
 ### 1.2 ✨ 來源回溯 (Source Attribution)
 自動生成的筆記中包含 `[來源: URL]` 連結，方便您隨時點擊回溯原始影片片段，確保資訊來源透明可查。
 
-### 1.3 📊 NoteFlux 簡報生成器 (NoteFlux Generator) v7.0
+### 1.3 📊 NoteFlux 簡報生成器 (NoteFlux Generator) v7.1
 獨家「圖文分離」與「線上編輯」引擎，解決傳統 PDF 轉 PPTX 的排版錯亂問題。
 
+- **🆕 完全 Stateless 架構 (v7.1.0)**：
+    - **預覽縮圖 Base64 傳輸**：PDF 預覽縮圖改用 Base64 Data URL 傳輸，徹底解決 Cloud Run 多實例導致的圖片 404 問題。
+    - **Session Fallback 機制**：前端同時傳送 `session_id` 和 `cleaned_images`，即使 Session 因實例切換失效，也能自動使用 Base64 圖片作為備援。
+    - **智慧 Visual Crops 重建**：後端會在生成 PPTX 前自動從 Session 圖片裁切視覺元素，無需前端傳送大量 Base64 資料。
 - **🆕 Session ID 後端暫存機制 (v7.0.0)**：
     - **根治 413 Payload Too Large**：不再將圖片從前端傳回後端，改由後端使用 Session ID 暫存，徹底解決高畫質 PDF 因 Payload 過大導致生成失敗的問題。
     - **Analyses 清理**：發送前自動移除 `_visual_crops` 等大型 Base64 資料，將 Payload 從 10+MB 降至約 50KB。
