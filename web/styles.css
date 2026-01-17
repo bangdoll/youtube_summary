@@ -1966,3 +1966,22 @@ button#submitBtn:disabled {
         border-color: var(--accent-primary);
     }
 }
+/* Footer */
+.app-footer {
+    text-align: center;
+    padding: 2rem;
+    margin-top: 3rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.app-footer a {
+    color: var(--accent-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.app-footer a:hover {
+    color: var(--accent-primary);
+}
