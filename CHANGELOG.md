@@ -1,5 +1,11 @@
 # Changelog
 
+## [v7.1.1] - 2026-01-18
+### 📊 Analytics
+- **Google Analytics Integration**:
+    - Added Global Site Tag (gtag.js) for GA4 tracking (ID: `G-D9M9QF3NH4`).
+    - Enabled basic page view and user engagement tracking.
+
 ## [v7.1.0] - 2026-01-17
 ### 🚀 新功能 (New Features)
 - **AIsland.tw 上架**：稜鏡流 PrismFlow 已成功上架至 [AI創作島](https://www.aisland.tw/project/66835ea2-f5c3-4f16-98c1-5c8c445117b7)，成為台灣 Vibe Coding 作品展示平台的一員。
