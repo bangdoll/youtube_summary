@@ -1,10 +1,10 @@
 # Changelog
 
 ## [v7.1.1] - 2026-01-18
-### 📊 Analytics
-- **Google Analytics Integration**:
-    - Added Global Site Tag (gtag.js) for GA4 tracking (ID: `G-D9M9QF3NH4`).
-    - Enabled basic page view and user engagement tracking.
+### 📊 網站分析 (Analytics)
+- **Google Analytics 整合**:
+    - 新增 GA4 全域網站代碼 (gtag.js) 以進行追蹤 (ID: `G-D9M9QF3NH4`)。
+    - 啟用基礎頁面瀏覽與使用者互動追蹤。
 
 ## [v7.1.0] - 2026-01-17
 ### 🚀 新功能 (New Features)
