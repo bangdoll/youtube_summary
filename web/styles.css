@@ -1600,18 +1600,28 @@ button#submitBtn:disabled {
 }
 
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
+    background: var(--btn-secondary-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
     padding: 0.8rem 1.5rem;
     border-radius: 8px;
     cursor: pointer;
     font-size: 1rem;
     transition: all 0.2s;
+    /* Ensure icon colors match text */
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-secondary i {
+    color: inherit;
 }
 
 .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--btn-secondary-hover);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
 }
 
 /* Loading Overlay */
