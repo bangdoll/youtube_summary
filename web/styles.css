@@ -1,11 +1,10 @@
 :root {
+    /* Dark Mode (Default) */
     --bg-color: #050505;
     --text-primary: #ffffff;
     --text-secondary: #a0a0a0;
     --accent-primary: #8b5cf6;
-    /* Violet */
     --accent-secondary: #3b82f6;
-    /* Blue */
     --surface-dark: rgba(20, 20, 25, 0.6);
     --surface-card: rgba(30, 30, 35, 0.4);
     --border-color: rgba(255, 255, 255, 0.1);
@@ -13,6 +12,32 @@
     --font-mono: 'JetBrains Mono', monospace;
     --neon-cyan: #00f3ff;
     --neon-purple: #bd00ff;
+
+    /* Specific overrides */
+    --terminal-bg: #0f0f12;
+    --terminal-header: #1a1a1a;
+    --terminal-text: #00ff00;
+    --input-bg: rgba(0, 0, 0, 0.3);
+    --bg-card: rgba(30, 30, 35, 0.9);
+    /* Opaque version for active states */
+}
+
+[data-theme="light"] {
+    --bg-color: #f3f4f6;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --accent-primary: #7c3aed;
+    --accent-secondary: #2563eb;
+    --surface-dark: rgba(255, 255, 255, 0.85);
+    /* Glassy White */
+    --surface-card: rgba(255, 255, 255, 0.7);
+    --border-color: rgba(0, 0, 0, 0.1);
+
+    --terminal-bg: #ffffff;
+    --terminal-header: #f3f4f6;
+    --terminal-text: #16a34a;
+    --input-bg: rgba(255, 255, 255, 0.9);
+    --bg-card: #ffffff;
 }
 
 * {
@@ -168,7 +193,7 @@ input {
     flex: 1;
     background: transparent;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 1rem;
     padding: 1rem 0;
     font-family: var(--font-heading);
@@ -179,7 +204,7 @@ input:focus {
 }
 
 input::placeholder {
-    color: #555;
+    color: var(--text-secondary);
 }
 
 button#submitBtn {
@@ -227,8 +252,8 @@ button#submitBtn:disabled {
 }
 
 .feature-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 1.5rem;
     text-align: center;
@@ -296,8 +321,8 @@ button#submitBtn:disabled {
 }
 
 .comparison-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
     transition: transform 0.3s ease;
@@ -309,12 +334,12 @@ button#submitBtn:disabled {
 }
 
 .card-header {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--surface-dark);
     padding: 1.5rem;
     display: flex;
     align-items: center;
     gap: 1rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .card-header i {
@@ -384,7 +409,7 @@ button#submitBtn:disabled {
 }
 
 .terminal-header {
-    background: #1a1a1a;
+    background: var(--terminal-header);
     padding: 0.75rem 1rem;
     border-top-left-radius: 8px;
     border-top-right-radius: 8px;
@@ -427,7 +452,7 @@ button#submitBtn:disabled {
 }
 
 .terminal-body {
-    background: rgba(10, 10, 12, 0.95);
+    background: var(--terminal-bg);
     padding: 1rem;
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
@@ -856,7 +881,7 @@ button#submitBtn:disabled {
 
 /* Demo Terminal Animation */
 .demo-terminal-window {
-    background: #0f0f12;
+    background: var(--terminal-bg);
     border-radius: 12px;
     border: 1px solid var(--border-color);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
@@ -1104,11 +1129,11 @@ button#submitBtn:disabled {
 
 .input-group input {
     width: 100%;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--input-bg);
     border: 1px solid var(--border-color);
     padding: 0.8rem;
     border-radius: 8px;
-    color: white;
+    color: var(--text-primary);
     font-family: var(--font-mono);
     font-size: 0.9rem;
     transition: all 0.2s;
@@ -1151,14 +1176,8 @@ button#submitBtn:disabled {
     flex-wrap: wrap;
     /* Allow wrapping on small screens */
     margin-bottom: 2.5rem;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 0.4rem;
-    position: relative;
-    z-index: 20;
-    width: fit-content;
-    margin-left: auto;
-    margin-right: auto;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
     pointer-events: auto;
     border-radius: 12px;
     /* Add radius for better look */
@@ -1215,8 +1234,8 @@ button#submitBtn:disabled {
 
 /* Upload Drop Zone - Enhanced */
 .upload-wrapper {
-    background: rgba(20, 20, 24, 0.6);
-    border: 2px dashed rgba(255, 255, 255, 0.2);
+    background: var(--surface-dark);
+    border: 2px dashed var(--border-color);
     border-radius: 16px;
     padding: 2.5rem 2rem;
     text-align: center;

@@ -1359,3 +1359,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // 此處不需要 JS 監聽器。
 
 });
+
+// === Theme Management (Dark/Light Mode) ===
+window.toggleTheme = function () {
+    const html = document.documentElement;
+    const current = html.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    window.updateThemeIcon(next);
+}
+
+window.updateThemeIcon = function (theme) {
+    const icon = document.getElementById('themeIcon');
+    if (icon) {
+        if (theme === 'light') {
+             icon.className = 'ri-moon-line'; // Current is Light, show Moon to switch to Dark
+        } else {
+             icon.className = 'ri-sun-line'; // Current is Dark, show Sun to switch to Light
+        }
+    }
+}
+
+// Initialize Theme
+(function() {
+    const savedTheme = localStorage.getItem('theme') || 'dark'; // Default to dark
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    // Wait for DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => window.updateThemeIcon(savedTheme));
+    } else {
+        window.updateThemeIcon(savedTheme);
+    }
+})();

@@ -41,8 +41,8 @@
     <style>
         /* Terminal Log Window */
         #analysisLog {
-            background-color: #1e1e1e;
-            color: #00ff00;
+            background-color: var(--terminal-bg);
+            color: var(--terminal-text);
             font-family: 'Courier New', Courier, monospace;
             font-size: 0.85rem;
             padding: 1rem;
@@ -52,7 +52,7 @@
             max-width: 600px;
             height: 200px;
             overflow-y: auto;
-            border: 1px solid #333;
+            border: 1px solid var(--border-color);
             box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
             text-align: left;
             display: flex;
@@ -103,6 +103,10 @@
     <!-- User Info Bar (shown when logged in) -->
     <!-- Top Navigation (Always Visible) -->
     <div id="topNav" class="user-bar">
+        <button id="themeToggleBtn" class="settings-btn" title="切換深淺色模式" onclick="toggleTheme()"
+            style="margin-right: 8px; padding: 0 10px;">
+            <i class="ri-moon-line" id="themeIcon"></i>
+        </button>
         <button id="settingsBtn" class="settings-btn" title="設定 API Key" onclick="openSettings()">
             <i class="ri-key-2-line"></i>
             <span>設定 API Key</span>
