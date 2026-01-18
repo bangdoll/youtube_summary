@@ -1984,6 +1984,13 @@ button#submitBtn:disabled {
         background: var(--accent-primary);
         border-color: var(--accent-primary);
     }
+
+    /* Mobile Light Mode Inactive Tabs */
+    [data-theme="light"] .mode-tabs .tab-btn:not(.active) {
+        background: rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        color: var(--text-primary);
+    }
 }
 
 /* Footer */
