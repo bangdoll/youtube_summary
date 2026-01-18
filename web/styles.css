@@ -1170,19 +1170,19 @@ button#submitBtn:disabled {
 /* Mode Tabs - Premium Redesign */
 .mode-tabs {
     display: flex;
-    /* Fix: Horizontal Layout */
     justify-content: center;
     gap: 0.5rem;
     flex-wrap: wrap;
-    /* Allow wrapping on small screens */
-    margin-bottom: 2.5rem;
+    margin: 0 auto 2.5rem auto;
+    /* Centered with bottom margin */
     background: var(--surface-card);
     border: 1px solid var(--border-color);
     pointer-events: auto;
     border-radius: 12px;
-    /* Add radius for better look */
-    flex-wrap: wrap;
-    /* Allow wrap on very small screens */
+    padding: 0.4rem;
+    width: fit-content;
+    position: relative;
+    z-index: 20;
 }
 
 .tab-btn {
