@@ -1,5 +1,19 @@
 # Changelog
 
+## [v7.2.0] - 2026-01-18
+### 🌓 深淺色模式 (Dark/Light Mode)
+- **一鍵主題切換**:
+    - 在右上角導航列新增切換按鈕 (`ri-moon-line` / `ri-sun-line`)，可一鍵切換深色/淺色主題。
+    - **狀態記憶**: 使用 `localStorage` 記錄使用者的主題偏好，重新整理頁面後仍會保持原本的設定。
+- **CSS 架構重構**:
+    - 全面導入 **Semantic CSS Variables** (語義化變數)，將硬編碼的顏色數值替換為 `--bg-color`, `--text-primary`, `--surface-card` 等變數。
+    - 新增 `[data-theme="light"]` 選擇器，針對淺色模式重新定義了完整的配色系統，並優化了 **Glassmorphism** (玻璃擬態) 效果。
+- **介面優化**:
+    - **標題可讀性**: 修復淺色模式下漸層標題 (`.gradient-text`) 對比度不足的問題。
+    - **Tab 按鈕**: 選取狀態 (`.active`) 改為使用強調色背景 (`accent-primary`) 搭配白色文字，確保在雙模式下皆清晰可見。
+    - **Layout Fix**: 修復切換功能區塊 (`.mode-tabs`) 外框過大致中與內距問題。
+    - **Badge Color**: 調整頂部 Badge 的文字顏色變數，適應不同背景。
+
 ## [v7.1.1] - 2026-01-18
 ### 📊 網站分析 (Analytics)
 - **Google Analytics 整合**:

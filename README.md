@@ -55,8 +55,10 @@
 - **混合模式**：保留 Google OAuth 供內部團隊使用伺服器端金鑰，兼顧開放與管理。
 
 ### 4. 🎨 Vibe Coding 現代化介面
-- **Premium UI**：深色玻璃擬態 (Glassmorphism)、流暢動畫與響應式設計。
-- **Real-time Console**：SSE (Server-Sent Events) 技術驅動的即時終端機日誌。
+- **Premium UI**: 
+    - **深色玻璃擬態 (Dark Glassmorphism)**: 預設沈浸式深色主題，適合長時間工作與專注閱讀。
+    - **全新淺色模式 (Light Mode)**: 一鍵切換至明亮清新的淺色介面，智慧適應環境光線。
+- **Real-time Console**: SSE (Server-Sent Events) 技術驅動的即時終端機日誌。
 - **PWA Ready**: 完整支援 PWA 標準 (Manifest V2)，提供「加入主畫面」功能，擁有獨立 App Icon 與全螢幕沉浸體驗。
 - **Live Demo**：首頁動態終端機模擬，展現科技感。
 - **NotebookLM 對比**：強調「深度客製化」、「數據主權」與「自動化潛力」三大優勢。
