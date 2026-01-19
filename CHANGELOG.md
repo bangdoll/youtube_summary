@@ -1,5 +1,11 @@
 # Changelog
 
+## [v7.2.1] - 2026-01-19
+### 🔐 安全性與驗證 (Security & Validation)
+- **強制 API Key 檢查**:
+    - 在「YouTube 影片分析」與「NoteFlux PDF 轉簡報」功能中，新增了強制性的 API Key 檢查機制。
+    - 若使用者未在設定中輸入 Gemini 或 OpenAI Key，系統將阻止執行並彈出提示視窗，直接引導使用者前往設定頁面，確保不會因缺 Key 而白白等待或產生錯誤。
+
 ## [v7.2.0] - 2026-01-18
 ### 🌓 深淺色模式 (Dark/Light Mode)
 - **一鍵主題切換**:

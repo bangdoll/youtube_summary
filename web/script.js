@@ -112,17 +112,19 @@ window.generateSlides = async function (btnElement) {
         return;
     }
 
-    // API Key 檢查警告 (前端提示，後端有備援機制)
+    // API Key 檢查 (強制)
     if (!geminiKey) {
-        const proceed = confirm('您尚未設定 Gemini API Key。\n\n如果伺服器有設定環境變數，將自動使用伺服器金鑰。\n否則分析將會失敗。\n\n是否繼續？\n（建議先點擊右上角「設定 API Key」按鈕設定您的金鑰）');
-        if (!proceed) {
-            if (analysisLoading) analysisLoading.classList.add('hidden');
-            if (previewStep) previewStep.classList.remove('hidden');
-            btn.classList.remove('btn-disabled');
-            btn.style.opacity = '';
-            btn.style.cursor = '';
-            return;
-        }
+        alert('⚠️ 請先設定 Gemini API Key 才能開始分析。\n\n點擊及前往「設定」頁面輸入您的金鑰。');
+        window.openSettings();
+
+        // 恢復 UI 狀態
+        if (analysisLoading) analysisLoading.classList.add('hidden');
+        if (previewStep) previewStep.classList.remove('hidden');
+        btn.classList.remove('btn-disabled');
+        btn.style.opacity = '';
+        btn.style.cursor = '';
+        btn.dataset.processing = 'false';
+        return;
     }
 
     const formData = new FormData();
@@ -1082,10 +1084,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const openaiKey = localStorage.getItem('openai_api_key') || "";
 
         if (!geminiKey && !openaiKey) {
-            const proceed = confirm('您尚未設定任何 API Key (Gemini/OpenAI)。\n\n如果伺服器有設定環境變數，將自動使用伺服器金鑰。\n否則分析將會失敗。\n\n是否繼續？\n（建議先點擊右上角「設定 API Key」按鈕設定您的金鑰）');
-            if (!proceed) {
-                return;
-            }
+            alert('⚠️ 請先專定 API Key (Gemini 或 OpenAI) 才能開始分析。\n\n點擊前往「設定」頁面輸入您的金鑰。');
+            if (window.openSettings) window.openSettings();
+            return;
         }
 
         // 重置介面
@@ -1374,22 +1375,22 @@ window.updateThemeIcon = function (theme) {
     const icon = document.getElementById('themeIcon');
     if (icon) {
         if (theme === 'light') {
-             icon.className = 'ri-moon-line'; // Current is Light, show Moon to switch to Dark
+            icon.className = 'ri-moon-line'; // Current is Light, show Moon to switch to Dark
         } else {
-             icon.className = 'ri-sun-line'; // Current is Dark, show Sun to switch to Light
+            icon.className = 'ri-sun-line'; // Current is Dark, show Sun to switch to Light
         }
     }
 }
 
-// Initialize Theme
-(function() {
-    const savedTheme = localStorage.getItem('theme') || 'dark'; // Default to dark
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    
-    // Wait for DOM
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => window.updateThemeIcon(savedTheme));
-    } else {
-        window.updateThemeIcon(savedTheme);
-    }
-})();
+    // Initialize Theme
+    (function () {
+        const savedTheme = localStorage.getItem('theme') || 'dark'; // Default to dark
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        // Wait for DOM
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => window.updateThemeIcon(savedTheme));
+        } else {
+            window.updateThemeIcon(savedTheme);
+        }
+    })();
