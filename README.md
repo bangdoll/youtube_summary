@@ -63,6 +63,11 @@
 - **Live Demo**：首頁動態終端機模擬，展現科技感。
 - **NotebookLM 對比**：強調「深度客製化」、「數據主權」與「自動化潛力」三大優勢。
 
+### 5. 🔐 企業級安全性 (Enterprise Security)
+- **強制 API Key 驗證**:
+    - 全面導入嚴格的 Request Validation 機制。
+    - 智慧引導對話框：當檢測到用戶未設定 API Key 時，系統主動攔截並引導至設定頁面，防止無謂的等待與錯誤。
+
 ### 5. ☁️ Cloud Run 極速架構
 - **無冷啟動 (No Cold Start)**：遷移至 Google Cloud Run，解決 Render 喚醒延遲。
 - **Auto-Scaling**：自動與 0 機制，兼顧效能與成本。
