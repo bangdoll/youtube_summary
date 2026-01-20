@@ -112,6 +112,15 @@ async def read_root(request: Request):
     return HTMLResponse(content="<h1>Web Interface Loading...</h1>")
 
 
+@app.get("/guide.html")
+async def read_guide(request: Request):
+    """Serve the guide.html page"""
+    guide_path = os.path.join(WEB_DIR, "guide.html")
+    if os.path.exists(guide_path):
+        return FileResponse(guide_path)
+    return HTMLResponse(status_code=404, content="<h1>Guide Not Found</h1>")
+
+
 @app.get("/api/check-auth")
 async def check_auth(request: Request):
     """檢查驗證狀態。"""
