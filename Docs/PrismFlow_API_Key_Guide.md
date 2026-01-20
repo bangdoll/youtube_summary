@@ -6,7 +6,7 @@
 
 ## 🔑 為什麼需要 API Key？
 
-PrismFlow 的核心依賴於 Google 最先進的 **Gemini 1.5 Pro/Flash** AI 模型來進行：
+PrismFlow 的核心依賴於 Google 最先進的 **Gemini 3 Flash** AI 模型來進行：
 1.  **深度影片聽打與摘要** (Youtube Summary)
 2.  **視覺化簡報生成** (NoteSlide)
 
