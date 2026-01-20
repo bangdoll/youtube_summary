@@ -32,6 +32,16 @@
 
     <style>
         /* Guide Specific Overrides */
+        :root {
+            --card-bg-rgb: 30, 30, 35;
+            --accent-primary-rgb: 139, 92, 246;
+        }
+
+        [data-theme="light"] {
+            --card-bg-rgb: 255, 255, 255;
+            --accent-primary-rgb: 124, 58, 237;
+        }
+
         body {
             overflow-y: auto;
             /* Allow full page scroll */
@@ -58,7 +68,7 @@
             left: 0;
             width: 100%;
             height: 60px;
-            background: rgba(var(--bg-rgb), 0.8);
+            background: rgba(var(--card-bg-rgb), 0.8);
             backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--border-color);
             display: flex;
@@ -89,7 +99,7 @@
         .markdown-body h1 {
             font-size: 2.5rem;
             margin-bottom: 1.5rem;
-            background: var(--gradient-primary);
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-primary) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             border-bottom: 2px solid var(--border-color);
