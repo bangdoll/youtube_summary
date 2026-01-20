@@ -76,7 +76,12 @@
 ### 5. 📝 結構化輸出生態系
 - **Markdown Native**：產出的筆記可直接貼入 **Heptabase**、**Obsidian** 或 **Notion**。
 - **一鍵匯出**：支援複製到剪貼簿與下載 .md 檔案。
+### 6. 📘 內建知識庫 (Built-in Knowledge Base)
+- **In-App Guide Viewer**: 無需跳出網頁，直接瀏覽 Markdown 格式的教學文件。
+- **Context-Aware**: 設定頁面直接整合 API Key 申請教學，降低使用門檻。
+- **Theme Sync**: 教學頁面完美同步主程式的深淺色主題設定。
 
+---
 ---
 
 ## 🛠 安裝與啟動

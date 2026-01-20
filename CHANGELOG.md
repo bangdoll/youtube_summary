@@ -1,5 +1,29 @@
 # Changelog
 
+## [v7.3.0] - 2026-01-20
+### 📘 知識庫與教學 (Documentation & Guide)
+- **內建文檔瀏覽器 (In-App Guide Viewer)**:
+    - 新增 `guide.html`，可直接在網頁內渲染 Markdown 教學文件，無需跳轉外部連結。
+    - 支援程式碼高亮 (Highlight.js) 與優化閱讀體驗的 CSS 樣式。
+    - **深淺色模式同步**: 教學頁面會自動讀取首頁的主題設定 (`localStorage`)，無縫切換深/淺色模式。
+- **全新教學指南**:
+    - **API Key 教學**: 新增 `PrismFlow_API_Key_Guide.md`，圖文並茂解說如何取得 Google Gemini 與 OpenAI 金鑰。
+    - **技能整合指南**: 新增 `NotebookLM_Skill_整合指南.md`，協助使用者擴充 Agent 能力。
+- **導航整合**:
+    - 在右上角導航列新增 **「教學指南」** 入口。
+    - 在設定視窗中加入 **「如何取得 Key?」** 的快速連結。
+
+### 🎨 品牌與內容 (Brand & Content)
+- **NoteFlux 正名**:
+    - 將文檔與介面中舊有的 "NoteSlide" 用語統一更正為 **"NoteFlux"**，強化品牌識別。
+- **模型資訊更新**:
+    - 文檔中明確標示核心引擎為 **Gemini 3 Flash**，反映最新的技術規格。
+
+### 🐛 錯誤修復 (Fixes)
+- **404 路由修復**: 修正 `main.py` 缺少 `/guide.html` 路由導致的 404 錯誤。
+- **Invisible Title Fix**: 修復教學頁面中 CSS 變數 (`--gradient-primary`) 缺失導致標題隱形的問題。
+- **Link Target Fix**: 修正導航列連結指向舊版文檔的問題，現在正確對應至 API Key 指南。
+
 ## [v7.2.1] - 2026-01-19
 ### 🔐 安全性與驗證 (Security & Validation)
 - **強制 API Key 檢查**:
