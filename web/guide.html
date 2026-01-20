@@ -155,6 +155,14 @@
             border: 1px solid #ff4444;
         }
     </style>
+
+    <!-- Theme Sync Script (Must be in head to prevent FOUC) -->
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
 </head>
 
 <body>
