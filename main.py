@@ -690,11 +690,52 @@ async def generate_slides(
             filename=output_filename
         )
 
-    except ValueError as ve:
-        return JSONResponse(status_code=400, content={"error": str(ve)})
     except Exception as e:
         print(f"Slide Gen Error: {e}")
         return JSONResponse(status_code=500, content={"error": f"生成失敗: {str(e)}"})
+
+
+@app.get("/api/docs/{filename}")
+async def get_documentation(filename: str):
+    """
+    [v7.2.2] 文檔瀏覽器 API
+    讀取 youtube_summary/Docs/ 目錄下的 Markdown 檔案。
+    具有基本的路徑遍歷防護。
+    """
+    # Security: Allow only .md files
+    if not filename.endswith(".md"):
+         return JSONResponse(status_code=400, content={"error": "Invalid file type"})
+         
+    # Security: Prevent traversing up
+    if ".." in filename or "/" in filename or "\\" in filename:
+         return JSONResponse(status_code=400, content={"error": "Invalid filename"})
+
+    # Path to Docs folder (youtube_summary/Docs)
+    # Note: Since we are running from youtube_summary, Docs should be a subdirectory
+    # But wait, looking at file structure:
+    # youtube_summary/
+    #   main.py
+    #   Docs/ (We synced files here during deployment)
+    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    docs_dir = os.path.join(current_dir, "Docs")
+    file_path = os.path.join(docs_dir, filename)
+    
+    if not os.path.exists(file_path):
+        # Try parent Docs folder (development env)
+        parent_docs = os.path.join(current_dir, "..", "Docs")
+        file_path_parent = os.path.join(parent_docs, filename)
+        if os.path.exists(file_path_parent):
+            file_path = file_path_parent
+        else:
+            return JSONResponse(status_code=404, content={"error": "File not found"})
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            return Response(content=content, media_type="text/markdown")
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 if __name__ == "__main__":
