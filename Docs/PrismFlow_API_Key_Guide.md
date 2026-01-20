@@ -8,7 +8,7 @@
 
 PrismFlow 的核心依賴於 Google 最先進的 **Gemini 3 Flash** AI 模型來進行：
 1.  **深度影片聽打與摘要** (Youtube Summary)
-2.  **視覺化簡報生成** (NoteSlide)
+2.  **視覺化簡報生成** (NoteFlux)
 
 雖然系統內建了共用的伺服器額度，但為了確保**最快速度**、**最高隱私**以及**不受限制的使用量**，我們強烈建議使用者配置自己的 API Key (BYOK - Bring Your Own Key) 模式。
 
