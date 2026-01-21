@@ -828,10 +828,15 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                             canvas_left = (SLIDE_W_INCH - canvas_w) / 2
 
                         buf = io.BytesIO()
+                        # [Fix] JPEG 不支援 RGBA，必須轉換為 RGB
+                        if cleaned_bg_img.mode in ('RGBA', 'P'):
+                            cleaned_bg_img = cleaned_bg_img.convert('RGB')
+                            
                         cleaned_bg_img.save(buf, format='JPEG', quality=90)
                         buf.seek(0)
                         img_byte_arr = buf
-                    except:
+                    except Exception as e:
+                        logger.error(f"Background image processing failed for slide {i}: {e}")
                         img_byte_arr = None
 
             # [Overlay 模式檢查]

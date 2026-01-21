@@ -1,5 +1,10 @@
 # Changelog
 
+## [v7.3.3] - 2026-01-21
+### 🐛 錯誤修復 (Fixes)
+- **Background Image Fix (Hotfix)**:
+    - **RGBA 格式相容性**: 修復部分 PDF 轉換後產生 RGBA 圖片導致 JPEG 儲存失敗，進而造成「簡報背景全白/圖片消失」的嚴重錯誤。已加入自動轉檔 (RGB) 與例外捕捉機制。
+
 ## [v7.3.2] - 2026-01-21
 ### 🐛 錯誤修復 (Fixes)
 - **Visual Element Fixes (內部素材修正)**:
