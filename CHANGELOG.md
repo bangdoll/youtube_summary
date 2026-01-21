@@ -1,5 +1,11 @@
 # Changelog
 
+## [v7.3.5] - 2026-01-21
+### 🐛 錯誤修復 (Fixes)
+- **Coordinate Projection Fix (座標投影修正)**:
+    - **Visual Elements**: 修復了內部素材 (圖表/Icons) 在 Smart Fit 模式下位置偏移或消失的嚴重錯誤。
+    - **Bug Cause**: 程式碼邏輯變數引用錯誤 (`left/top` vs `final_left/final_top`)，導致素材被放置在未定義或錯誤的座標上 (即 "跑到剪報外面")。現已全數修正為投影後的正確座標。
+
 ## [v7.3.4] - 2026-01-21
 ### 🐛 錯誤修復 (Fixes)
 - **Robust Image Processing (強力圖像處理)**:

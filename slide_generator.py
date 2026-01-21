@@ -972,7 +972,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                                 if svg_path:
                                      try:
                                          # 插入 SVG (向量)
-                                         slide.shapes.add_picture(svg_path, left, top, width=width, height=height)
+                                         slide.shapes.add_picture(svg_path, final_left, final_top, width=final_width, height=final_height)
                                          # 清理
                                          if os.path.exists(svg_path):
                                              os.unlink(svg_path)
@@ -986,7 +986,7 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                                     crop_img.save(crop_buf, format='PNG') 
                                     crop_buf.seek(0)
                                     
-                                    slide.shapes.add_picture(crop_buf, left, top, width=width, height=height)
+                                    slide.shapes.add_picture(crop_buf, final_left, final_top, width=final_width, height=final_height)
                     except Exception as e:
                         logger.warning(f"Visual element {idx} placement failed: {e}")
 
