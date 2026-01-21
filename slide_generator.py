@@ -782,10 +782,36 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
             
             # 圖片處理 (背景圖)
             img_byte_arr = None
+            cleaned_bg_img = None
+            
+            # 初始畫布參數 (預設全版，若有圖片則更新)
+            canvas_w = SLIDE_W_INCH
+            canvas_h = SLIDE_H_INCH
+            canvas_left = 0.0
+            canvas_top = 0.0
+
             if i < len(images):
                 cleaned_bg_img = images[i]
                 if cleaned_bg_img:
                     try:
+                        # [v7.3.0] 計算智慧縮放座標 (Contain Mode)
+                        img_w_px, img_h_px = cleaned_bg_img.size
+                        ratio_img = img_w_px / img_h_px
+                        ratio_slide = SLIDE_W_INCH / SLIDE_H_INCH
+                        
+                        if ratio_img > ratio_slide:
+                            # 圖片較寬 (上下留白)
+                            canvas_w = SLIDE_W_INCH
+                            canvas_h = SLIDE_W_INCH / ratio_img
+                            canvas_left = 0.0
+                            canvas_top = (SLIDE_H_INCH - canvas_h) / 2
+                        else:
+                            # 圖片較高 (左右留白)
+                            canvas_h = SLIDE_H_INCH
+                            canvas_w = SLIDE_H_INCH * ratio_img
+                            canvas_top = 0.0
+                            canvas_left = (SLIDE_W_INCH - canvas_w) / 2
+
                         buf = io.BytesIO()
                         cleaned_bg_img.save(buf, format='JPEG', quality=90)
                         buf.seek(0)
@@ -821,7 +847,14 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                     # 使用處理過 (清理/修補) 的圖片作為背景
                     if img_byte_arr:
                         try:
-                            pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), width=Inches(SLIDE_W_INCH), height=Inches(SLIDE_H_INCH))
+                            # 使用計算出的 Canvas 座標與尺寸
+                            pic = slide.shapes.add_picture(
+                                img_byte_arr, 
+                                Inches(canvas_left), 
+                                Inches(canvas_top), 
+                                width=Inches(canvas_w), 
+                                height=Inches(canvas_h)
+                            )
                         except Exception as e:
                             logger.error(f"Slide {i}: Add bg picture failed: {e}")
                         
@@ -850,10 +883,11 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                                 bbox = viz.get('bbox', [0,0,0,0])
                                 ymin, xmin, ymax, xmax = bbox
                                 
-                                left = Inches(xmin / 1000 * SLIDE_W_INCH)
-                                top = Inches(ymin / 1000 * SLIDE_H_INCH)
-                                width = Inches((xmax - xmin) / 1000 * SLIDE_W_INCH)
-                                height = Inches((ymax - ymin) / 1000 * SLIDE_H_INCH)
+                                # [v7.3.0] 座標投影校正
+                                left = Inches(canvas_left + (xmin / 1000 * canvas_w))
+                                top = Inches(canvas_top + (ymin / 1000 * canvas_h))
+                                width = Inches((xmax - xmin) / 1000 * canvas_w)
+                                height = Inches((ymax - ymin) / 1000 * canvas_h)
                                 
                                 # [v6.2] 向量化檢查
                                 is_blueprint = 'blueprint' in viz.get('description', '').lower() or 'background' in viz.get('type', '').lower()
@@ -894,11 +928,11 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         
                         ymin, xmin, ymax, xmax = bbox
                         
-                        # 將 0-1000 轉換為英吋
-                        left = Inches(xmin / 1000 * SLIDE_W_INCH)
-                        top = Inches(ymin / 1000 * SLIDE_H_INCH)
-                        width = Inches((xmax - xmin) / 1000 * SLIDE_W_INCH)
-                        height = Inches((ymax - ymin) / 1000 * SLIDE_H_INCH)
+                        # [v7.3.0] 座標投影校正
+                        left = Inches(canvas_left + (xmin / 1000 * canvas_w))
+                        top = Inches(canvas_top + (ymin / 1000 * canvas_h))
+                        width = Inches((xmax - xmin) / 1000 * canvas_w)
+                        height = Inches((ymax - ymin) / 1000 * canvas_h)
                         
                         # 新增文字方塊
                         tb = slide.shapes.add_textbox(left, top, width, height)
