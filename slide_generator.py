@@ -827,14 +827,36 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                             canvas_top = 0.0
                             canvas_left = (SLIDE_W_INCH - canvas_w) / 2
 
+                        # [Fix v7.3.4] 強力圖像處理：處理透明度並增加 PNG 備援
                         buf = io.BytesIO()
-                        # [Fix] JPEG 不支援 RGBA，必須轉換為 RGB
-                        if cleaned_bg_img.mode in ('RGBA', 'P'):
-                            cleaned_bg_img = cleaned_bg_img.convert('RGB')
-                            
-                        cleaned_bg_img.save(buf, format='JPEG', quality=90)
-                        buf.seek(0)
-                        img_byte_arr = buf
+                        try:
+                            # 1. 處理透明度 (Transparency Handling)
+                            # 如果是 RGBA/LA 或 P (帶透明)，合成到白色背景，避免轉 RGB 變黑
+                            if cleaned_bg_img.mode in ('RGBA', 'LA') or (cleaned_bg_img.mode == 'P' and 'transparency' in cleaned_bg_img.info):
+                                bg_layer = Image.new('RGB', cleaned_bg_img.size, (255, 255, 255))
+                                # 必須轉為 RGBA 才能正確合成 Alpha
+                                alpha_composite = cleaned_bg_img.convert('RGBA')
+                                bg_layer.paste(alpha_composite, mask=alpha_composite.split()[3]) # 3=Alpha
+                                cleaned_bg_img = bg_layer
+                            elif cleaned_bg_img.mode != 'RGB':
+                                cleaned_bg_img = cleaned_bg_img.convert('RGB')
+                                
+                            # 2. 嘗試儲存為 JPEG (較小)
+                            cleaned_bg_img.save(buf, format='JPEG', quality=90)
+                        except Exception as e_jpg:
+                            logger.warning(f"Slide {i}: JPEG save failed ({e_jpg}), trying PNG fallback...")
+                            try:
+                                buf = io.BytesIO() # Reset buffer
+                                cleaned_bg_img.save(buf, format='PNG')
+                            except Exception as e_png:
+                                logger.error(f"Slide {i}: Image save totally failed: {e_png}")
+                                buf = None
+                        
+                        if buf:
+                            buf.seek(0)
+                            img_byte_arr = buf
+                        else:
+                            img_byte_arr = None
                     except Exception as e:
                         logger.error(f"Background image processing failed for slide {i}: {e}")
                         img_byte_arr = None

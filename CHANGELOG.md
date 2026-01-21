@@ -1,5 +1,11 @@
 # Changelog
 
+## [v7.3.4] - 2026-01-21
+### 🐛 錯誤修復 (Fixes)
+- **Robust Image Processing (強力圖像處理)**:
+    - **透明度處理 (Transparency Handling)**: 修正透明背景 (RGBA/LA) 轉檔變黑的問題。系統現在會自動將透明圖片合成到白色背景層上，確保視覺正確。
+    - **PNG 備援機制 (Fallback Strategy)**: 當 JPEG 轉檔失敗 (如特殊色彩模式) 時，自動切換為 PNG 格式儲存，徹底杜絕「圖片消失」的空白投影片問題。
+
 ## [v7.3.3] - 2026-01-21
 ### 🐛 錯誤修復 (Fixes)
 - **Background Image Fix (Hotfix)**:
