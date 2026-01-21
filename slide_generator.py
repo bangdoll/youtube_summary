@@ -831,9 +831,12 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                         buf = io.BytesIO()
                         try:
                             # 1. 處理透明度 (Transparency Handling)
-                            # 如果是 RGBA/LA 或 P (帶透明)，合成到白色背景，避免轉 RGB 變黑
+                            # 如果是 RGBA/LA 或 P (帶透明)，合成到背景色，避免轉 RGB 變黑 (或變白框)
                             if cleaned_bg_img.mode in ('RGBA', 'LA') or (cleaned_bg_img.mode == 'P' and 'transparency' in cleaned_bg_img.info):
-                                bg_layer = Image.new('RGB', cleaned_bg_img.size, (255, 255, 255))
+                                # [Fix v7.3.6] 使用投影片背景色 (bg_hex)
+                                bg_rgb = tuple(hex_to_rgb(bg_hex))
+                                bg_layer = Image.new('RGB', cleaned_bg_img.size, bg_rgb)
+                                
                                 # 必須轉為 RGBA 才能正確合成 Alpha
                                 alpha_composite = cleaned_bg_img.convert('RGBA')
                                 bg_layer.paste(alpha_composite, mask=alpha_composite.split()[3]) # 3=Alpha

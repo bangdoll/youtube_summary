@@ -1,5 +1,10 @@
 # Changelog
 
+## [v7.3.6] - 2026-01-21
+### 🐛 錯誤修復 (Fixes)
+- **Smart Transparency Flattening (智慧透明度合成)**:
+    - **Visual Bug Fix**: 修復了深色投影片上透明素材會出現「白色方框」的問題。我改進了圖像合成邏輯，現在會智慧讀取 AI 分析出的背景色 (`bg_hex`) 來填充透明區域，而非使用預設白色。
+
 ## [v7.3.5] - 2026-01-21
 ### 🐛 錯誤修復 (Fixes)
 - **Coordinate Projection Fix (座標投影修正)**:

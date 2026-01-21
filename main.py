@@ -22,6 +22,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 # Import our core engine
 import youtube_summary
 import slide_generator
+from slide_generator import hex_to_rgb
 
 # Import Cost Tracker
 try:
@@ -439,10 +440,24 @@ async def analyze_slides(
                         img = Image.new('RGB', (1600, 900), (255, 255, 255))
 
                     # 處理透明度 (RGBA/P) -> 具白色背景的 RGB
+                    # 處理透明度 (RGBA/P) -> 具背景色的 RGB
                     if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
-                        background = Image.new('RGB', img.size, (255, 255, 255))
+                        # [v7.3.6 Fix] 使用分析出的背景色填充，避免深色背景出現白框
+                        bg_color = (255, 255, 255) # Default White
+                        try:
+                            if i < len(analyses):
+                                bg_hex = analyses[i].get("background_color_hex", "#ffffff")
+                                bg_color = tuple(hex_to_rgb(bg_hex))
+                        except:
+                            pass
+                            
+                        background = Image.new('RGB', img.size, bg_color)
                         if img.mode == 'P':
                             img = img.convert('RGBA')
+                        # Ensure rgba for split consistency
+                        if img.mode != 'RGBA':
+                            img = img.convert('RGBA')
+                            
                         background.paste(img, mask=img.split()[-1])
                         img = background
                     elif img.mode != 'RGB':
