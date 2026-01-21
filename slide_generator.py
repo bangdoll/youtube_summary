@@ -377,20 +377,35 @@ async def remove_text_from_image(image, api_key: str, remove_icon: bool = False,
 def crop_visual_element(image, bbox: list, slide_width: int = 1000, slide_height: int = 1000):
     """
     經典矩形裁切 (備援)。
+    [v7.3.1] 新增安全邊距 (Padding) 以避免切到邊緣。
     """
     try:
         if not bbox or len(bbox) != 4:
             return None
         ymin, xmin, ymax, xmax = bbox
         img_width, img_height = image.size
+        
+        # 轉換座標
         left = int(xmin / slide_width * img_width)
         top = int(ymin / slide_height * img_height)
         right = int(xmax / slide_width * img_width)
         bottom = int(ymax / slide_height * img_height)
+        
+        # [v7.3.1] 安全邊距 (Safety Padding)
+        # 增加 20px (或按比例?)，這裡直接加 20px 像素
+        # 注意: 增加 padding 可能會包含到背景雜訊，但對於後續 rembg 或放置來說，多比少好。
+        padding = 20
+        left = max(0, left - padding)
+        top = max(0, top - padding)
+        right = min(img_width, right + padding)
+        bottom = min(img_height, bottom + padding)
+
+        # 再次確保邊界檢查
         left = max(0, min(left, img_width - 1))
         top = max(0, min(top, img_height - 1))
         right = max(left + 1, min(right, img_width))
         bottom = max(top + 1, min(bottom, img_height))
+        
         return image.crop((left, top, right, bottom))
     except Exception:
         return None
@@ -883,11 +898,42 @@ def create_pptx_from_analysis(analyses: List[dict], images: List, output_path: s
                                 bbox = viz.get('bbox', [0,0,0,0])
                                 ymin, xmin, ymax, xmax = bbox
                                 
-                                # [v7.3.0] 座標投影校正
-                                left = Inches(canvas_left + (xmin / 1000 * canvas_w))
-                                top = Inches(canvas_top + (ymin / 1000 * canvas_h))
-                                width = Inches((xmax - xmin) / 1000 * canvas_w)
-                                height = Inches((ymax - ymin) / 1000 * canvas_h)
+                                # [v7.3.0] 座標投影校正 (Project BBox to Scaled Background Canvas)
+                                # 這是 AI 預測的「理想框」
+                                target_left = Inches(canvas_left + (xmin / 1000 * canvas_w))
+                                target_top = Inches(canvas_top + (ymin / 1000 * canvas_h))
+                                target_width = Inches((xmax - xmin) / 1000 * canvas_w)
+                                target_height = Inches((ymax - ymin) / 1000 * canvas_h)
+                                
+                                # [v7.3.1 Fix] 內部素材變形修正 (Smart Fit for Elements)
+                                # 不強制填滿理想框，而是「保持比例放入」(Contain) 並置中
+                                # 這避免了圖表被壓扁或拉長
+                                
+                                # 計算原始圖片比例
+                                elem_w_px, elem_h_px = crop_img.size
+                                elem_ratio = elem_w_px / elem_h_px
+                                
+                                # 計算目標框比例 (使用 Inches 值)
+                                # 注意：Inches 物件可直接比較與運算
+                                target_ratio = target_width / target_height
+                                
+                                final_width = target_width
+                                final_height = target_height
+                                final_left = target_left
+                                final_top = target_top
+                                
+                                if elem_ratio > target_ratio:
+                                    # 圖片較扁長 -> 寬度填滿，高度縮小，垂直置中
+                                    final_width = target_width
+                                    final_height = target_width / elem_ratio
+                                    final_left = target_left
+                                    final_top = target_top + (target_height - final_height) / 2
+                                else:
+                                    # 圖片較瘦高 -> 高度填滿，寬度縮小，水平置中
+                                    final_height = target_height
+                                    final_width = target_height * elem_ratio
+                                    final_top = target_top
+                                    final_left = target_left + (target_width - final_width) / 2
                                 
                                 # [v6.2] 向量化檢查
                                 is_blueprint = 'blueprint' in viz.get('description', '').lower() or 'background' in viz.get('type', '').lower()
